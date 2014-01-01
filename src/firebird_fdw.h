@@ -37,6 +37,7 @@
 
 typedef struct fbTableColumn
 {
+    char *fbname;            /* Firebird column name */
     char *pgname;            /* PostgreSQL column name */
     int pgattnum;            /* PostgreSQL attribute number */
     Oid pgtype;              /* PostgreSQL data type */

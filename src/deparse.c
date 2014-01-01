@@ -278,7 +278,7 @@ deparseReturningList(StringInfo buf, PlannerInfo *root,
  * deparseTargetList()
  *
  * Emit a target list that retrieves the columns specified in attrs_used.
- * This is used for both SELECT and RETURNING targetlists.
+ * This is currently used for RETURNING targetlists.
  *
  * The tlist text is appended to buf, and we also create an integer List
  * of the columns being retrieved, which is returned to *retrieved_attrs.

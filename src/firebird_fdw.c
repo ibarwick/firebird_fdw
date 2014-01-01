@@ -65,14 +65,15 @@ PG_MODULE_MAGIC;
 static struct FirebirdFdwOption valid_options[] =
 {
     /* Connection options */
-    { "address",    ForeignServerRelationId },
-    { "port",       ForeignServerRelationId }, /* not used (!) */
-    { "database",   ForeignServerRelationId },
-    { "username",   UserMappingRelationId   },
-    { "password",   UserMappingRelationId   },
-    { "query",      ForeignTableRelationId  },
-    { "table",      ForeignTableRelationId  },
-    { NULL,         0 }
+    { "address",     ForeignServerRelationId },
+    { "port",        ForeignServerRelationId }, /* not used (!) */
+    { "database",    ForeignServerRelationId },
+    { "username",    UserMappingRelationId   },
+    { "password",    UserMappingRelationId   },
+    { "query",       ForeignTableRelationId  },
+    { "table",       ForeignTableRelationId  },
+    { "column_name", AttributeRelationId     },
+    { NULL,          0 }
 };
 
 
@@ -969,6 +970,7 @@ firebirdBeginForeignScan(ForeignScanState *node,
     char    *dbpath = NULL;
     FQconn  *conn;
 
+
     FirebirdFdwState *fdw_state;
     char    *query;
     Oid      foreigntableid = RelationGetRelid(node->ss.ss_currentRelation);
@@ -1034,20 +1036,45 @@ firebirdBeginForeignScan(ForeignScanState *node,
     fdw_state->table->pg_table_name = get_rel_name(foreigntableid);
     elog(DEBUG1, "Pg tablename: %s", fdw_state->table->pg_table_name);
 
+    /* Get column information */
+
     rel = heap_open(foreigntableid, NoLock);
 
     tupdesc = rel->rd_att;
     fdw_state->table->pg_column_total = 0;
     fdw_state->table->columns = (fbTableColumn **)palloc(sizeof(fbTableColumn *) * tupdesc->natts);
 
-
     for (i = 0; i < tupdesc->natts; i++)
     {
         Form_pg_attribute att_tuple = tupdesc->attrs[i];
+        List     *column_options;
+        ListCell *lc;
+        char     *pg_colname = NULL;
+        char     *fb_colname = NULL;
 
         fdw_state->table->columns[fdw_state->table->pg_column_total] = (fbTableColumn *)palloc(sizeof(fbTableColumn));
-        elog(DEBUG1, "column: %s", NameStr(att_tuple->attname));
-        fdw_state->table->columns[fdw_state->table->pg_column_total]->pgname   = NameStr(att_tuple->attname);
+
+        pg_colname = NameStr(att_tuple->attname);
+        elog(DEBUG1, "PG column: %s", pg_colname);
+
+        column_options = GetForeignColumnOptions(foreigntableid, i + 1);
+        foreach(lc, column_options)
+        {
+            DefElem    *def = (DefElem *) lfirst(lc);
+
+            if (strcmp(def->defname, "column_name") == 0)
+            {
+                fb_colname = defGetString(def);
+                break;
+            }
+        }
+
+        if(fb_colname == NULL)
+            fb_colname = pg_colname;
+
+        elog(DEBUG1, "FB column: %s", fb_colname);
+        fdw_state->table->columns[fdw_state->table->pg_column_total]->fbname   = fb_colname;
+        fdw_state->table->columns[fdw_state->table->pg_column_total]->pgname   = pg_colname;
         fdw_state->table->columns[fdw_state->table->pg_column_total]->pgtype   = att_tuple->atttypid;
         fdw_state->table->columns[fdw_state->table->pg_column_total]->pgtypmod = att_tuple->atttypmod;
         fdw_state->table->columns[fdw_state->table->pg_column_total]->pgattnum = att_tuple->attnum;
@@ -1091,7 +1118,7 @@ firebirdBeginForeignScan(ForeignScanState *node,
             if(i)
                 appendStringInfo(&buf, ", ");
 
-            appendStringInfo(&buf, "t.%s", fdw_state->table->columns[i]->pgname);
+            appendStringInfo(&buf, "t.%s", fdw_state->table->columns[i]->fbname);
         }
 
         appendStringInfo(&buf, ", rdb$db_key FROM %s t", svr_table);
@@ -1232,7 +1259,7 @@ firebirdIterateForeignScan(ForeignScanState *node)
     HeapTupleSetOid(tuple, (Oid)key_oid_part);
 
     ExecStoreTuple(tuple, slot, InvalidBuffer, false);
-    //ExecStoreVirtualTuple(slot);
+
     fdw_state->row++;
 
     return slot;
