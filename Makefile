@@ -27,7 +27,10 @@ REGRESS_OPTS = --inputdir=test --outputdir=test \
 MODULE_big      = $(EXTENSION)
 
 OBJS         =  $(patsubst %.c,%.o,$(wildcard src/*.c))
+
+ifndef PG_CONFIG
 PG_CONFIG    = pg_config
+endif
 
 SHLIB_LINK += -lfq -lfbclient
 
