@@ -186,9 +186,8 @@ deparseColumnRef(StringInfo buf, int varno, int varattno, PlannerInfo *root)
     rte = planner_rt_fetch(varno, root);
 
     /*
-     * If it's a column of a foreign table, and it has the column_name FDW
-     * option, use that value
-     * XXX not yet implemented
+     * Use Firebird column name if defined
+     * XXX code partially duplicated in firebirdBeginForeignScan()
      */
     options = GetForeignColumnOptions(rte->relid, varattno);
     foreach(lc, options)
@@ -202,10 +201,7 @@ deparseColumnRef(StringInfo buf, int varno, int varattno, PlannerInfo *root)
         }
     }
 
-    /*
-     * If it's a column of a regular table or it doesn't have column_name FDW
-     * option, use attribute name.
-     */
+    /* otherwise use Postgres column name */
     if (colname == NULL)
         colname = get_relid_attribute_name(rte->relid, varattno);
 

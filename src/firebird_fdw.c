@@ -1118,7 +1118,7 @@ firebirdBeginForeignScan(ForeignScanState *node,
             if(i)
                 appendStringInfo(&buf, ", ");
 
-            appendStringInfo(&buf, "t.%s", fdw_state->table->columns[i]->fbname);
+            appendStringInfo(&buf, "t.%s", quote_identifier(fdw_state->table->columns[i]->fbname));
         }
 
         appendStringInfo(&buf, ", rdb$db_key FROM %s t", svr_table);
