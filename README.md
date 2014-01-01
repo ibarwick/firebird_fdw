@@ -53,7 +53,7 @@ firebird_fdw accepts the following options:
         The Firebird server's address (default: localhost)
 
     'database':
-        The database to connect to
+        The name of the database to connect to
 
     'username':
         The username to connect as (not case-sensitive)
@@ -70,6 +70,9 @@ firebird_fdw accepts the following options:
         A Firebird SQL statement producing a result set which can be
         treated like a table. Cannot be used together with the 'table'
         option.
+
+    'column_name':
+        The Firebird column name (not case-sensitive).
 
 Note that while a Firebird foreign table can be defined without any
 columns, an error will be raised as soon as any operations are carried
@@ -111,6 +114,18 @@ Create a foreign table referencing the Firebird table 'fdw_test':
       table 'fdw_test'
     );
 
+As above, but with aliased column names:
+
+    CREATE FOREIGN TABLE fb_test(
+      id SMALLINT OPTIONS (column_name 'test_id'),
+      val VARCHAR(2048) OPTIONS (column_name 'test_val')
+    )
+    SERVER firebird_server
+    OPTIONS(
+      table 'fdw_test'
+    );
+
+
 Create a foreign table as a Firebird query:
 
     CREATE FOREIGN TABLE fb_test(
@@ -130,7 +145,8 @@ Many; among the more egregious:
 - No Firebird transaction support
 - No explicit character set/encoding support
 - No support for some Firebird datatypes (BLOB, ARRAY)
-- TIMESTAMP/TIME: currently sub-second units will be truncated
+- TIMESTAMP/TIME: currently sub-second units will be truncated on
+  insertion or update
 - No pushdowns
 - No connection caching
 
