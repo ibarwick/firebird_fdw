@@ -1,0 +1,7 @@
+fbsql
+*.o
+*.so
+*~
+.#*
+*dSYM*
+libfq

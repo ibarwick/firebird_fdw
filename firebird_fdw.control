@@ -1,0 +1,5 @@
+# Firebird FDW
+comment = 'Firebird Foreign Data Wrapper'
+default_version = '0.0.1'
+module_pathname = '$libdir/firebird_fdw'
+relocatable = true
