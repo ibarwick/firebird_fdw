@@ -131,8 +131,6 @@ Many; among the more egregious:
 - No explicit character set/encoding support
 - No support for some Firebird datatypes (BLOB, ARRAY)
 - TIMESTAMP/TIME: currently sub-second units will be truncated
-- No column aliases possible (column names defined in CREATE FOREIGN TABLE
-  must exactly match the Firebird column names)
 - No pushdowns
 - No connection caching
 
