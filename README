@@ -25,16 +25,16 @@ Installation
 ------------
 
 Prerequisites:
-  - Firebird client library (libfbclient) and API header file (ibase.h)
-  - libfq, a slightly saner API wrapper for the Firebird C API; see:
-    https://github.com/ibarwick/libfq
+- Firebird client library (libfbclient) and API header file (ibase.h)
+- libfq, a slightly saner API wrapper for the Firebird C API; see:
+  https://github.com/ibarwick/libfq
 
 The Firebird include/library files often end up in non-standard locations;
 PG_CPPFLAGS and SHLIB_LINK can be used to provide the appropriate flags.
 For OS X they would look something like this:
 
-  export PG_CPPFLAGS="-I /Library/Frameworks/Firebird.framework/Versions/A/Headers/"
-  export SHLIB_LINK="-L/Library/Frameworks/Firebird.framework/Versions/A/Libraries/"
+    export PG_CPPFLAGS="-I /Library/Frameworks/Firebird.framework/Versions/A/Headers/"
+    export SHLIB_LINK="-L/Library/Frameworks/Firebird.framework/Versions/A/Libraries/"
 
 firebird_fdw is installed as a PostgreSQL extension; it requires the
 pg_config binary for the target installation to be in the shell path.
