@@ -142,6 +142,7 @@ Useful links
 
 * Source
  - https://github.com/ibarwick/firebird_fdw
+ - http://pgxn.org/dist/firebird_fdw/
 
 * Documentation
  - http://www.postgresql.org/docs/current/interactive/ddl-foreign-data.html
