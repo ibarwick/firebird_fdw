@@ -941,11 +941,11 @@ firebirdGetForeignPlan(PlannerInfo *root,
  * is still NULL. Information about the table to scan is accessible through the
  * ForeignScanState node (in particular, from the underlying ForeignScan
  * plan node, which contains any FDW-private information provided by
- * GetForeignPlan). eflags contains flag bits describing the executor's
- * operating mode for this plan node.
+ * firebirdGetForeignPlan()). eflags contains flag bits describing the
+ * executor's operating mode for this plan node.
  *
  * This function (re)establishes a connection to the remote database (we
- * shouldn't really be doint that here, ideally the connection would
+ * shouldn't really be doing that here, ideally the connection would
  * be cached already but this is still experimental code); initialises
  * the node's fdw_state fields; and generates the query to be used for
  * the scan.
@@ -953,7 +953,7 @@ firebirdGetForeignPlan(PlannerInfo *root,
  * Note that when (eflags & EXEC_FLAG_EXPLAIN_ONLY) is true, this function
  * should not perform any externally-visible actions; it should only do
  * the minimum required to make the node state valid for
- * ExplainForeignScan and EndForeignScan.
+ * firebirdExplainForeignScan() and firebirdEndForeignScan().
  *
  */
 static void
@@ -975,8 +975,10 @@ firebirdBeginForeignScan(ForeignScanState *node,
     char    *query;
     Oid      foreigntableid = RelationGetRelid(node->ss.ss_currentRelation);
 
+
     Relation rel;
     TupleDesc tupdesc;
+    Bitmapset *attrs_used;
     int i;
 
     elog(DEBUG1, "entering function %s", __func__);
@@ -1121,7 +1123,7 @@ firebirdBeginForeignScan(ForeignScanState *node,
             appendStringInfo(&buf, "t.%s", quote_identifier(fdw_state->table->columns[i]->fbname));
         }
 
-        appendStringInfo(&buf, ", rdb$db_key FROM %s t", svr_table);
+        appendStringInfo(&buf, ", rdb$db_key FROM %s t", quote_identifier(svr_table));
 
         query = pstrdup(buf.data);
     }

@@ -38,7 +38,7 @@ static void deparseTargetList(StringInfo buf,
 /**
  * buildInsertSql()
  *
- * Build remote INSERT statement
+ * Build Firebird INSERT statement
  */
 void
 buildInsertSql(StringInfo buf, PlannerInfo *root,
@@ -89,7 +89,7 @@ buildInsertSql(StringInfo buf, PlannerInfo *root,
 /**
  * buildUpdateSql()
  *
- * Build remote UPDATE statement
+ * Build Firebird UPDATE statement
  */
 void
 buildUpdateSql(StringInfo buf, PlannerInfo *root,
@@ -129,7 +129,7 @@ buildUpdateSql(StringInfo buf, PlannerInfo *root,
 /**
  * buildDeleteSql()
  *
- * build remote DELETE statement
+ * build Firebird DELETE statement
  *
  * NOTE:
  *   Firebird only seems to support DELETE ... RETURNING ...
@@ -212,7 +212,7 @@ deparseColumnRef(StringInfo buf, int varno, int varattno, PlannerInfo *root)
 /**
  * deparseRelation()
  *
- * Append remote name of specified foreign table to 'buf'.
+ * Append the Firebird name of specified foreign table to 'buf'.
  * Firebird does not have schemas, so we will only return the table
  * name itself.
  */
@@ -319,20 +319,6 @@ deparseTargetList(StringInfo buf,
 
             *retrieved_attrs = lappend_int(*retrieved_attrs, i);
         }
-    }
-
-    /* Add RDB$DB_KEY if needed */
-    if (bms_is_member(SelfItemPointerAttributeNumber - FirstLowInvalidHeapAttributeNumber,
-                      attrs_used))
-    {
-        if (!first)
-            appendStringInfoString(buf, ", ");
-        first = false;
-
-        appendStringInfoString(buf, "RDB$DB_KEY");
-
-        *retrieved_attrs = lappend_int(*retrieved_attrs,
-                                       SelfItemPointerAttributeNumber);
     }
 
     /* Avoid generating invalid syntax if no undropped columns exist */
