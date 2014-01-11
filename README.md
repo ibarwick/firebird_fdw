@@ -59,17 +59,16 @@ firebird_fdw accepts the following options:
         The username to connect as (not case-sensitive)
 
     'password':
-        The user's password (note that Firebird only recognizes
-        the first 8 characters of a password)
+        The user's password (note that Firebird only recognizes the first 8
+        characters of a password)
 
-    'table':
-        The Firebird table name (not case-sensitive).
-        Cannot be used together with the 'query' option.
+    'table_name':
+        The Firebird table name (not case-sensitive). Cannot be used together
+        with the 'query' option.
 
     'query':
-        A Firebird SQL statement producing a result set which can be
-        treated like a table. Cannot be used together with the 'table'
-        option.
+        A Firebird SQL statement producing a result set which can be treated
+        like a table. Cannot be used together with the 'table_name' option.
 
     'column_name':
         The Firebird column name (not case-sensitive).
@@ -151,6 +150,7 @@ Limitations
 -----------
 
 Many; among the more egregious:
+
 - No Firebird transaction support
 - No explicit character set/encoding support
 - No support for some Firebird datatypes (BLOB, ARRAY)
