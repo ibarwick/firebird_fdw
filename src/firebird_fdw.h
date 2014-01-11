@@ -84,26 +84,26 @@ struct FirebirdFdwOption
 typedef struct FirebirdFdwState
 {
     /* Connection information */
-    char    *svr_address;
-    int      svr_port;           /* Server port (default: 3050) */
-    char    *svr_database;
+    char       *svr_address;
+    int         svr_port;           /* Server port (default: 3050) */
+    char       *svr_database;
 
-    char    *svr_username;       /* Firebird username */
-    char    *svr_password;       /* Firebird password */
+    char       *svr_username;       /* Firebird username */
+    char       *svr_password;       /* Firebird password */
 
-    char    *svr_query;
-    char    *svr_table;
-    char    *dbpath;
-    FQconn  *conn;
-	List    *remote_conds;
-	List    *local_conds;
-    bool     disable_pushdowns;
-	/* Bitmap of attr numbers we need to fetch from the remote server. */
-	Bitmapset  *attrs_used;
-    Cost startup_cost;             /* cost estimate, only needed for planning */
-    Cost total_cost;               /* cost estimate, only needed for planning */
+    char       *svr_query;
+    char       *svr_table;
+    char       *dbpath;
+    FQconn     *conn;
+	List       *remote_conds;
+	List       *local_conds;
+    bool        disable_pushdowns;  /* true if server option "disable_pushdowns" supplied */
+
+	Bitmapset  *attrs_used;         /* Bitmap of attr numbers to be fetched from the remote server. */
+    Cost        startup_cost;       /* cost estimate, only needed for planning */
+    Cost        total_cost;         /* cost estimate, only needed for planning */
     int         row;
-    char *query;                   /* query to send to Firebird */
+    char        *query;             /* query to send to Firebird */
 } FirebirdFdwState;
 
 /*
@@ -111,18 +111,15 @@ typedef struct FirebirdFdwState
  */
 typedef struct FirebirdFdwScanState
 {
-    FQconn  *conn;
+    FQconn     *conn;
     /* Foreign table information */
-    fbTable *table;
-
+    fbTable    *table;
     List       *retrieved_attrs;    /* attr numbers retrieved by RETURNING */
     /* Query information */
-    char *query;                   /* query to send to Firebird */
-    bool        db_key_used;
+    char       *query;              /* query to send to Firebird */
+    bool        db_key_used;        /* indicate whether RDB$DB_KEY was requested */
 
-
-
-    FQresult    *result;
+    FQresult   *result;
     int         row;
 
 } FirebirdFdwScanState;
@@ -132,27 +129,27 @@ typedef struct FirebirdFdwScanState
  */
 typedef struct FirebirdFdwModifyState
 {
-    Relation    rel;            /* relcache entry for the foreign table */
-    AttInMetadata *attinmeta;   /* attribute datatype conversion metadata */
+    Relation    rel;               /* relcache entry for the foreign table */
+    AttInMetadata *attinmeta;      /* attribute datatype conversion metadata */
 
     /* for remote query execution */
-    FQconn     *conn;           /* connection for the scan */
+    FQconn       *conn;            /* connection for the scan */
 
     /* extracted fdw_private data */
-    char       *query;          /* text of INSERT/UPDATE/DELETE command */
-    List       *target_attrs;   /* list of target attribute numbers */
-    bool        has_returning;  /* is there a RETURNING clause? */
-    List       *retrieved_attrs;    /* attr numbers retrieved by RETURNING */
+    char         *query;           /* text of INSERT/UPDATE/DELETE command */
+    List         *target_attrs;    /* list of target attribute numbers */
+    bool          has_returning;   /* is there a RETURNING clause? */
+    List         *retrieved_attrs; /* attr numbers retrieved by RETURNING */
 
     /* info about parameters for prepared statement */
-    AttrNumber  db_keyAttno_CtidPart;  /* attnum of input resjunk rdb$db_key column */
-    AttrNumber  db_keyAttno_OidPart;   /* attnum of input resjunk rdb$db_key column (OID part)*/
+    AttrNumber    db_keyAttno_CtidPart;  /* attnum of input resjunk rdb$db_key column */
+    AttrNumber    db_keyAttno_OidPart;   /* attnum of input resjunk rdb$db_key column (OID part)*/
 
-    int         p_nums;         /* number of parameters to transmit */
-    FmgrInfo   *p_flinfo;       /* output conversion functions for them */
+    int           p_nums;         /* number of parameters to transmit */
+    FmgrInfo     *p_flinfo;       /* output conversion functions for them */
 
     /* working memory context */
-    MemoryContext temp_cxt;     /* context for per-tuple temporary data */
+    MemoryContext temp_cxt;       /* context for per-tuple temporary data */
 } FirebirdFdwModifyState;
 
 

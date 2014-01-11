@@ -248,6 +248,12 @@ static void
 convertDbKeyValue(char *p, uint32_t *key_ctid_part, uint32_t *key_oid_part);
 
 
+static void
+extractDbKeyParts(TupleTableSlot *planSlot,
+                  FirebirdFdwModifyState *fmstate,
+                  Datum *datum_ctid,
+                  Datum *datum_oid);
+
 static char *
 fbFormatMsg(char *msg, ...)
 __attribute__((format(__printf__, 1, 2)));
@@ -2078,29 +2084,13 @@ firebirdExecForeignUpdate(EState *estate,
     FirebirdFdwModifyState *fmstate = (FirebirdFdwModifyState *) resultRelInfo->ri_FdwState;
     Datum       datum_ctid;
     Datum       datum_oid;
-    bool        isNull;
     FQresult    *result;
     const int   *paramFormats;
     const char * const *p_values;
 
     elog(DEBUG2, "entering function %s", __func__);
 
-    /* Retrieve RDB$DB_KEY smuggled through in the CTID and OID headers */
-    /* src/include/executor/executor.h:extern Datum ExecGetJunkAttribute(TupleTableSlot *slot, AttrNumber attno, */
-    datum_ctid = ExecGetJunkAttribute(planSlot,
-                                     fmstate->db_keyAttno_CtidPart,
-                                     &isNull);
-
-    /* shouldn't ever get a null result... */
-    if (isNull)
-    {
-        elog(ERROR, "db_key_ctidpart is NULL");
-        return NULL;
-    }
-
-    datum_oid = ExecGetJunkAttribute(planSlot,
-                                     fmstate->db_keyAttno_OidPart,
-                                     &isNull);
+    extractDbKeyParts(planSlot, fmstate, &datum_ctid, &datum_oid);
 
     /* Convert parameters needed by prepared statement to text form */
     p_values = convert_prep_stmt_params(fmstate,
@@ -2112,7 +2102,7 @@ firebirdExecForeignUpdate(EState *estate,
                                           (ItemPointer) DatumGetPointer(datum_ctid),
                                           slot);
 
-    elog(DEBUG1, "Executing: %s", fmstate->query);
+    elog(DEBUG1, "Executing:\n%s", fmstate->query);
 
     result = FQexecParams(fmstate->conn,
                           fmstate->query,
@@ -2123,7 +2113,7 @@ firebirdExecForeignUpdate(EState *estate,
                           paramFormats,
                           0);
 
-    elog(DEBUG1, " result status: %s", FQresStatus(FQresultStatus(result)));
+    elog(DEBUG1, "Result status: %s", FQresStatus(FQresultStatus(result)));
 
     switch(FQresultStatus(result))
     {
@@ -2198,32 +2188,11 @@ firebirdExecForeignDelete(EState *estate,
     const int  *paramFormats;
     Datum       datum_ctid;
     Datum       datum_oid;
-    bool        isNull;
     FQresult    *result;
 
     elog(DEBUG2, "entering function %s", __func__);
 
-    /* Retrieve RDB$DB_KEY smuggled through in the CTID and OID headers */
-    /* src/include/executor/executor.h:extern Datum ExecGetJunkAttribute(TupleTableSlot *slot, AttrNumber attno, */
-    datum_ctid= ExecGetJunkAttribute(planSlot,
-                                     fmstate->db_keyAttno_CtidPart,
-                                     &isNull);
-
-    /* shouldn't ever get a null result... */
-    if (isNull)
-    {
-        elog(ERROR, "db_key (CTID part) is NULL");
-        return NULL;
-    }
-
-    datum_oid = ExecGetJunkAttribute(planSlot,
-                                     fmstate->db_keyAttno_OidPart,
-                                     &isNull);
-    if (isNull)
-    {
-        elog(ERROR, "db_key (OID part) is NULL");
-        return NULL;
-    }
+    extractDbKeyParts(planSlot, fmstate, &datum_ctid, &datum_oid);
 
     elog(DEBUG2, "preparing statement...");
 
@@ -2861,4 +2830,33 @@ fbFormatErrDetail(FQresult *res)
     appendStringInfo(&buf, "%s", FQresultErrorFieldsAsString(res, FB_FDW_LOGPREFIX));
 
     return buf.data;
+}
+
+
+/**
+ * extractDbKeyParts()
+ *
+ * Retrieve RDB$DB_KEY smuggled through in the CTID and OID headers
+ */
+void
+extractDbKeyParts(TupleTableSlot *planSlot,
+                  FirebirdFdwModifyState *fmstate,
+                  Datum *datum_ctid,
+                  Datum *datum_oid)
+{
+    bool        isNull;
+
+    /* src/include/executor/executor.h:extern Datum ExecGetJunkAttribute(TupleTableSlot *slot, AttrNumber attno, */
+    *datum_ctid = ExecGetJunkAttribute(planSlot,
+                                      fmstate->db_keyAttno_CtidPart,
+                                      &isNull);
+    /* shouldn't ever get a null result... */
+    if (isNull)
+        elog(ERROR, "db_key (CTID part) is NULL");
+
+    *datum_oid = ExecGetJunkAttribute(planSlot,
+                                     fmstate->db_keyAttno_OidPart,
+                                     &isNull);
+    if (isNull)
+        elog(ERROR, "db_key (OID part) is NULL");
 }
