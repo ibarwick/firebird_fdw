@@ -3,14 +3,13 @@ Firebird Foreign Data Wrapper for PostgreSQL
 
 This is an experimental foreign data wrapper (FDW) to connect PostgreSQL
 to Firebird. It provides basic functionality, including both read (SELECT)
-and write (INSERT/UPDATE/DELETE) support. .
-However it is still very much
+and write (INSERT/UPDATE/DELETE) support.However it is still very much
 work-in-progress; USE AT YOUR OWN RISK.
 
 firebird_fdw will work with PostgreSQL 9.3 or later (it was developed
 against the current development version) and in its current form will not
 work with pre-9.3 versions (although it should be simple enough to add
-read-only support).
+read-only support for 9.2).
 
 It was written for Firebird 2.5 and may work with earlier versions.
 
@@ -61,7 +60,7 @@ firebird_fdw accepts the following options:
 
     'password':
         The user's password (note that Firebird only recognizes
-        the first 8 digits of a password)
+        the first 8 characters of a password)
 
     'table':
         The Firebird table name (not case-sensitive).
@@ -75,9 +74,9 @@ firebird_fdw accepts the following options:
     'column_name':
         The Firebird column name (not case-sensitive).
 
-Note that while a Firebird foreign table can be defined without any
-columns, an error will be raised as soon as any operations are carried
-out on it.
+Note that while a PostgreSQL allows a foreign table can be defined without
+any columns, firebird_fdw error will be raised as soon as any operations
+are carried out on it.
 
 
 Example
@@ -117,7 +116,7 @@ Create a foreign table referencing the Firebird table_name 'fdw_test':
 
 As above, but with aliased column names:
 
-    CREATE FOREIGN TABLE fb_test(
+    CREATE FOREIGN TABLE fb_test_table(
       id SMALLINT OPTIONS (column_name 'test_id'),
       val VARCHAR(2048) OPTIONS (column_name 'test_val')
     )
@@ -129,7 +128,7 @@ As above, but with aliased column names:
 
 Create a foreign table as a Firebird query:
 
-    CREATE FOREIGN TABLE fb_test(
+    CREATE FOREIGN TABLE fb_test_query(
       id SMALLINT,
       val VARCHAR(2048)
     )
