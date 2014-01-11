@@ -35,6 +35,16 @@
 #define FB_FDW_LOGPREFIX "[firebird_fdw] "
 #define FB_FDW_LOGPREFIX_LEN strlen(FB_FDW_LOGPREFIX)
 
+/*
+ * Macro to indicate if a given PostgreSQL datatype can be
+ * converted to a Firebird type
+ */
+#define canConvertPgType(x) ((x) == TEXTOID || (x) == CHAROID || (x) == BPCHAROID \
+                             || (x) == VARCHAROID || (x) == NAMEOID || (x) == INT8OID || (x) == INT2OID \
+                             || (x) == INT4OID ||  (x) == FLOAT4OID || (x) == FLOAT8OID \
+                             || (x) == NUMERICOID || (x) == DATEOID || (x) == TIMESTAMPOID \
+                             || (x) == TIMEOID)
+
 typedef struct fbTableColumn
 {
     char *fbname;            /* Firebird column name */
@@ -43,6 +53,7 @@ typedef struct fbTableColumn
     Oid pgtype;              /* PostgreSQL data type */
     int pgtypmod;            /* PostgreSQL type modifier */
     bool isdropped;          /* indicate if PostgreSQL column is dropped */
+    bool used;               /* indicate if column used in current query */
 } fbTableColumn;
 
 typedef struct fbTable
@@ -84,23 +95,37 @@ typedef struct FirebirdFdwState
     char    *svr_table;
     char    *dbpath;
     FQconn  *conn;
+	List    *remote_conds;
+	List    *local_conds;
+    bool     disable_pushdowns;
+	/* Bitmap of attr numbers we need to fetch from the remote server. */
+	Bitmapset  *attrs_used;
+    Cost startup_cost;             /* cost estimate, only needed for planning */
+    Cost total_cost;               /* cost estimate, only needed for planning */
+    int         row;
+    char *query;                   /* query to send to Firebird */
+} FirebirdFdwState;
 
+/*
+ * Execution state of a foreign scan using firebird_fdw.
+ */
+typedef struct FirebirdFdwScanState
+{
+    FQconn  *conn;
     /* Foreign table information */
     fbTable *table;
 
+    List       *retrieved_attrs;    /* attr numbers retrieved by RETURNING */
     /* Query information */
     char *query;                   /* query to send to Firebird */
+    bool        db_key_used;
 
-    Cost startup_cost;             /* cost estimate, only needed for planning */
-    Cost total_cost;               /* cost estimate, only needed for planning */
+
 
     FQresult    *result;
     int         row;
 
-
-} FirebirdFdwState;
-
-
+} FirebirdFdwScanState;
 
 /*
  * Execution state of a foreign insert/update/delete operation.
@@ -131,7 +156,7 @@ typedef struct FirebirdFdwModifyState
 } FirebirdFdwModifyState;
 
 
-/* query-building functions (in deparse.c) */
+/* query-building functions (in convert.c) */
 
 extern void buildInsertSql(StringInfo buf, PlannerInfo *root,
                  Index rtindex, Relation rel,
@@ -148,4 +173,34 @@ extern void buildDeleteSql(StringInfo buf, PlannerInfo *root,
                            List *returningList,
                            List **retrieved_attrs);
 
+extern void buildSelectSql(StringInfo buf,
+               PlannerInfo *root,
+               RelOptInfo *baserel,
+               Bitmapset *attrs_used,
+               List **retrieved_attrs,
+               bool *db_key_used);
+
+extern void buildWhereClause(StringInfo buf,
+                 PlannerInfo *root,
+                 RelOptInfo *baserel,
+                 List *exprs,
+                 bool is_first,
+                 List **params);
+
+extern void
+identifyRemoteConditions(PlannerInfo *root,
+                         RelOptInfo *baserel,
+                         List **remote_conds,
+                         List **local_conds,
+                         bool disable_pushdowns
+    );
+
+extern bool
+isFirebirdExpr(PlannerInfo *root,
+               RelOptInfo *baserel,
+               Expr *expr);
+
+
+extern char *
+getFirebirdColumnName(Oid foreigntableid, int varattno);
 #endif   /* FIREBIRD_FDW_H */

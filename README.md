@@ -3,8 +3,9 @@ Firebird Foreign Data Wrapper for PostgreSQL
 
 This is an experimental foreign data wrapper (FDW) to connect PostgreSQL
 to Firebird. It provides basic functionality, including both read (SELECT)
-and write (INSERT/UPDATE/DELETE) support. However it is still very much
-work-in-progress; use at your own risk.
+and write (INSERT/UPDATE/DELETE) support. .
+However it is still very much
+work-in-progress; USE AT YOUR OWN RISK.
 
 firebird_fdw will work with PostgreSQL 9.3 or later (it was developed
 against the current development version) and in its current form will not
@@ -103,7 +104,7 @@ Create an appropriate user mapping:
     CREATE USER MAPPING FOR CURRENT_USER SERVER firebird_server
       OPTIONS(username 'sysdba', password 'masterke');
 
-Create a foreign table referencing the Firebird table 'fdw_test':
+Create a foreign table referencing the Firebird table_name 'fdw_test':
 
     CREATE FOREIGN TABLE fb_test(
       id SMALLINT,
@@ -111,7 +112,7 @@ Create a foreign table referencing the Firebird table 'fdw_test':
     )
     SERVER firebird_server
     OPTIONS(
-      table 'fdw_test'
+      table_name 'fdw_test'
     );
 
 As above, but with aliased column names:
@@ -122,7 +123,7 @@ As above, but with aliased column names:
     )
     SERVER firebird_server
     OPTIONS(
-      table 'fdw_test'
+      table_name 'fdw_test'
     );
 
 
@@ -138,6 +139,15 @@ Create a foreign table as a Firebird query:
     );
 
 
+Features
+--------
+
+- UPDATE and DELETE statements use Firebird's row identifier RDB$DB_KEY
+  to operate on arbitrary rows
+- ANALYZE support
+- pushdown of some conditions to Firebird
+
+
 Limitations
 -----------
 
@@ -147,7 +157,6 @@ Many; among the more egregious:
 - No support for some Firebird datatypes (BLOB, ARRAY)
 - TIMESTAMP/TIME: currently sub-second units will be truncated on
   insertion or update
-- No pushdowns
 - No connection caching
 
 
