@@ -59,24 +59,6 @@
 PG_MODULE_MAGIC;
 
 
-/*
- * Valid options for firebird_fdw
- *
- */
-static struct FirebirdFdwOption valid_options[] =
-{
-    /* Connection options */
-    { "address",           ForeignServerRelationId },
-    { "port",              ForeignServerRelationId }, /* not implemented (!) */
-    { "database",          ForeignServerRelationId },
-    { "disable_pushdowns", ForeignServerRelationId },
-    { "username",          UserMappingRelationId   },
-    { "password",          UserMappingRelationId   },
-    { "query",             ForeignTableRelationId  },
-    { "table_name",        ForeignTableRelationId  },
-    { "column_name",       AttributeRelationId     },
-    { NULL,                0 }
-};
 
 
 /*
@@ -124,10 +106,9 @@ enum FdwModifyPrivateIndex
 /* FDW handler/validator functions */
 
 extern Datum firebird_fdw_handler(PG_FUNCTION_ARGS);
-extern Datum firebird_fdw_validator(PG_FUNCTION_ARGS);
 
 PG_FUNCTION_INFO_V1(firebird_fdw_handler);
-PG_FUNCTION_INFO_V1(firebird_fdw_validator);
+
 
 extern void _PG_init(void);
 
@@ -155,6 +136,8 @@ static TupleTableSlot *firebirdIterateForeignScan(ForeignScanState *node);
 static void firebirdReScanForeignScan(ForeignScanState *node);
 
 static void firebirdEndForeignScan(ForeignScanState *node);
+
+static int	firebirdIsForeignRelUpdatable(Relation rel);
 
 static void firebirdAddForeignUpdateTargets(Query *parsetree,
                                  RangeTblEntry *target_rte,
@@ -206,7 +189,7 @@ static bool firebirdAnalyzeForeignTable(Relation relation,
 
 static void exitHook(int code, Datum arg);
 static FirebirdFdwState *getFdwState(Oid foreigntableid);
-static bool firebirdIsValidOption(const char *option, Oid context);
+
 static void firebirdGetOptions(Oid foreigntableid, char **address, int *port, char **username, char **password, char **database, char **query, char **table, bool *disable_pushdowns);
 
 static void firebirdEstimateCosts(PlannerInfo *root, RelOptInfo *baserel,  Oid foreigntableid);
@@ -284,6 +267,7 @@ firebird_fdw_handler(PG_FUNCTION_ARGS)
     fdwroutine->EndForeignScan = firebirdEndForeignScan;
 
     /* support for insert / update / delete */
+    fdwroutine->IsForeignRelUpdatable = firebirdIsForeignRelUpdatable;
     fdwroutine->AddForeignUpdateTargets = firebirdAddForeignUpdateTargets;
     fdwroutine->PlanForeignModify = firebirdPlanForeignModify;
     fdwroutine->BeginForeignModify = firebirdBeginForeignModify;
@@ -330,145 +314,6 @@ exitHook(int code, Datum arg)
 
 
 
-/**
- * firebird_fdw_validator()
- *
- * Validates the options provided in a "CREATE FOREIGN ..." command
- */
-Datum
-firebird_fdw_validator(PG_FUNCTION_ARGS)
-{
-    List        *options_list = untransformRelOptions(PG_GETARG_DATUM(0));
-    Oid          catalog = PG_GETARG_OID(1);
-    ListCell    *cell;
-
-    char        *svr_address = NULL;
-    int          svr_port = 0;
-    char        *svr_username = NULL;
-    char        *svr_password = NULL;
-    char        *svr_database = NULL;
-    char        *svr_query = NULL;
-    char        *svr_table = NULL;
-
-    elog(DEBUG2, "entering function %s", __func__);
-
-    /*
-     * Check that only options supported by firebird_fdw,
-     * and allowed for the current object type, are given.
-     */
-    foreach(cell, options_list)
-    {
-        DefElem    *def = (DefElem *) lfirst(cell);
-
-        if (!firebirdIsValidOption(def->defname, catalog))
-        {
-            struct FirebirdFdwOption *opt;
-            StringInfoData buf;
-
-            /*
-             * Unknown option specified, complain about it. Provide a hint
-             * with list of valid options for the object.
-             */
-            initStringInfo(&buf);
-            for (opt = valid_options; opt->optname; opt++)
-            {
-                if (catalog == opt->optcontext)
-                    appendStringInfo(&buf, "%s%s", (buf.len > 0) ? ", " : "",
-                             opt->optname);
-            }
-
-            ereport(ERROR,
-                (errcode(ERRCODE_FDW_INVALID_OPTION_NAME),
-                errmsg("invalid option \"%s\"", def->defname),
-                errhint("Valid options in this context are: %s", buf.len ? buf.data : "<none>")
-                ));
-        }
-
-        if (strcmp(def->defname, "address") == 0)
-        {
-            if (svr_address)
-                ereport(ERROR, (errcode(ERRCODE_SYNTAX_ERROR),
-                    errmsg("conflicting or redundant options: address (%s)", defGetString(def))
-                    ));
-
-            svr_address = defGetString(def);
-        }
-        else if (strcmp(def->defname, "port") == 0)
-        {
-            if (svr_port)
-                ereport(ERROR,
-                    (errcode(ERRCODE_SYNTAX_ERROR),
-                    errmsg("conflicting or redundant options: port (%s)", defGetString(def))
-                    ));
-
-            svr_port = atoi(defGetString(def));
-        }
-        if (strcmp(def->defname, "username") == 0)
-        {
-            if (svr_username)
-                ereport(ERROR, (errcode(ERRCODE_SYNTAX_ERROR),
-                    errmsg("conflicting or redundant options: username (%s)", defGetString(def))
-                    ));
-
-            svr_username = defGetString(def);
-        }
-        if (strcmp(def->defname, "password") == 0)
-        {
-            if (svr_password)
-                ereport(ERROR, (errcode(ERRCODE_SYNTAX_ERROR),
-                    errmsg("conflicting or redundant options: password")
-                    ));
-
-            svr_password = defGetString(def);
-        }
-        else if (strcmp(def->defname, "database") == 0)
-        {
-            if (svr_database)
-                ereport(ERROR,
-                    (errcode(ERRCODE_SYNTAX_ERROR),
-                    errmsg("conflicting or redundant options: database (%s)", defGetString(def))
-                    ));
-
-            svr_database = defGetString(def);
-        }
-        else if (strcmp(def->defname, "query") == 0)
-        {
-            if (svr_table)
-                ereport(ERROR,
-                    (errcode(ERRCODE_SYNTAX_ERROR),
-                    errmsg("conflicting options: query cannot be used with table")
-                    ));
-
-            if (svr_query)
-                ereport(ERROR,
-                    (errcode(ERRCODE_SYNTAX_ERROR),
-                    errmsg("conflicting or redundant options: query (%s)", defGetString(def))
-                    ));
-
-            svr_query = defGetString(def);
-        }
-        else if (strcmp(def->defname, "table_name") == 0)
-        {
-            if (svr_query)
-                ereport(ERROR,
-                    (errcode(ERRCODE_SYNTAX_ERROR),
-                    errmsg("conflicting options: table cannot be used with query")
-                    ));
-
-            if (svr_table)
-                ereport(ERROR,
-                    (errcode(ERRCODE_SYNTAX_ERROR),
-                    errmsg("conflicting or redundant options: table (%s)", defGetString(def))
-                    ));
-
-            svr_table = defGetString(def);
-        }
-
-    }
-
-    PG_RETURN_VOID();
-}
-
 
 /**
  * getFdwState()
@@ -489,7 +334,7 @@ getFdwState(Oid foreigntableid)
     fdw_state->svr_database = NULL;
     fdw_state->svr_query = NULL;
     fdw_state->svr_table = NULL;
-    fdw_state->disable_pushdowns = FALSE;
+    fdw_state->disable_pushdowns = false;
 
     firebirdGetOptions(
         foreigntableid,
@@ -554,25 +399,6 @@ firebirdDbPath(char **address, char **database, int *port)
 }
 
 
-/**
- * firebirdIsValidOption()
- *
- * Check if the provided option is valid.
- * 'context' is the Oid of the catalog holding the object the option is for.
- */
-static bool
-firebirdIsValidOption(const char *option, Oid context)
-{
-    struct FirebirdFdwOption *opt;
-
-    for (opt = valid_options; opt->optname; opt++)
-    {
-        if (context == opt->optcontext && strcmp(opt->optname, option) == 0)
-            return true;
-    }
-
-    return false;
-}
 
 
 /**
@@ -599,7 +425,6 @@ firebirdGetOptions(Oid foreigntableid, char **address, int *port, char **usernam
     options = list_concat(options, f_server->options);
     options = list_concat(options, f_mapping->options);
 
-    /* Loop through the options, and get the server/port */
     foreach(lc, options)
     {
         DefElem *def = (DefElem *) lfirst(lc);
@@ -619,14 +444,14 @@ firebirdGetOptions(Oid foreigntableid, char **address, int *port, char **usernam
         else if (strcmp(def->defname, "database") == 0)
             *database = defGetString(def);
 
-        else if (strcmp(def->defname, "query") == 0) {
+        else if (strcmp(def->defname, "query") == 0)
             *query = defGetString(def);
-            elog(DEBUG1, "QUERY: %s", *query);
-        }
+
         else if (strcmp(def->defname, "table_name") == 0)
             *table = defGetString(def);
+
         else if (strcmp(def->defname, "disable_pushdowns") == 0)
-            *disable_pushdowns = true;
+            *disable_pushdowns = defGetBoolean(def);
     }
 
 
@@ -1490,6 +1315,48 @@ firebirdEndForeignScan(ForeignScanState *node)
     }
 
     elog(DEBUG2, "leaving function %s", __func__);
+}
+
+
+/**
+ * firebirdsIsForeignRelUpdatable()
+ *
+ * Determines whether a foreign table supports INSERT, UPDATE and/or
+ * DELETE operations.
+ */
+static int
+firebirdIsForeignRelUpdatable(Relation rel)
+{
+    bool           updatable = true;
+	ForeignServer *server;
+	ForeignTable  *table;
+	ListCell      *lc;
+
+    table = GetForeignTable(RelationGetRelid(rel));
+	server = GetForeignServer(table->serverid);
+    /* Get server setting, if available */
+    foreach(lc, server->options)
+	{
+		DefElem    *def = (DefElem *) lfirst(lc);
+
+		if (strcmp(def->defname, "updatable") == 0)
+			updatable = defGetBoolean(def);
+	}
+
+    /* Table setting overrides server setting */
+
+	foreach(lc, table->options)
+	{
+		DefElem    *def = (DefElem *) lfirst(lc);
+
+		if (strcmp(def->defname, "updatable") == 0)
+			updatable = defGetBoolean(def);
+	}
+
+    elog(DEBUG2, "entering function %s", __func__);
+
+	return updatable ?
+		(1 << CMD_INSERT) | (1 << CMD_UPDATE) | (1 << CMD_DELETE) : 0;
 }
 
 

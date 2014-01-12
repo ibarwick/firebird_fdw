@@ -82,9 +82,12 @@ static void convertConst(Const *node, convert_expr_cxt *context, char **result);
 static void convertNullTest(NullTest *node, convert_expr_cxt *context, char **result);
 static void convertOpExpr(OpExpr *node, convert_expr_cxt *context, char **result);
 static void convertRelabelType(RelabelType *node, convert_expr_cxt *context, char **result);
-static void convertScalarArrayOpExpr(ScalarArrayOpExpr *node, convert_expr_cxt *context, char **result);
+static void convertScalarArrayOpExpr(ScalarArrayOpExpr *node, convert_expr_cxt *context, char **result)
+;
+static void convertFunction(FuncExpr *node, convert_expr_cxt *context, char **result);
 static void convertVar(Var *node, convert_expr_cxt *context, char **result);
 
+static char *convertFunctionSubstring(FuncExpr *node, convert_expr_cxt *context);
 
 static bool foreign_expr_walker(Node *node,
                     foreign_glob_cxt *glob_cxt);
@@ -107,25 +110,25 @@ buildSelectSql(StringInfo buf,
                List **retrieved_attrs,
                bool *db_key_used)
 {
-	RangeTblEntry *rte = planner_rt_fetch(baserel->relid, root);
-	Relation	rel;
+    RangeTblEntry *rte = planner_rt_fetch(baserel->relid, root);
+    Relation    rel;
 
-	/*
-	 * Core code already has some lock on each rel being planned, so we can
-	 * use NoLock here.
-	 */
-	rel = heap_open(rte->relid, NoLock);
+    /*
+     * Core code already has some lock on each rel being planned, so we can
+     * use NoLock here.
+     */
+    rel = heap_open(rte->relid, NoLock);
 
-	/* Construct SELECT list */
-	appendStringInfoString(buf, "SELECT ");
-	convertTargetList(buf, root, baserel->relid, rel, attrs_used,
-					  retrieved_attrs, db_key_used);
+    /* Construct SELECT list */
+    appendStringInfoString(buf, "SELECT ");
+    convertTargetList(buf, root, baserel->relid, rel, attrs_used,
+                      retrieved_attrs, db_key_used);
 
-	/* Construct FROM clause */
-	appendStringInfoString(buf, " FROM ");
-	convertRelation(buf, rel);
+    /* Construct FROM clause */
+    appendStringInfoString(buf, " FROM ");
+    convertRelation(buf, rel);
 
-	heap_close(rel, NoLock);
+    heap_close(rel, NoLock);
 }
 
 
@@ -329,65 +332,65 @@ static char *
 convertDatum(Datum datum, Oid type)
 {
     StringInfoData result;
-	regproc typoutput;
-	HeapTuple tuple;
-	char *str, *p;
+    regproc typoutput;
+    HeapTuple tuple;
+    char *str, *p;
 
     elog(DEBUG2, "entering function %s", __func__);
 
-	/* get the type's output function */
-	tuple = SearchSysCache1(TYPEOID, ObjectIdGetDatum(type));
+    /* get the type's output function */
+    tuple = SearchSysCache1(TYPEOID, ObjectIdGetDatum(type));
 
-	if (!HeapTupleIsValid(tuple))
-		elog(ERROR, "cache lookup failed for type %u", type);
+    if (!HeapTupleIsValid(tuple))
+        elog(ERROR, "cache lookup failed for type %u", type);
 
-	typoutput = ((Form_pg_type)GETSTRUCT(tuple))->typoutput;
-	ReleaseSysCache(tuple);
+    typoutput = ((Form_pg_type)GETSTRUCT(tuple))->typoutput;
+    ReleaseSysCache(tuple);
 
-	switch (type) {
-		case TEXTOID:
-		case CHAROID:
-		case BPCHAROID:
-		case VARCHAROID:
-		case NAMEOID:
-			str = DatumGetCString(OidFunctionCall1(typoutput, datum));
-			/* quote string */
-			initStringInfo(&result);
-			appendStringInfo(&result, "'");
-			for (p=str; *p; ++p)
-			{
-				if (*p == '\'')
-					appendStringInfo(&result, "'");
-				appendStringInfo(&result, "%c", *p);
-			}
-			appendStringInfo(&result, "'");
-			break;
-
-		case INT8OID:
-		case INT2OID:
-		case INT4OID:
-		case OIDOID:
-		case FLOAT4OID:
-		case FLOAT8OID:
-		case NUMERICOID:
-			str = DatumGetCString(OidFunctionCall1(typoutput, datum));
-			initStringInfo(&result);
-			appendStringInfo(&result, "%s", str);
-			break;
-
-		case TIMESTAMPOID:
-        case TIMEOID:
-		case DATEOID:
+    switch (type) {
+        case TEXTOID:
+        case CHAROID:
+        case BPCHAROID:
+        case VARCHAROID:
+        case NAMEOID:
             str = DatumGetCString(OidFunctionCall1(typoutput, datum));
-			initStringInfo(&result);
-			appendStringInfo(&result, "'%s'", str);
-			break;
+            /* quote string */
+            initStringInfo(&result);
+            appendStringInfo(&result, "'");
+            for (p=str; *p; ++p)
+            {
+                if (*p == '\'')
+                    appendStringInfo(&result, "'");
+                appendStringInfo(&result, "%c", *p);
+            }
+            appendStringInfo(&result, "'");
+            break;
 
-		default:
-			return NULL;
+        case INT8OID:
+        case INT2OID:
+        case INT4OID:
+        case OIDOID:
+        case FLOAT4OID:
+        case FLOAT8OID:
+        case NUMERICOID:
+            str = DatumGetCString(OidFunctionCall1(typoutput, datum));
+            initStringInfo(&result);
+            appendStringInfo(&result, "%s", str);
+            break;
+
+        case TIMESTAMPOID:
+        case TIMEOID:
+        case DATEOID:
+            str = DatumGetCString(OidFunctionCall1(typoutput, datum));
+            initStringInfo(&result);
+            appendStringInfo(&result, "'%s'", str);
+            break;
+
+        default:
+            return NULL;
     }
 
-	return result.data;
+    return result.data;
 }
 
 
@@ -536,22 +539,28 @@ convertExprRecursor(Expr *node, convert_expr_cxt *context, char **result)
             convertConst((Const *) node, context, result);
             break;
 
-		case T_RelabelType:
+        case T_RelabelType:
             /* Need cast? */
-			convertRelabelType((RelabelType *) node, context, result);
-			break;
+            convertRelabelType((RelabelType *) node, context, result);
+            break;
 
-		case T_BoolExpr:
-			convertBoolExpr((BoolExpr *) node, context, result);
-			break;
+        case T_BoolExpr:
+            convertBoolExpr((BoolExpr *) node, context, result);
+            break;
 
         case T_NullTest:
             /* IS [NOT] NULL */
             convertNullTest((NullTest *) node, context, result);
             break;
-		case T_ScalarArrayOpExpr:
-			convertScalarArrayOpExpr((ScalarArrayOpExpr *) node, context, result);
-			break;
+
+        case T_ScalarArrayOpExpr:
+            /* IS [NOT] IN (1,2,3) */
+            convertScalarArrayOpExpr((ScalarArrayOpExpr *) node, context, result);
+            break;
+
+        case T_FuncExpr:
+            convertFunction((FuncExpr *)node, context, result);
+            break;
 
         default:
             elog(ERROR, "unsupported expression type for convert: %d",
@@ -651,9 +660,9 @@ convertConst(Const *node, convert_expr_cxt *context, char **result)
 static void
 convertBoolExpr(BoolExpr *node, convert_expr_cxt *context, char **result)
 {
-	const char *op = NULL;		/* keep compiler quiet */
-	bool		first;
-	ListCell   *lc;
+    const char *op = NULL;      /* keep compiler quiet */
+    bool        first = true;
+    ListCell   *lc;
 
     StringInfoData  buf;
     char *local_result;
@@ -662,33 +671,33 @@ convertBoolExpr(BoolExpr *node, convert_expr_cxt *context, char **result)
 
     initStringInfo(&buf);
 
-	switch (node->boolop)
-	{
-		case AND_EXPR:
-			op = "AND";
-			break;
-		case OR_EXPR:
-			op = "OR";
-			break;
-		case NOT_EXPR:
-			convertExprRecursor(linitial(node->args), context, &local_result);
-			appendStringInfo(&buf, "(NOT %s )", local_result);
-			return;
-	}
+    switch (node->boolop)
+    {
+        case AND_EXPR:
+            op = "AND";
+            break;
+        case OR_EXPR:
+            op = "OR";
+            break;
+        case NOT_EXPR:
+            convertExprRecursor(linitial(node->args), context, &local_result);
+            appendStringInfo(&buf, "(NOT %s )", local_result);
+            return;
+    }
 
-	appendStringInfoChar(&buf, '(');
-	first = true;
-	foreach(lc, node->args)
-	{
-		if (!first)
-			appendStringInfo(&buf, " %s ", op);
+    appendStringInfoChar(&buf, '(');
+
+    foreach(lc, node->args)
+    {
+        if (!first)
+            appendStringInfo(&buf, " %s ", op);
         else
             first = false;
 
-		convertExprRecursor((Expr *) lfirst(lc), context, &local_result);
+        convertExprRecursor((Expr *) lfirst(lc), context, &local_result);
         appendStringInfoString(&buf, local_result);
-	}
-	appendStringInfoChar(&buf, ')');
+    }
+    appendStringInfoChar(&buf, ')');
     *result = pstrdup(buf.data);
 }
 
@@ -868,13 +877,13 @@ static void
 convertRelabelType(RelabelType *node, convert_expr_cxt *context, char **result)
 {
     elog(DEBUG2, "entering function %s", __func__);
-	convertExprRecursor(node->arg, context, result);
-	if (node->relabelformat != COERCE_IMPLICIT_CAST)
+    convertExprRecursor(node->arg, context, result);
+    if (node->relabelformat != COERCE_IMPLICIT_CAST)
     {
         /* Fail with error for now */
         elog(ERROR, "convertRelabelType(): attempting to create cast");
-/*		appendStringInfo(&buf, "::%s",
-						 format_type_with_typemod(node->resulttype,
+/*      appendStringInfo(&buf, "::%s",
+                         format_type_with_typemod(node->resulttype,
                          node->resulttypmod));*/
     }
 }
@@ -889,23 +898,23 @@ static void
 convertScalarArrayOpExpr(ScalarArrayOpExpr *node, convert_expr_cxt *context, char **result)
 {
     HeapTuple   tuple;
-	Datum datum;
-	Const *constant;
+    Datum datum;
+    Const *constant;
     char *left = NULL;
-	Expr	   *arg1;
+    Expr       *arg1;
 
     StringInfoData  buf;
-	ArrayIterator iterator;
+    ArrayIterator iterator;
     bool first_arg, isNull;
     Oid leftargtype;
-	/* Sanity check. */
-	Assert(list_length(node->args) == 2);
+    /* Sanity check. */
+    Assert(list_length(node->args) == 2);
 
     elog(DEBUG2, "entering function %s", __func__);
 
     initStringInfo(&buf);
     arg1 = linitial(node->args);
-	convertExprRecursor(arg1, context, &left);
+    convertExprRecursor(arg1, context, &left);
 
     appendStringInfo(&buf, "(%s %s (", left, node->useOr ? "IN" : "NOT IN");
 
@@ -918,7 +927,7 @@ convertScalarArrayOpExpr(ScalarArrayOpExpr *node, convert_expr_cxt *context, cha
         elog(ERROR, "cache lookup failed for operator %u", node->opno);
 
     leftargtype = ((Form_pg_operator)GETSTRUCT(tuple))->oprleft;
-	ReleaseSysCache(tuple);
+    ReleaseSysCache(tuple);
     /* loop through the array elements */
     iterator = array_create_iterator(DatumGetArrayTypeP(constant->constvalue), 0);
     first_arg = true;
@@ -950,6 +959,129 @@ convertScalarArrayOpExpr(ScalarArrayOpExpr *node, convert_expr_cxt *context, cha
 
     appendStringInfoString(&buf, "))");
     *result = pstrdup(buf.data);
+}
+
+
+/**
+ * convertFunction()
+ *
+ *
+ * http://www.firebirdsql.org/refdocs/langrefupd20-functions.html
+ * http://www.firebirdsql.org/refdocs/langrefupd21-intfunc.html
+ */
+static void
+convertFunction(FuncExpr *node, convert_expr_cxt *context, char **result)
+{
+    HeapTuple tuple;
+    char *oprname;
+
+    StringInfoData  buf;
+    bool first_arg = true;
+    ListCell *lc;
+    char *local_result;
+
+    elog(DEBUG2, "entering function %s", __func__);
+
+    /* get function name */
+    tuple = SearchSysCache1(PROCOID, ObjectIdGetDatum(node->funcid));
+    if (!HeapTupleIsValid(tuple))
+        elog(ERROR, "cache lookup failed for function %u", node->funcid);
+    oprname = pstrdup(((Form_pg_proc)GETSTRUCT(tuple))->proname.data);
+    ReleaseSysCache(tuple);
+
+    /* Special conversion needed for some functions */
+
+    if(strcmp(oprname, "substring") == 0)
+    {
+        *result = convertFunctionSubstring(node, context);
+        return;
+    }
+
+    initStringInfo(&buf);
+
+    /* Extra conversion needed for some functions */
+
+    if(strcmp(oprname, "length") == 0)
+    {
+        appendStringInfoString(&buf, "CHAR_LENGTH");
+    }
+    /* FB's LOG() returns DOUBLE PRECISION
+     * and has bugs; see: http://www.firebirdsql.org/refdocs/langrefupd21-intfunc-log.html
+     * also LOG10(numeric) = LOG(dp or numeric)
+     */
+    else if(strcmp(oprname, "log") == 0)
+    {
+        if(list_length(node->args) == 1)
+            appendStringInfoString(&buf, "LOG10");
+        else
+            appendStringInfoString(&buf, "LOG");
+    }
+    /* FB's POWER() returns DOUBLE PRECISION
+     * http://www.firebirdsql.org/refdocs/langrefupd21-intfunc-power.html
+     *
+     * seems to handle implicit conversion OK
+     *  SELECT power(doubleval,decval) from datatypes
+     */
+    else if(strcmp(oprname, "pow") == 0)
+    {
+        appendStringInfoString(&buf, "POWER");
+    }
+    else
+    {
+        appendStringInfoString(&buf, oprname);
+    }
+
+    appendStringInfoChar(&buf, '(');
+
+    foreach(lc, node->args)
+    {
+        convertExprRecursor(lfirst(lc), context, &local_result);
+
+        if (first_arg)
+            first_arg = false;
+        else
+            appendStringInfoChar(&buf, ',');
+
+        appendStringInfoString(&buf, local_result);
+    }
+
+    appendStringInfoChar(&buf, ')');
+
+    *result = pstrdup(buf.data);
+}
+
+
+/**
+ * convertFunctionSubstring()
+ *
+ * Reconstitute SUBSTRING function arguments
+ */
+static char *
+convertFunctionSubstring(FuncExpr *node, convert_expr_cxt *context)
+{
+    StringInfoData  buf;
+    ListCell *lc;
+    char *local_result;
+
+    elog(DEBUG2, "entering function %s", __func__);
+    elog(DEBUG2, "arg length: %i", list_length(node->args));
+
+    initStringInfo(&buf);
+    appendStringInfoString(&buf, "SUBSTRING(");
+
+    lc = list_head(node->args);
+    convertExprRecursor(lfirst(lc), context, &local_result);
+    appendStringInfoString(&buf, local_result);
+
+    lc = lnext(lc);
+    convertExprRecursor(lfirst(lc), context, &local_result);
+    appendStringInfo(&buf, " FROM %s", local_result);
+
+    lc = lnext(lc);
+    convertExprRecursor(lfirst(lc), context, &local_result);
+    appendStringInfo(&buf, " FOR %s)", local_result);
+
+    return buf.data;
 }
 
 
@@ -1031,20 +1163,20 @@ convertTargetList(StringInfo buf,
         }
     }
 
-	/* Add rdb$db_key, if required */
-	if (bms_is_member(SelfItemPointerAttributeNumber - FirstLowInvalidHeapAttributeNumber,
+    /* Add rdb$db_key, if required */
+    if (bms_is_member(SelfItemPointerAttributeNumber - FirstLowInvalidHeapAttributeNumber,
     attrs_used))
-	{
-		if (!first)
-			appendStringInfoString(buf, ", ");
-		first = false;
+    {
+        if (!first)
+            appendStringInfoString(buf, ", ");
+        first = false;
 
-		appendStringInfoString(buf, "rdb$db_key");
+        appendStringInfoString(buf, "rdb$db_key");
 
-		*retrieved_attrs = lappend_int(*retrieved_attrs,
-									   SelfItemPointerAttributeNumber);
+        *retrieved_attrs = lappend_int(*retrieved_attrs,
+                                       SelfItemPointerAttributeNumber);
         *db_key_used = true;
-	}
+    }
     else
         *db_key_used = false;
 
@@ -1174,22 +1306,22 @@ foreign_expr_walker(Node *node,
             {
                 elog(DEBUG2, "%s: Var is foreign", __func__);
 
-				/* don't handle system columns */
-				if (var->varattno < 1)
-					return false;
+                /* don't handle system columns */
+                if (var->varattno < 1)
+                    return false;
 
                 return true;
             }
 
             return false;
         }
-		case T_Const:
+        case T_Const:
             return true;
 
-		case T_OpExpr:
-		case T_DistinctExpr:	/* struct-equivalent to OpExpr */
+        case T_OpExpr:
+        case T_DistinctExpr:    /* struct-equivalent to OpExpr */
         {
-            OpExpr	   *oe = (OpExpr *) node;
+            OpExpr     *oe = (OpExpr *) node;
             elog(DEBUG2, "%s: Node is Op/Distinct", __func__);
             if (!is_builtin(oe->opno))
             {
@@ -1226,7 +1358,7 @@ foreign_expr_walker(Node *node,
             return true;
         }
 
-		case T_NullTest:
+        case T_NullTest:
         {
             NullTest   *nt = (NullTest *) node;
 
@@ -1244,7 +1376,7 @@ foreign_expr_walker(Node *node,
         {
             HeapTuple tuple;
             char *oprname;
-            Oid leftargtype, schema;
+            Oid leftargtype;
 
             ScalarArrayOpExpr *oe = (ScalarArrayOpExpr *) node;
             elog(DEBUG2, "ScalarArrayOpExpr");
@@ -1254,36 +1386,36 @@ foreign_expr_walker(Node *node,
                 return false;
 
 
-			/* get operator name, left argument type and schema */
-			tuple = SearchSysCache1(OPEROID, ObjectIdGetDatum(oe->opno));
-			if (!HeapTupleIsValid(tuple))
-				elog(ERROR, "cache lookup failed for operator %u", oe->opno);
+            /* get operator name, left argument type and schema */
+            tuple = SearchSysCache1(OPEROID, ObjectIdGetDatum(oe->opno));
+            if (!HeapTupleIsValid(tuple))
+                elog(ERROR, "cache lookup failed for operator %u", oe->opno);
 
-			oprname = pstrdup(((Form_pg_operator)GETSTRUCT(tuple))->oprname.data);
+            oprname = pstrdup(((Form_pg_operator)GETSTRUCT(tuple))->oprname.data);
 
-			leftargtype = ((Form_pg_operator)GETSTRUCT(tuple))->oprleft;
-			schema = ((Form_pg_operator)GETSTRUCT(tuple))->oprnamespace;
+            leftargtype = ((Form_pg_operator)GETSTRUCT(tuple))->oprleft;
 
-			ReleaseSysCache(tuple);
-
-			/* get the type's output function */
-			tuple = SearchSysCache1(TYPEOID, ObjectIdGetDatum(leftargtype));
-			if(!HeapTupleIsValid(tuple))
-			{
-				elog(ERROR, "cache lookup failed for type %u", leftargtype);
-                return false;
-			}
 
             ReleaseSysCache(tuple);
-			/* Only permit IN and NOT IN expressions for pushdown */
-			if((strcmp(oprname, "=") != 0 || ! oe->useOr)
+
+            /* get the type's output function */
+            tuple = SearchSysCache1(TYPEOID, ObjectIdGetDatum(leftargtype));
+            if(!HeapTupleIsValid(tuple))
+            {
+                elog(ERROR, "cache lookup failed for type %u", leftargtype);
+                return false;
+            }
+
+            ReleaseSysCache(tuple);
+            /* Only permit IN and NOT IN expressions for pushdown */
+            if((strcmp(oprname, "=") != 0 || ! oe->useOr)
                 && (strcmp(oprname, "<>") != 0 || oe->useOr))
-				return false;
+                return false;
 
             elog(DEBUG2, "ScalarArrayOpExpr: leftargtype is %i", leftargtype);
 
-			if(!canConvertPgType(leftargtype))
-				return false;
+            if(!canConvertPgType(leftargtype))
+                return false;
 
             /* Recurse to input subexpressions */
             if(!foreign_expr_walker((Node *) oe->args,
@@ -1292,7 +1424,88 @@ foreign_expr_walker(Node *node,
 
             return true;
         }
+        case T_FuncExpr:
+        {
+            FuncExpr *func = (FuncExpr *)node;
+            HeapTuple tuple;
+            char *oprname;
+            Oid schema;
 
+            elog(DEBUG2, "Func expr ------");
+            if(!canConvertPgType(func->funcresulttype))
+                return false;
+            /* Recurse to input subexpressions */
+            if(!foreign_expr_walker((Node *) func->args,
+                                    glob_cxt))
+                return false;
+            /* get function name and schema */
+            tuple = SearchSysCache1(PROCOID, ObjectIdGetDatum(func->funcid));
+            if (!HeapTupleIsValid(tuple))
+                elog(ERROR, "cache lookup failed for function %u", func->funcid);
+            oprname = pstrdup(((Form_pg_proc)GETSTRUCT(tuple))->proname.data);
+            schema = ((Form_pg_proc)GETSTRUCT(tuple))->pronamespace;
+            ReleaseSysCache(tuple);
+
+            /* ignore functions not in pg_catalog */
+            if (schema != PG_CATALOG_NAMESPACE)
+                return false;
+
+            /*
+             * Only permit certain functions to be passed
+             *
+             * NOTE: most of these functions were introduced in FB 2.1
+             *
+             * Not currently sending:
+             * concat()
+             *   -> rewrite with ||
+             *   -> http://www.firebirdsql.org/manual/qsg10-firebird-sql.html
+             * initcap()
+             * ltrim()
+             * octet_length()
+             * position()
+             * rtrim()
+             * strpos()
+             * to_char()
+             * to_date()
+             * to_number()
+             * to_timestamp()
+             * translate()
+             */
+            elog(DEBUG2, "Func name is %s", oprname);
+            if (strcmp(oprname, "abs") == 0
+             || strcmp(oprname, "acos") == 0
+             || strcmp(oprname, "asin") == 0
+             || strcmp(oprname, "atan") == 0
+             || strcmp(oprname, "atan2") == 0
+             || strcmp(oprname, "ceil") == 0
+             || strcmp(oprname, "ceiling") == 0
+             || strcmp(oprname, "char_length") == 0
+             || strcmp(oprname, "character_length") == 0
+             || strcmp(oprname, "cos") == 0
+             || strcmp(oprname, "exp") == 0
+             || strcmp(oprname, "length") == 0
+             || strcmp(oprname, "log") == 0
+             || strcmp(oprname, "lower") == 0
+             || strcmp(oprname, "lpad") == 0
+             || strcmp(oprname, "mod") == 0
+             || strcmp(oprname, "pow") == 0
+             || strcmp(oprname, "power") == 0
+             || strcmp(oprname, "rpad") == 0
+             || strcmp(oprname, "sign") == 0
+             || strcmp(oprname, "sin") == 0
+             || strcmp(oprname, "sqrt") == 0
+                /* XXX need to reject: substring(string from pattern for escape) */
+             || (strcmp(oprname, "substring") == 0 && list_length(func->args) == 3)
+             || strcmp(oprname, "tan") == 0
+             || strcmp(oprname, "trunc") == 0
+             || strcmp(oprname, "upper") == 0)
+
+            {
+                return true;
+            }
+
+            return false;
+        }
         /* Firebird 3 will support booleans; we may need to add an
            exception here */
 
@@ -1361,7 +1574,7 @@ canConvertOp(OpExpr *oe)
     HeapTuple   tuple;
     Form_pg_operator form;
     char *oprname;
-	Oid schema;
+    Oid schema;
 
     /* Retrieve information the operator tuple */
     tuple = SearchSysCache1(OPEROID, ObjectIdGetDatum(oe->opno));
