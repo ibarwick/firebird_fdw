@@ -73,8 +73,17 @@ firebird_fdw accepts the following options:
     'column_name':
         The Firebird column name (not case-sensitive).
 
-Note that while a PostgreSQL allows a foreign table can be defined without
-any columns, firebird_fdw error will be raised as soon as any operations
+    'updatable':
+        Boolean value indicating whether the foreign server as a whole,
+        or an individual table, is updatable. Default is true. Note that
+        table-level settings override server-level settings.
+
+    'disable_pushdowns':
+        Turns off pushdowns of WHERE clause elements to Firebird. Increases
+        stability at the expense of speed.
+
+Note that while PostgreSQL allows a foreign table to be defined without
+any columns, firebird_fdw  will raise an error as soon as any operations
 are carried out on it.
 
 
