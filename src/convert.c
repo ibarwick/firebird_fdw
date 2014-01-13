@@ -1476,9 +1476,10 @@ foreign_expr_walker(Node *node,
              *   -> rewrite with ||
              *   -> http://www.firebirdsql.org/manual/qsg10-firebird-sql.html
              * initcap()
+             * left()  -> FB does not accept negative length
              * ltrim()
-             * octet_length()
              * position()
+             * right() -> FB does not accept negative length
              * rtrim()
              * strpos()
              * to_char()
@@ -1493,19 +1494,25 @@ foreign_expr_walker(Node *node,
              || strcmp(oprname, "asin") == 0
              || strcmp(oprname, "atan") == 0
              || strcmp(oprname, "atan2") == 0
+             || strcmp(oprname, "bit_length") == 0
              || strcmp(oprname, "ceil") == 0
              || strcmp(oprname, "ceiling") == 0
              || strcmp(oprname, "char_length") == 0
              || strcmp(oprname, "character_length") == 0
              || strcmp(oprname, "cos") == 0
+             || strcmp(oprname, "cot") == 0
              || strcmp(oprname, "exp") == 0
+             || strcmp(oprname, "floor") == 0
              || strcmp(oprname, "length") == 0
              || strcmp(oprname, "log") == 0
              || strcmp(oprname, "lower") == 0
              || strcmp(oprname, "lpad") == 0
              || strcmp(oprname, "mod") == 0
+             || strcmp(oprname, "octet_length") == 0
+             || strcmp(oprname, "overlay") == 0
              || strcmp(oprname, "pow") == 0
              || strcmp(oprname, "power") == 0
+             || strcmp(oprname, "reverse") == 0
              || strcmp(oprname, "rpad") == 0
              || strcmp(oprname, "sign") == 0
              || strcmp(oprname, "sin") == 0
