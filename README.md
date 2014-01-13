@@ -27,9 +27,10 @@ Installation
 ------------
 
 Prerequisites:
+
 - Firebird client library (libfbclient) and API header file (ibase.h)
 - libfq, a slightly saner API wrapper for the Firebird C API; see:
- 'disable_pushdowns'  https://github.com/ibarwick/libfq
+  https://github.com/ibarwick/libfq
 
 The Firebird include/library files often end up in non-standard locations;
 PG_CPPFLAGS and SHLIB_LINK can be used to provide the appropriate flags.
