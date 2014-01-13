@@ -11,7 +11,9 @@ against the current development version) and in its current form will not
 work with pre-9.3 versions (although it should be simple enough to add
 read-only support for 9.2).
 
-It was written for Firebird 2.5 and may work with earlier versions.
+It was written for Firebird 2.5 and will probably work with Firebird 2.1.
+It should work with earlier versions if the 'disable_pushdowns' option
+is set (see below).
 
 
 Supported platforms
@@ -27,7 +29,7 @@ Installation
 Prerequisites:
 - Firebird client library (libfbclient) and API header file (ibase.h)
 - libfq, a slightly saner API wrapper for the Firebird C API; see:
-  https://github.com/ibarwick/libfq
+ 'disable_pushdowns'  https://github.com/ibarwick/libfq
 
 The Firebird include/library files often end up in non-standard locations;
 PG_CPPFLAGS and SHLIB_LINK can be used to provide the appropriate flags.
@@ -152,7 +154,8 @@ Features
 - UPDATE and DELETE statements use Firebird's row identifier RDB$DB_KEY
   to operate on arbitrary rows
 - ANALYZE support
-- pushdown of some conditions to Firebird
+- pushdown of some WHERE clause conditions to Firebird (including translation
+  of built-in functions)
 
 
 Limitations

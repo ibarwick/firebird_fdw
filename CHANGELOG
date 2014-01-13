@@ -1,5 +1,8 @@
 Revision history for firebird_fdw
 
+0.1.4   2014-01-13
+	- Prevent implicit casts from being pushed down to Firebird
+
 0.1.3   2014-01-13
 	- Partial pushdown of functions in WHERE clauses to Firebird
 	- Ensure parameter "disable_pushdowns" is treated as a boolean
