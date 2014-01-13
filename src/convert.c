@@ -409,6 +409,8 @@ convertColumnRef(StringInfo buf, int varno, int varattno, PlannerInfo *root)
     /* varno must not be any of OUTER_VAR, INNER_VAR and INDEX_VAR. */
     Assert(!IS_SPECIAL_VARNO(varno));
 
+    elog(DEBUG2, "entering function %s", __func__);
+
     /* Get RangeTblEntry from array in PlannerInfo. */
     rte = planner_rt_fetch(varno, root);
 
@@ -617,8 +619,9 @@ convertConst(Const *node, convert_expr_cxt *context, char **result)
     }
 
    getTypeOutputInfo(node->consttype,
-                      &typoutput, &typIsVarlena);
+                     &typoutput, &typIsVarlena);
    extval = OidOutputFunctionCall(typoutput, node->constvalue);
+
    switch (node->consttype)
     {
         case INT2OID:
@@ -981,13 +984,26 @@ convertFunction(FuncExpr *node, convert_expr_cxt *context, char **result)
     char *local_result;
 
     elog(DEBUG2, "entering function %s", __func__);
-
     /* get function name */
     tuple = SearchSysCache1(PROCOID, ObjectIdGetDatum(node->funcid));
     if (!HeapTupleIsValid(tuple))
         elog(ERROR, "cache lookup failed for function %u", node->funcid);
     oprname = pstrdup(((Form_pg_proc)GETSTRUCT(tuple))->proname.data);
     ReleaseSysCache(tuple);
+
+    elog(DEBUG2, " func name: %s; %i", oprname, node->funcid);
+
+    /* Any implicit casts must be handled by Firebird */
+    if (node->funcformat == COERCE_IMPLICIT_CAST)
+    {
+        elog(DEBUG2, "implicit cast");
+
+        lc = list_head(node->args);
+        convertExprRecursor(lfirst(lc), context, &local_result);
+
+        *result = pstrdup(local_result);
+        return;
+    }
 
     /* Special conversion needed for some functions */
 

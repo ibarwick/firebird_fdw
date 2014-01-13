@@ -71,15 +71,15 @@ PG_MODULE_MAGIC;
  * 2) Integer list of attribute numbers retrieved by the SELECT
  *
  * These items are indexed with the enum FdwScanPrivateIndex, so an item
- * can be fetched with list_nth().	For example, to get the SELECT statement:
- *		sql = strVal(list_nth(fdw_private, FdwScanPrivateSelectSql));
+ * can be fetched with list_nth().  For example, to get the SELECT statement:
+ *      sql = strVal(list_nth(fdw_private, FdwScanPrivateSelectSql));
  */
 enum FdwScanPrivateIndex
 {
-	/* SQL statement to execute remotely (as a String node) */
-	FdwScanPrivateSelectSql,
-	/* Integer list of attribute numbers retrieved by the remote SELECT */
-	FdwScanPrivateRetrievedAttrs,
+    /* SQL statement to execute remotely (as a String node) */
+    FdwScanPrivateSelectSql,
+    /* Integer list of attribute numbers retrieved by the remote SELECT */
+    FdwScanPrivateRetrievedAttrs,
     /* Indicates whether RDB$DB_KEY retrieved by the remote SELECT */
     FdwScanDbKeyUsed
 };
@@ -137,7 +137,7 @@ static void firebirdReScanForeignScan(ForeignScanState *node);
 
 static void firebirdEndForeignScan(ForeignScanState *node);
 
-static int	firebirdIsForeignRelUpdatable(Relation rel);
+static int  firebirdIsForeignRelUpdatable(Relation rel);
 
 static void firebirdAddForeignUpdateTargets(Query *parsetree,
                                  RangeTblEntry *target_rte,
@@ -621,34 +621,34 @@ firebirdGetForeignRelSize(PlannerInfo *root,
 
     elog(DEBUG2, "DB connection OK");
 
-	/*
-	 * Identify which baserestrictinfo clauses can be sent to the remote
-	 * server and which can't.
-	 */
-	identifyRemoteConditions(root, baserel,
+    /*
+     * Identify which baserestrictinfo clauses can be sent to the remote
+     * server and which can't.
+     */
+    identifyRemoteConditions(root, baserel,
                              &fdw_state->remote_conds,
                              &fdw_state->local_conds,
                              fdw_state->disable_pushdowns
         );
 
-	/*
-	 * Identify which attributes will need to be retrieved from the remote
-	 * server.	These include all attrs needed for joins or final output, plus
-	 * all attrs used in the local_conds.  (Note: if we end up using a
-	 * parameterized scan, it's possible that some of the join clauses will be
-	 * sent to the remote and thus we wouldn't really need to retrieve the
-	 * columns used in them.  Doesn't seem worth detecting that case though.)
-	 */
+    /*
+     * Identify which attributes will need to be retrieved from the remote
+     * server.  These include all attrs needed for joins or final output, plus
+     * all attrs used in the local_conds.  (Note: if we end up using a
+     * parameterized scan, it's possible that some of the join clauses will be
+     * sent to the remote and thus we wouldn't really need to retrieve the
+     * columns used in them.  Doesn't seem worth detecting that case though.)
+     */
     fdw_state->attrs_used = NULL;
-	pull_varattnos((Node *) baserel->reltargetlist, baserel->relid,
-				   &fdw_state->attrs_used);
+    pull_varattnos((Node *) baserel->reltargetlist, baserel->relid,
+                   &fdw_state->attrs_used);
     foreach(lc, fdw_state->local_conds)
-	{
-		RestrictInfo *rinfo = (RestrictInfo *) lfirst(lc);
+    {
+        RestrictInfo *rinfo = (RestrictInfo *) lfirst(lc);
         elog(DEBUG1, "local conds");
-		pull_varattnos((Node *) rinfo->clause, baserel->relid,
-					   &fdw_state->attrs_used);
-	}
+        pull_varattnos((Node *) rinfo->clause, baserel->relid,
+                       &fdw_state->attrs_used);
+    }
 
     initStringInfo(&query);
     if (fdw_state->svr_query)
@@ -794,23 +794,23 @@ firebirdGetForeignPlan(PlannerInfo *root,
     FirebirdFdwState *fdw_state = (FirebirdFdwState *)baserel->fdw_private;
 
     StringInfoData sql;
-	List	   *fdw_private;
-    List	   *local_exprs = NIL;
-	List	   *remote_conds = NIL;
-    List	   *params_list = NIL;
-    List	   *retrieved_attrs;
+    List       *fdw_private;
+    List       *local_exprs = NIL;
+    List       *remote_conds = NIL;
+    List       *params_list = NIL;
+    List       *retrieved_attrs;
 
     bool db_key_used;
 
     ListCell   *lc;
     elog(DEBUG2, "entering function %s", __func__);
-	foreach(lc, scan_clauses)
-	{
+    foreach(lc, scan_clauses)
+    {
         RestrictInfo *rinfo = (RestrictInfo *) lfirst(lc);
         elog(DEBUG1, "Processing a scan clause");
         Assert(IsA(rinfo, RestrictInfo));
-		/* Ignore any pseudoconstants, they're dealt with elsewhere */
-		if (rinfo->pseudoconstant)
+        /* Ignore any pseudoconstants, they're dealt with elsewhere */
+        if (rinfo->pseudoconstant)
         {
             elog(DEBUG1, " - 'Tis a pseudoconstant, to be dealt with elsewhere");
             continue;
@@ -826,9 +826,9 @@ firebirdGetForeignPlan(PlannerInfo *root,
             elog(DEBUG1, " - local");
             local_exprs = lappend(local_exprs, rinfo->clause);
         }
-        		else
-		{
-			Assert(isFirebirdExpr(root, baserel, rinfo->clause));
+                else
+        {
+            Assert(isFirebirdExpr(root, baserel, rinfo->clause));
             elog(DEBUG1, " - remote, but not a member of fdw_state->remote_conds");
             remote_conds = lappend(remote_conds, rinfo);
         }
@@ -836,22 +836,22 @@ firebirdGetForeignPlan(PlannerInfo *root,
 
     /* Build query */
     initStringInfo(&sql);
-	buildSelectSql(&sql, root, baserel, fdw_state->attrs_used,
+    buildSelectSql(&sql, root, baserel, fdw_state->attrs_used,
                    &retrieved_attrs, &db_key_used);
 
-	if (remote_conds)
+    if (remote_conds)
     {
         buildWhereClause(&sql, root, baserel, remote_conds, true, &params_list);
     }
 
     elog(DEBUG2, "db_key_used? %c", db_key_used == true ? 'Y' : 'N');
 
-	/*
-	 * Build the fdw_private list that will be available to the executor.
-	 * Items in the list must match enum FdwScanPrivateIndex, above.
-	 */
-	fdw_private = list_make3(makeString(sql.data),
-							 retrieved_attrs,
+    /*
+     * Build the fdw_private list that will be available to the executor.
+     * Items in the list must match enum FdwScanPrivateIndex, above.
+     */
+    fdw_private = list_make3(makeString(sql.data),
+                             retrieved_attrs,
                              makeInteger(db_key_used)
         );
 
@@ -904,7 +904,7 @@ firebirdBeginForeignScan(ForeignScanState *node,
     char    *dbpath = NULL;
     FQconn  *conn;
 
-	ForeignScan *fsplan = (ForeignScan *) node->ss.ps.plan;
+    ForeignScan *fsplan = (ForeignScan *) node->ss.ps.plan;
     FirebirdFdwScanState *fdw_state;
     Oid      foreigntableid = RelationGetRelid(node->ss.ss_currentRelation);
 
@@ -1041,7 +1041,7 @@ firebirdBeginForeignScan(ForeignScanState *node,
         /* Mark columns used in the query */
         foreach(lc, fdw_state->retrieved_attrs)
         {
-            int	attnum = lfirst_int(lc);
+            int attnum = lfirst_int(lc);
 
             if(attnum < 0)
                 continue;
@@ -1328,35 +1328,35 @@ static int
 firebirdIsForeignRelUpdatable(Relation rel)
 {
     bool           updatable = true;
-	ForeignServer *server;
-	ForeignTable  *table;
-	ListCell      *lc;
+    ForeignServer *server;
+    ForeignTable  *table;
+    ListCell      *lc;
 
     table = GetForeignTable(RelationGetRelid(rel));
-	server = GetForeignServer(table->serverid);
+    server = GetForeignServer(table->serverid);
     /* Get server setting, if available */
     foreach(lc, server->options)
-	{
-		DefElem    *def = (DefElem *) lfirst(lc);
+    {
+        DefElem    *def = (DefElem *) lfirst(lc);
 
-		if (strcmp(def->defname, "updatable") == 0)
-			updatable = defGetBoolean(def);
-	}
+        if (strcmp(def->defname, "updatable") == 0)
+            updatable = defGetBoolean(def);
+    }
 
     /* Table setting overrides server setting */
 
-	foreach(lc, table->options)
-	{
-		DefElem    *def = (DefElem *) lfirst(lc);
+    foreach(lc, table->options)
+    {
+        DefElem    *def = (DefElem *) lfirst(lc);
 
-		if (strcmp(def->defname, "updatable") == 0)
-			updatable = defGetBoolean(def);
-	}
+        if (strcmp(def->defname, "updatable") == 0)
+            updatable = defGetBoolean(def);
+    }
 
     elog(DEBUG2, "entering function %s", __func__);
 
-	return updatable ?
-		(1 << CMD_INSERT) | (1 << CMD_UPDATE) | (1 << CMD_DELETE) : 0;
+    return updatable ?
+        (1 << CMD_INSERT) | (1 << CMD_UPDATE) | (1 << CMD_DELETE) : 0;
 }
 
 
