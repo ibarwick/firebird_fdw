@@ -88,6 +88,7 @@ static void convertFunction(FuncExpr *node, convert_expr_cxt *context, char **re
 static void convertVar(Var *node, convert_expr_cxt *context, char **result);
 
 static char *convertFunctionSubstring(FuncExpr *node, convert_expr_cxt *context);
+static char *convertFunctionTrim(FuncExpr *node, convert_expr_cxt *context, char *where);
 
 static bool foreign_expr_walker(Node *node,
                     foreign_glob_cxt *glob_cxt);
@@ -1013,6 +1014,18 @@ convertFunction(FuncExpr *node, convert_expr_cxt *context, char **result)
         return;
     }
 
+    if(strcmp(oprname, "ltrim") == 0)
+    {
+        *result = convertFunctionTrim(node, context, "LEADING");
+        return;
+    }
+
+    if(strcmp(oprname, "rtrim") == 0)
+    {
+        *result = convertFunctionTrim(node, context, "TRAILING");
+        return;
+    }
+
     initStringInfo(&buf);
 
     /* Extra conversion needed for some functions */
@@ -1096,6 +1109,43 @@ convertFunctionSubstring(FuncExpr *node, convert_expr_cxt *context)
     lc = lnext(lc);
     convertExprRecursor(lfirst(lc), context, &local_result);
     appendStringInfo(&buf, " FOR %s)", local_result);
+
+    return buf.data;
+}
+
+
+/**
+ * convertFunctionTrim(()
+ *
+ * Convert Pg's LTRIM() and RTRIM() to Firebird's TRIM() syntax
+ *
+ * http://www.firebirdsql.org/refdocs/langrefupd21-intfunc-trim.html
+ */
+
+static char *
+convertFunctionTrim(FuncExpr *node, convert_expr_cxt *context, char *where)
+{
+    StringInfoData  buf;
+    ListCell *lc;
+    char *from = NULL;
+    char *what = NULL;
+
+    initStringInfo(&buf);
+    appendStringInfoString(&buf, "TRIM(");
+
+    appendStringInfoString(&buf, where);
+
+    lc = list_head(node->args);
+    convertExprRecursor(lfirst(lc), context, &from);
+
+    if(list_length(node->args) == 2)
+    {
+        lc = lnext(lc);
+        convertExprRecursor(lfirst(lc), context, &what);
+        appendStringInfo(&buf, " %s", what);
+    }
+
+    appendStringInfo(&buf, " FROM %s)", from);
 
     return buf.data;
 }
@@ -1503,6 +1553,7 @@ foreign_expr_walker(Node *node,
              || strcmp(oprname, "cot") == 0
              || strcmp(oprname, "exp") == 0
              || strcmp(oprname, "floor") == 0
+             || strcmp(oprname, "ltrim") == 0
              || strcmp(oprname, "length") == 0
              || strcmp(oprname, "log") == 0
              || strcmp(oprname, "lower") == 0
@@ -1514,6 +1565,7 @@ foreign_expr_walker(Node *node,
              || strcmp(oprname, "power") == 0
              || strcmp(oprname, "reverse") == 0
              || strcmp(oprname, "rpad") == 0
+             || strcmp(oprname, "rtrim") == 0
              || strcmp(oprname, "sign") == 0
              || strcmp(oprname, "sin") == 0
              || strcmp(oprname, "sqrt") == 0
