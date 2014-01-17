@@ -41,7 +41,7 @@ typedef struct foreign_glob_cxt
 {
     PlannerInfo *root;          /* global planner state */
     RelOptInfo *foreignrel;     /* the foreign relation we are planning for */
-    int firebird_version;       /* Firebird version number (e.g. 20501) */
+    int firebird_version;       /* Firebird version integer provided by libfq (e.g. 20501) */
 } foreign_glob_cxt;
 
 
@@ -1525,7 +1525,7 @@ foreign_expr_walker(Node *node,
              * NOTE: most of these functions were introduced in FB 2.1
              *
              * Not currently sending:
-             * coalesce() (2.1)
+             * coalesce() (2.0)
              * concat()
              *   -> rewrite with ||
              *   -> http://www.firebirdsql.org/manual/qsg10-firebird-sql.html
@@ -1627,7 +1627,7 @@ foreign_expr_walker(Node *node,
  *
  * Return true if given object is one of PostgreSQL's built-in objects.
  *
- * We use FirstBootstrapObjectId as the cutoff, so that we only considre
+ * We use FirstBootstrapObjectId as the cutoff, so that we only consider
  * objects with hand-assigned OIDs to be "built in", not for instance any
  * function or type defined in the information_schema.
  *
