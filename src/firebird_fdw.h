@@ -189,13 +189,14 @@ identifyRemoteConditions(PlannerInfo *root,
                          RelOptInfo *baserel,
                          List **remote_conds,
                          List **local_conds,
-                         bool disable_pushdowns
-    );
+                         bool disable_pushdowns,
+                         int firebird_version);
 
 extern bool
 isFirebirdExpr(PlannerInfo *root,
                RelOptInfo *baserel,
-               Expr *expr);
+               Expr *expr,
+               int firebird_version);
 
 
 extern char *

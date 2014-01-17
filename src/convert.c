@@ -41,6 +41,7 @@ typedef struct foreign_glob_cxt
 {
     PlannerInfo *root;          /* global planner state */
     RelOptInfo *foreignrel;     /* the foreign relation we are planning for */
+    int firebird_version;       /* Firebird version number (e.g. 20501) */
 } foreign_glob_cxt;
 
 
@@ -95,7 +96,6 @@ static bool foreign_expr_walker(Node *node,
 
 static bool canConvertOp(OpExpr *oe);
 static bool is_builtin(Oid procid);
-
 
 
 /**
@@ -972,6 +972,7 @@ convertScalarArrayOpExpr(ScalarArrayOpExpr *node, convert_expr_cxt *context, cha
  *
  * http://www.firebirdsql.org/refdocs/langrefupd20-functions.html
  * http://www.firebirdsql.org/refdocs/langrefupd21-intfunc.html
+ * http://www.firebirdsql.org/refdocs/langrefupd25-new-in-25-intfunc.html
  */
 static void
 convertFunction(FuncExpr *node, convert_expr_cxt *context, char **result)
@@ -1267,7 +1268,8 @@ identifyRemoteConditions(PlannerInfo *root,
                          RelOptInfo *baserel,
                          List **remote_conds,
                          List **local_conds,
-                         bool disable_pushdowns)
+                         bool disable_pushdowns,
+                         int firebird_version)
 {
     ListCell   *lc;
     elog(DEBUG2, "entering function %s", __func__);
@@ -1278,7 +1280,7 @@ identifyRemoteConditions(PlannerInfo *root,
     foreach(lc, baserel->baserestrictinfo)
     {
         RestrictInfo *ri = (RestrictInfo *) lfirst(lc);
-        if (!disable_pushdowns && isFirebirdExpr(root, baserel, ri->clause))
+        if (!disable_pushdowns && isFirebirdExpr(root, baserel, ri->clause, firebird_version))
         {
             *remote_conds = lappend(*remote_conds, ri);
             elog(DEBUG2, " -> pushing down to remote");
@@ -1299,8 +1301,9 @@ identifyRemoteConditions(PlannerInfo *root,
  */
 bool
 isFirebirdExpr(PlannerInfo *root,
-                 RelOptInfo *baserel,
-                 Expr *expr)
+               RelOptInfo *baserel,
+               Expr *expr,
+               int firebird_version)
 {
     foreign_glob_cxt glob_cxt;
 
@@ -1312,6 +1315,7 @@ isFirebirdExpr(PlannerInfo *root,
      */
     glob_cxt.root = root;
     glob_cxt.foreignrel = baserel;
+    glob_cxt.firebird_version = firebird_version;
 
     if (!foreign_expr_walker((Node *) expr, &glob_cxt))
     {
@@ -1319,9 +1323,8 @@ isFirebirdExpr(PlannerInfo *root,
         return false;
     }
 
-
     /*
-     * An expression which includesvmutable functions can't be pushed to
+     * An expression which includes mutable functions can't be pushed to
      * Firebird because its result will not be stable.
      */
     if (contain_mutable_functions((Node *) expr))
@@ -1522,9 +1525,12 @@ foreign_expr_walker(Node *node,
              * NOTE: most of these functions were introduced in FB 2.1
              *
              * Not currently sending:
+             * coalesce() (2.1)
              * concat()
              *   -> rewrite with ||
              *   -> http://www.firebirdsql.org/manual/qsg10-firebird-sql.html
+             * extract()
+             * iif() / nullif()
              * initcap()
              * left()  -> FB does not accept negative length
              * ltrim()
@@ -1539,44 +1545,57 @@ foreign_expr_walker(Node *node,
              * translate()
              */
             elog(DEBUG2, "Func name is %s", oprname);
-            if (strcmp(oprname, "abs") == 0
-             || strcmp(oprname, "acos") == 0
-             || strcmp(oprname, "asin") == 0
-             || strcmp(oprname, "atan") == 0
-             || strcmp(oprname, "atan2") == 0
-             || strcmp(oprname, "bit_length") == 0
-             || strcmp(oprname, "ceil") == 0
-             || strcmp(oprname, "ceiling") == 0
-             || strcmp(oprname, "char_length") == 0
-             || strcmp(oprname, "character_length") == 0
-             || strcmp(oprname, "cos") == 0
-             || strcmp(oprname, "cot") == 0
-             || strcmp(oprname, "exp") == 0
-             || strcmp(oprname, "floor") == 0
-             || strcmp(oprname, "ltrim") == 0
-             || strcmp(oprname, "length") == 0
-             || strcmp(oprname, "log") == 0
-             || strcmp(oprname, "lower") == 0
-             || strcmp(oprname, "lpad") == 0
-             || strcmp(oprname, "mod") == 0
-             || strcmp(oprname, "octet_length") == 0
-             || strcmp(oprname, "overlay") == 0
-             || strcmp(oprname, "pow") == 0
-             || strcmp(oprname, "power") == 0
-             || strcmp(oprname, "reverse") == 0
-             || strcmp(oprname, "rpad") == 0
-             || strcmp(oprname, "rtrim") == 0
-             || strcmp(oprname, "sign") == 0
-             || strcmp(oprname, "sin") == 0
-             || strcmp(oprname, "sqrt") == 0
-                /* XXX need to reject: substring(string from pattern for escape) */
-             || (strcmp(oprname, "substring") == 0 && list_length(func->args) == 3)
-             || strcmp(oprname, "tan") == 0
-             || strcmp(oprname, "trunc") == 0
-             || strcmp(oprname, "upper") == 0)
 
+            /* Firebird 2.0 or later */
+            if(glob_cxt->firebird_version >= 20000)
             {
-                return true;
+                if (strcmp(oprname, "bit_length") == 0
+                 || strcmp(oprname, "char_length") == 0
+                 || strcmp(oprname, "character_length") == 0
+                 || strcmp(oprname, "lower") == 0
+                 || strcmp(oprname, "octet_length") == 0
+                    /* XXX need to reject: substring(string from pattern for escape) */
+                 || (strcmp(oprname, "substring") == 0 && list_length(func->args) == 3)
+                 || strcmp(oprname, "upper") == 0)
+                {
+                    return true;
+                }
+            }
+
+            /* Firebird 2.1 or later */
+            if(glob_cxt->firebird_version >= 20100)
+            {
+                if (strcmp(oprname, "abs") == 0
+                 || strcmp(oprname, "acos") == 0
+                 || strcmp(oprname, "asin") == 0
+                 || strcmp(oprname, "atan") == 0
+                 || strcmp(oprname, "atan2") == 0
+                 || strcmp(oprname, "ceil") == 0
+                 || strcmp(oprname, "ceiling") == 0
+                 || strcmp(oprname, "cos") == 0
+                 || strcmp(oprname, "cot") == 0
+                 || strcmp(oprname, "exp") == 0
+                 || strcmp(oprname, "floor") == 0
+                 || strcmp(oprname, "ltrim") == 0
+                 || strcmp(oprname, "length") == 0
+                 || strcmp(oprname, "log") == 0
+                 || strcmp(oprname, "lpad") == 0
+                 || strcmp(oprname, "mod") == 0
+                 || strcmp(oprname, "overlay") == 0
+                 || strcmp(oprname, "pow") == 0
+                 || strcmp(oprname, "power") == 0
+                 || strcmp(oprname, "reverse") == 0
+                 || strcmp(oprname, "rpad") == 0
+                 || strcmp(oprname, "rtrim") == 0
+                 || strcmp(oprname, "sign") == 0
+                 || strcmp(oprname, "sin") == 0
+                 || strcmp(oprname, "sqrt") == 0
+                 || strcmp(oprname, "tan") == 0
+                 || strcmp(oprname, "trunc") == 0)
+
+                {
+                    return true;
+                }
             }
 
             return false;
@@ -1608,7 +1627,7 @@ foreign_expr_walker(Node *node,
  *
  * Return true if given object is one of PostgreSQL's built-in objects.
  *
- * We use FirstBootstrapObjectId as the cutoff, so that we only consider
+ * We use FirstBootstrapObjectId as the cutoff, so that we only considre
  * objects with hand-assigned OIDs to be "built in", not for instance any
  * function or type defined in the information_schema.
  *

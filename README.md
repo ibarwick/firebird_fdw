@@ -11,8 +11,8 @@ against the current development version) and in its current form will not
 work with pre-9.3 versions (although it should be simple enough to add
 read-only support for 9.2).
 
-It was written for Firebird 2.5 and will probably work with Firebird 2.1.
-It should work with earlier versions if the 'disable_pushdowns' option
+It was written for Firebird 2.5 and will probably work with Firebird 2.0 or
+later. It should work with earlier versions if the 'disable_pushdowns' option
 is set (see below).
 
 

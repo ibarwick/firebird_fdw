@@ -1,5 +1,10 @@
 Revision history for firebird_fdw
 
+0.1.5   2014-01-17
+	- Add basic Firebird version detection to ensure that only
+	  functions available on the remote Firebird server are actually
+	  pushed down
+
 0.1.4   2014-01-13
 	- Prevent implicit casts from being pushed down to Firebird
 

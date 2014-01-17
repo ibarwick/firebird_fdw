@@ -625,10 +625,12 @@ firebirdGetForeignRelSize(PlannerInfo *root,
      * Identify which baserestrictinfo clauses can be sent to the remote
      * server and which can't.
      */
-    identifyRemoteConditions(root, baserel,
+    identifyRemoteConditions(root,
+                             baserel,
                              &fdw_state->remote_conds,
                              &fdw_state->local_conds,
-                             fdw_state->disable_pushdowns
+                             fdw_state->disable_pushdowns,
+                             FQserverVersion(fdw_state->conn)
         );
 
     /*
@@ -828,7 +830,7 @@ firebirdGetForeignPlan(PlannerInfo *root,
         }
                 else
         {
-            Assert(isFirebirdExpr(root, baserel, rinfo->clause));
+            Assert(isFirebirdExpr(root, baserel, rinfo->clause, FQserverVersion(fdw_state->conn)));
             elog(DEBUG1, " - remote, but not a member of fdw_state->remote_conds");
             remote_conds = lappend(remote_conds, rinfo);
         }
@@ -840,14 +842,12 @@ firebirdGetForeignPlan(PlannerInfo *root,
                    &retrieved_attrs, &db_key_used);
 
     if (remote_conds)
-    {
         buildWhereClause(&sql, root, baserel, remote_conds, true, &params_list);
-    }
 
     elog(DEBUG2, "db_key_used? %c", db_key_used == true ? 'Y' : 'N');
 
     /*
-     * Build the fdw_private list that will be available to the executor.
+     * Build the fdw_private list which will be available to the executor.
      * Items in the list must match enum FdwScanPrivateIndex, above.
      */
     fdw_private = list_make3(makeString(sql.data),
