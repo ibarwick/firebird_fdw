@@ -1502,7 +1502,10 @@ foreign_expr_walker(Node *node,
 
             elog(DEBUG2, "Func expr ------");
             if(!canConvertPgType(func->funcresulttype))
+            {
+                elog(DEBUG2, "Cannot convert return type");
                 return false;
+            }
             /* Recurse to input subexpressions */
             if(!foreign_expr_walker((Node *) func->args,
                                     glob_cxt))
@@ -1525,12 +1528,16 @@ foreign_expr_walker(Node *node,
              * NOTE: most of these functions were introduced in FB 2.1
              *
              * Not currently sending:
-             * coalesce() (2.0)
+             * BIN_AND()
+             * BIN_OR()
+             * BIN_SHL()
+             * BIN_SHR()
+             * BIN_XOR()
              * concat()
              *   -> rewrite with ||
              *   -> http://www.firebirdsql.org/manual/qsg10-firebird-sql.html
              * extract()
-             * iif() / nullif()
+             * iif() - no need to convert
              * initcap()
              * left()  -> FB does not accept negative length
              * ltrim()
@@ -1546,6 +1553,16 @@ foreign_expr_walker(Node *node,
              */
             elog(DEBUG2, "Func name is %s", oprname);
 
+            /* Firebird 1.5 or later */
+            if(glob_cxt->firebird_version >= 10500)
+            {
+                /* Firebird's COALESCE() requires at least two arguments */
+                if ((strcmp(oprname, "coalesce") == 0 && list_length(func->args) >= 2))
+                {
+                    return true;
+                }
+            }
+
             /* Firebird 2.0 or later */
             if(glob_cxt->firebird_version >= 20000)
             {
@@ -1554,12 +1571,35 @@ foreign_expr_walker(Node *node,
                  || strcmp(oprname, "character_length") == 0
                  || strcmp(oprname, "lower") == 0
                  || strcmp(oprname, "octet_length") == 0
-                    /* XXX need to reject: substring(string from pattern for escape) */
-                 || (strcmp(oprname, "substring") == 0 && list_length(func->args) == 3)
                  || strcmp(oprname, "upper") == 0)
                 {
                     return true;
                 }
+
+                /* SUBSTRING() is a special case: Firebird only accepts integers as the
+                   2nd and 3rd params, Pg variants such as SUBSTRING(string FROM pattern FOR escape)
+                   must not be pushed down.
+                */
+                if(strcmp(oprname, "substring") == 0 && list_length(func->args) == 3)
+                {
+                    ListCell *lc;
+                    Const *arg;
+                    bool can_handle = false;
+
+                    lc = list_head(func->args);
+                    lc = lnext(lc);
+                    arg = lfirst(lc);
+                    if(arg->consttype ==  INT4OID)
+                        can_handle = true;
+
+                    lc = lnext(lc);
+                    arg = lfirst(lc);
+                    if(arg->consttype ==  INT4OID)
+                        can_handle = true;
+
+                    return can_handle;
+                }
+
             }
 
             /* Firebird 2.1 or later */
@@ -1581,6 +1621,7 @@ foreign_expr_walker(Node *node,
                  || strcmp(oprname, "log") == 0
                  || strcmp(oprname, "lpad") == 0
                  || strcmp(oprname, "mod") == 0
+                 || strcmp(oprname, "nullif") == 0
                  || strcmp(oprname, "overlay") == 0
                  || strcmp(oprname, "pow") == 0
                  || strcmp(oprname, "power") == 0
@@ -1603,9 +1644,27 @@ foreign_expr_walker(Node *node,
         /* Firebird 3 will support booleans; we may need to add an
            exception here */
 
-        /* XXX hack? */
         case T_List:
+        {
+            List	   *l = (List *) node;
+            ListCell   *lc;
+            foreach(lc, l)
+            {
+                if (!foreign_expr_walker((Node *) lfirst(lc),
+                                         glob_cxt))
+                    return false;
+            }
             return true;
+        }
+
+        case T_RelabelType:
+        {
+            RelabelType *r = (RelabelType *) node;
+            if (!foreign_expr_walker((Node *) r->arg,
+                                     glob_cxt))
+                return false;
+            return true;
+        }
 
         default:
 
@@ -1613,7 +1672,7 @@ foreign_expr_walker(Node *node,
              * If it's anything else, assume it's unsafe.  This list can be
              * expanded later, but don't forget to add convert support below.
              */
-            elog(DEBUG1, "Unhandled node tag: %i", nodeTag(node));
+            elog(DEBUG1, "%s(): Unhandled node tag: %i", __func__, nodeTag(node));
             return false;
     }
 
