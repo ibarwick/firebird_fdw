@@ -1589,12 +1589,12 @@ foreign_expr_walker(Node *node,
                     lc = list_head(func->args);
                     lc = lnext(lc);
                     arg = lfirst(lc);
-                    if(arg->consttype ==  INT4OID)
+                    if(arg->consttype == INT4OID)
                         can_handle = true;
 
                     lc = lnext(lc);
                     arg = lfirst(lc);
-                    if(arg->consttype ==  INT4OID)
+                    if(arg->consttype == INT4OID)
                         can_handle = true;
 
                     return can_handle;
@@ -1668,10 +1668,7 @@ foreign_expr_walker(Node *node,
 
         default:
 
-            /*
-             * If it's anything else, assume it's unsafe.  This list can be
-             * expanded later, but don't forget to add convert support below.
-             */
+            /* Assume any other types are unsafe */
             elog(DEBUG1, "%s(): Unhandled node tag: %i", __func__, nodeTag(node));
             return false;
     }

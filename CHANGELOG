@@ -1,9 +1,11 @@
 Revision history for firebird_fdw
 
-0.1.5   2014-01-17
+0.1.5   2014-01-20
 	- Add basic Firebird version detection to ensure that only
 	  functions available on the remote Firebird server are actually
 	  pushed down
+	- Push down functions COALESCE(), NULLIF()
+	- Only push down SUBSTRING() if 2nd and 3rd arguments are INTs
 
 0.1.4   2014-01-13
 	- Prevent implicit casts from being pushed down to Firebird
