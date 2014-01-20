@@ -2,6 +2,7 @@ Revision history for firebird_fdw
 
 0.1.6	2014-01-??
 	- Push down bitwise operators << and >> (FB 2.1 and later)
+	- Push down two-argument form of SUBSTRING()
 
 0.1.5   2014-01-20
 	- Add basic Firebird version detection to ensure that only

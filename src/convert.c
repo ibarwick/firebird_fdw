@@ -1115,9 +1115,13 @@ convertFunctionSubstring(FuncExpr *node, convert_expr_cxt *context)
     convertExprRecursor(lfirst(lc), context, &local_result);
     appendStringInfo(&buf, " FROM %s", local_result);
 
-    lc = lnext(lc);
-    convertExprRecursor(lfirst(lc), context, &local_result);
-    appendStringInfo(&buf, " FOR %s)", local_result);
+    if(list_length(node->args) == 3)
+    {
+        lc = lnext(lc);
+        convertExprRecursor(lfirst(lc), context, &local_result);
+        appendStringInfo(&buf, " FOR %s", local_result);
+    }
+    appendStringInfoChar(&buf, ')');
 
     return buf.data;
 }
@@ -1586,7 +1590,7 @@ foreign_expr_walker(Node *node,
                    2nd and 3rd params, Pg variants such as SUBSTRING(string FROM pattern FOR escape)
                    must not be pushed down.
                 */
-                if(strcmp(oprname, "substring") == 0 && list_length(func->args) == 3)
+                if(strcmp(oprname, "substring") == 0 && (list_length(func->args) == 2 || list_length(func->args) == 3))
                 {
                     ListCell *lc;
                     Const *arg;
@@ -1598,10 +1602,13 @@ foreign_expr_walker(Node *node,
                     if(arg->consttype == INT4OID)
                         can_handle = true;
 
-                    lc = lnext(lc);
-                    arg = lfirst(lc);
-                    if(arg->consttype == INT4OID)
-                        can_handle = true;
+                    if(list_length(func->args) == 3)
+                    {
+                        lc = lnext(lc);
+                        arg = lfirst(lc);
+                        if(arg->consttype == INT4OID)
+                            can_handle = true;
+                    }
 
                     return can_handle;
                 }
