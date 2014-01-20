@@ -94,7 +94,7 @@ static char *convertFunctionTrim(FuncExpr *node, convert_expr_cxt *context, char
 static bool foreign_expr_walker(Node *node,
                     foreign_glob_cxt *glob_cxt);
 
-static bool canConvertOp(OpExpr *oe);
+static bool canConvertOp(OpExpr *oe, int firebird_version);
 static bool is_builtin(Oid procid);
 
 
@@ -861,6 +861,14 @@ convertOperatorName(StringInfo buf, Form_pg_operator opform, char *left, char *r
         /* NOT ILIKE */
         appendStringInfo(buf, "LOWER(%s) NOT LIKE LOWER(%s)", left, right);
     }
+    else if(strcmp(oprname, "<<") == 0)
+    {
+        appendStringInfo(buf, "BIN_SHL(%s, %s)", left, right);
+    }
+    else if(strcmp(oprname, ">>") == 0)
+    {
+        appendStringInfo(buf, "BIN_SHR(%s, %s)", left, right);
+    }
     else
     {
         /* Should never happen, if it does blame canConvertOp() */
@@ -1116,7 +1124,7 @@ convertFunctionSubstring(FuncExpr *node, convert_expr_cxt *context)
 
 
 /**
- * convertFunctionTrim(()
+ * convertFunctionTrim()
  *
  * Convert Pg's LTRIM() and RTRIM() to Firebird's TRIM() syntax
  *
@@ -1398,7 +1406,7 @@ foreign_expr_walker(Node *node,
                 return false;
             }
 
-            if(!canConvertOp(oe))
+            if(!canConvertOp(oe, glob_cxt->firebird_version))
             {
                 elog(DEBUG2, "%s: cannot translate op", __func__);
                 return false;
@@ -1523,15 +1531,15 @@ foreign_expr_walker(Node *node,
                 return false;
 
             /*
-             * Only permit certain functions to be passed
+             * Only permit certain functions (and depending on the function
+             * certain combination of parameters) to be passed
              *
-             * NOTE: most of these functions were introduced in FB 2.1
+             * NOTE: most of these functions were introduced in FB 2.1; some
+             *   can be used to convert operators
              *
              * Not currently sending:
              * BIN_AND()
              * BIN_OR()
-             * BIN_SHL()
-             * BIN_SHR()
              * BIN_XOR()
              * concat()
              *   -> rewrite with ||
@@ -1540,10 +1548,8 @@ foreign_expr_walker(Node *node,
              * iif() - no need to convert
              * initcap()
              * left()  -> FB does not accept negative length
-             * ltrim()
              * position()
              * right() -> FB does not accept negative length
-             * rtrim()
              * strpos()
              * to_char()
              * to_date()
@@ -1719,7 +1725,7 @@ is_builtin(Oid oid)
  * Synchronize with convertOperatorName().
  */
 static bool
-canConvertOp(OpExpr *oe)
+canConvertOp(OpExpr *oe, int firebird_version)
 {
     HeapTuple   tuple;
     Form_pg_operator form;
@@ -1756,6 +1762,18 @@ canConvertOp(OpExpr *oe)
         pfree(oprname);
         return true;
     }
+
+    /* Some Pg operators have equivalent functions in Firebird */
+    if(firebird_version >= 20100)
+    {
+        if(strcmp(oprname, "<<") == 0
+        || strcmp(oprname, ">>") == 0)
+        {
+            pfree(oprname);
+            return true;
+        }
+    }
+
 
     pfree(oprname);
 
