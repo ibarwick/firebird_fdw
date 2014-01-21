@@ -1,6 +1,6 @@
 Revision history for firebird_fdw
 
-0.1.6	2014-01-??
+0.1.6	2014-01-21
 	- Push down bitwise operators << and >> (FB 2.1 and later)
 	- Push down two-argument form of SUBSTRING()
 	- Push down CONCAT()
