@@ -89,6 +89,7 @@ static void convertFunction(FuncExpr *node, convert_expr_cxt *context, char **re
 static void convertVar(Var *node, convert_expr_cxt *context, char **result);
 
 static char *convertFunctionConcat(FuncExpr *node, convert_expr_cxt *context);
+static char *convertFunctionPosition(FuncExpr *node, convert_expr_cxt *context);
 static char *convertFunctionSubstring(FuncExpr *node, convert_expr_cxt *context);
 static char *convertFunctionTrim(FuncExpr *node, convert_expr_cxt *context, char *where);
 
@@ -1024,6 +1025,13 @@ convertFunction(FuncExpr *node, convert_expr_cxt *context, char **result)
         return;
     }
 
+    if(strcmp(oprname, "position") == 0
+    || strcmp(oprname, "strpos") == 0)
+    {
+        *result = convertFunctionPosition(node, context);
+        return;
+    }
+
     if(strcmp(oprname, "substring") == 0)
     {
         *result = convertFunctionSubstring(node, context);
@@ -1130,6 +1138,61 @@ convertFunctionConcat(FuncExpr *node, convert_expr_cxt *context)
     }
 
     appendStringInfoChar(&buf, ')');
+
+    return buf.data;
+}
+
+
+
+/**
+ * convertFunctionPosition()
+ *
+ * Render POSITION() correctly. For some reason the arguments are in
+ * the order for STRPOS(), so we have to switch the order. On the other
+ * hand we can recycle this function to convert STRPOS().
+ */
+static char *
+convertFunctionPosition(FuncExpr *node, convert_expr_cxt *context)
+{
+    StringInfoData  buf;
+    ListCell *lc;
+    char *string;
+    char *substring;
+
+    lc = list_head(node->args);
+    convertExprRecursor(lfirst(lc), context, &string);
+
+    lc = lnext(lc);
+    convertExprRecursor(lfirst(lc), context, &substring);
+
+    initStringInfo(&buf);
+    appendStringInfo(&buf, "POSITION(%s IN %s)", substring, string);
+
+    return buf.data;
+}
+
+
+/**
+ * convertFunctionStrpos()
+ *
+ * Convert STRPOS() to POSITION()
+ */
+static char *
+convertFunctionStrpos(FuncExpr *node, convert_expr_cxt *context)
+{
+    StringInfoData  buf;
+    ListCell *lc;
+    char *string;
+    char *substring;
+
+    lc = list_head(node->args);
+    convertExprRecursor(lfirst(lc), context, &string);
+
+    lc = lnext(lc);
+    convertExprRecursor(lfirst(lc), context, &substring);
+
+    initStringInfo(&buf);
+    appendStringInfo(&buf, "POSITION(%s IN %s)", substring, string);
 
     return buf.data;
 }
@@ -1584,19 +1647,18 @@ foreign_expr_walker(Node *node,
              * BIN_AND()
              * BIN_OR()
              * BIN_XOR()
-             * extract()
-             * iif() - no need to convert
-             * initcap()
-             * position()
-             * strpos()
-             * to_char()
-             * to_date()
-             * to_number()
-             * to_timestamp()
-             * translate()
+             * EXTRACT()
+             * INITCAP()
+             * TO_CHAR()
+             * TO_DATE()
+             * TO_NUMBER()
+             * TO_TIMESTAMP()
+             * TRANSLATE()
              *
-             * left() -> FB does not accept negative length
-             * right() -> FB does not accept negative length
+             * Not practical to push down these:
+             * IIF() - no equivalent in Pg, shorthand for a CASE construct
+             * LEFT() -> FB does not accept negative length
+             * RIGHT() -> FB does not accept negative length
              *   -> to handle these we'll need to examine the length value,
              *      which is tricky
              */
@@ -1677,6 +1739,7 @@ foreign_expr_walker(Node *node,
                  || strcmp(oprname, "mod") == 0
                  || strcmp(oprname, "nullif") == 0
                  || strcmp(oprname, "overlay") == 0
+                 || strcmp(oprname, "position") == 0
                  || strcmp(oprname, "pow") == 0
                  || strcmp(oprname, "power") == 0
                  || strcmp(oprname, "reverse") == 0
@@ -1686,6 +1749,7 @@ foreign_expr_walker(Node *node,
                  || strcmp(oprname, "sign") == 0
                  || strcmp(oprname, "sin") == 0
                  || strcmp(oprname, "sqrt") == 0
+                 || strcmp(oprname, "strpos") == 0
                  || strcmp(oprname, "tan") == 0
                  || strcmp(oprname, "trunc") == 0)
                 {
@@ -1695,9 +1759,6 @@ foreign_expr_walker(Node *node,
 
             return false;
         }
-        /* Firebird 3 will support booleans; we may need to add an
-           exception here */
-
         case T_List:
         {
             List	   *l = (List *) node;
@@ -1719,6 +1780,9 @@ foreign_expr_walker(Node *node,
                 return false;
             return true;
         }
+
+        /* Firebird 3 will support booleans; we may need to add an
+           exception here */
 
         default:
 
