@@ -1173,32 +1173,6 @@ convertFunctionPosition(FuncExpr *node, convert_expr_cxt *context)
 
 
 /**
- * convertFunctionStrpos()
- *
- * Convert STRPOS() to POSITION()
- */
-static char *
-convertFunctionStrpos(FuncExpr *node, convert_expr_cxt *context)
-{
-    StringInfoData  buf;
-    ListCell *lc;
-    char *string;
-    char *substring;
-
-    lc = list_head(node->args);
-    convertExprRecursor(lfirst(lc), context, &string);
-
-    lc = lnext(lc);
-    convertExprRecursor(lfirst(lc), context, &substring);
-
-    initStringInfo(&buf);
-    appendStringInfo(&buf, "POSITION(%s IN %s)", substring, string);
-
-    return buf.data;
-}
-
-
-/**
  * convertFunctionSubstring()
  *
  * Reconstitute SUBSTRING function arguments
