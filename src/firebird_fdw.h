@@ -83,21 +83,13 @@ struct FirebirdFdwOption
  */
 typedef struct FirebirdFdwState
 {
-    /* Connection information */
-    char       *svr_address;
-    int         svr_port;           /* Server port (default: 3050) */
-    char       *svr_database;
-
-    char       *svr_username;       /* Firebird username */
-    char       *svr_password;       /* Firebird password */
-
     char       *svr_query;
     char       *svr_table;
-    char       *dbpath;
+    bool        disable_pushdowns;  /* true if server option "disable_pushdowns" supplied */
+
     FQconn     *conn;
 	List       *remote_conds;
 	List       *local_conds;
-    bool        disable_pushdowns;  /* true if server option "disable_pushdowns" supplied */
 
 	Bitmapset  *attrs_used;         /* Bitmap of attr numbers to be fetched from the remote server. */
     Cost        startup_cost;       /* cost estimate, only needed for planning */
@@ -152,6 +144,15 @@ typedef struct FirebirdFdwModifyState
     MemoryContext temp_cxt;       /* context for per-tuple temporary data */
 } FirebirdFdwModifyState;
 
+
+/* connection functions (in connection.c) */
+
+
+extern FQconn *firebirdInstantiateConnection(ForeignServer *server, UserMapping *user);
+extern void firebirdCloseConnections(void);
+
+/* option functions (in options.c) */
+extern void firebirdGetOptions(Oid foreigntableid, char **query, char **table, bool *disable_pushdowns);
 
 /* query-building functions (in convert.c) */
 

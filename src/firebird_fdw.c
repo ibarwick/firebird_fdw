@@ -2,7 +2,7 @@
  *
  * Foreign Data Wrapper for Firebird
  *
- * Copyright (c) 2013 Ian Barwick
+ * Copyright (c) 2013-2014 Ian Barwick
  *
  * This software is released under the PostgreSQL Licence
  *
@@ -190,14 +190,9 @@ static bool firebirdAnalyzeForeignTable(Relation relation,
 static void exitHook(int code, Datum arg);
 static FirebirdFdwState *getFdwState(Oid foreigntableid);
 
-static void firebirdGetOptions(Oid foreigntableid, char **address, int *port, char **username, char **password, char **database, char **query, char **table, bool *disable_pushdowns);
-
 static void firebirdEstimateCosts(PlannerInfo *root, RelOptInfo *baserel,  Oid foreigntableid);
 
-static char *firebirdDbPath(char **address, char **database, int *port);
 
-static FQconn *firebirdGetConnection(char *dbpath, char *svr_username, char *svr_password);
-static FQconn *firebirdInstantiateConnection(ForeignServer *server, UserMapping *user);
 
 static const char **convert_prep_stmt_params(FirebirdFdwModifyState *fmstate,
                                              ItemPointer tupleid,
@@ -310,6 +305,7 @@ void
 exitHook(int code, Datum arg)
 {
     elog(DEBUG2, "entering function %s", __func__);
+    firebirdCloseConnections();
 }
 
 
@@ -324,216 +320,22 @@ FirebirdFdwState *
 getFdwState(Oid foreigntableid)
 {
     FirebirdFdwState *fdw_state = palloc0(sizeof(FirebirdFdwState));
+
     elog(DEBUG2, "OID: %u", foreigntableid);
 
     /* Initialise */
-    fdw_state->svr_port = 0;
-    fdw_state->svr_address = NULL;
-    fdw_state->svr_username = NULL;
-    fdw_state->svr_password = NULL;
-    fdw_state->svr_database = NULL;
     fdw_state->svr_query = NULL;
     fdw_state->svr_table = NULL;
     fdw_state->disable_pushdowns = false;
 
     firebirdGetOptions(
         foreigntableid,
-        &fdw_state->svr_address,
-        &fdw_state->svr_port,
-        &fdw_state->svr_username,
-        &fdw_state->svr_password,
-        &fdw_state->svr_database,
         &fdw_state->svr_query,
         &fdw_state->svr_table,
         &fdw_state->disable_pushdowns
         );
 
-    fdw_state->dbpath = firebirdDbPath(
-        &fdw_state->svr_address,
-        &fdw_state->svr_database,
-        &fdw_state->svr_port
-        );
-
-    fdw_state->conn = firebirdGetConnection(
-        fdw_state->dbpath,
-        fdw_state->svr_username,
-        fdw_state->svr_password
-        );
-
-    if(FQstatus(fdw_state->conn) != CONNECTION_OK)
-        ereport(ERROR,
-            (errcode(ERRCODE_FDW_UNABLE_TO_ESTABLISH_CONNECTION),
-            errmsg("Unable to to connect to foreign server")
-            ));
-
-    fdw_state->conn->autocommit = true;
-    fdw_state->conn->client_min_messages = DEBUG1;
-
     return fdw_state;
-}
-
-
-/**
- * firebirdDbPath()
- *
- * Utility function to generate a Firebird database path.
- *
- * XXX ignores the 'port' parameter
- */
-char *
-firebirdDbPath(char **address, char **database, int *port)
-{
-    char *hostname;
-    if(*address != NULL)
-    {
-        hostname = palloc(strlen(*address) + strlen(*database) + 1);
-        sprintf(hostname, "%s:%s", *address, *database);
-    }
-    else
-    {
-        hostname = palloc(strlen(*database) + 1);
-        sprintf(hostname, "%s", *database);
-    }
-
-    return hostname;
-}
-
-
-
-
-/**
- * firebirdGetOptions()
- *
- * Fetch the options for a firebird_fdw foreign table.
- */
-static void
-firebirdGetOptions(Oid foreigntableid, char **address, int *port, char **username, char **password, char **database, char **query, char **table, bool *disable_pushdowns)
-{
-    ForeignTable  *f_table;
-    ForeignServer *f_server;
-    UserMapping   *f_mapping;
-    List          *options;
-    ListCell      *lc;
-
-    /* Extract options from FDW objects */
-    f_table = GetForeignTable(foreigntableid);
-    f_server = GetForeignServer(f_table->serverid);
-    f_mapping = GetUserMapping(GetUserId(), f_table->serverid);
-
-    options = NIL;
-    options = list_concat(options, f_table->options);
-    options = list_concat(options, f_server->options);
-    options = list_concat(options, f_mapping->options);
-
-    foreach(lc, options)
-    {
-        DefElem *def = (DefElem *) lfirst(lc);
-
-        if (strcmp(def->defname, "address") == 0)
-            *address = defGetString(def);
-
-        else if (strcmp(def->defname, "port") == 0)
-            *port = atoi(defGetString(def));
-
-        else if (strcmp(def->defname, "username") == 0)
-            *username = defGetString(def);
-
-        else if (strcmp(def->defname, "password") == 0)
-            *password = defGetString(def);
-
-        else if (strcmp(def->defname, "database") == 0)
-            *database = defGetString(def);
-
-        else if (strcmp(def->defname, "query") == 0)
-            *query = defGetString(def);
-
-        else if (strcmp(def->defname, "table_name") == 0)
-            *table = defGetString(def);
-
-        else if (strcmp(def->defname, "disable_pushdowns") == 0)
-            *disable_pushdowns = defGetBoolean(def);
-    }
-
-
-    /* Default values, if required */
-    if (!*address)
-        *address = "127.0.0.1";
-
-    if (!*port)
-        *port = 3050; /* "gds_db" */
-
-    /* Check we have the options we need to proceed */
-    if (!*table && !*query)
-        ereport(ERROR,
-            (errcode(ERRCODE_SYNTAX_ERROR),
-            errmsg("either a table or a query must be specified")
-                ));
-}
-
-
-/**
- * firebirdGetConnection()
- *
- * Establish DB connection
- *
- * TODO:
- * - some sort of connection pooling
- */
-
-static FQconn *
-firebirdGetConnection(char *dbpath, char *svr_username, char *svr_password)
-{
-    return FQconnect(
-        dbpath,
-        svr_username,
-        svr_password
-        );
-}
-
-
-/**
- * firebirdInstantiateConnection()
- *
- * Connect to the foreign database using the foreign server parameters
- */
-static FQconn *
-firebirdInstantiateConnection(ForeignServer *server, UserMapping *user)
-{
-    char *svr_address  = NULL;
-    char *svr_database = NULL;
-    char *svr_username = NULL;
-    char *svr_password = NULL;
-    int   svr_port     = 0;
-    char *dbpath;
-    ListCell   *lc;
-
-    foreach(lc, server->options)
-    {
-        DefElem    *def = (DefElem *) lfirst(lc);
-
-        if (strcmp(def->defname, "address") == 0)
-            svr_address = defGetString(def);
-        if (strcmp(def->defname, "database") == 0)
-            svr_database = defGetString(def);
-    }
-
-    foreach(lc, user->options)
-    {
-        DefElem    *def = (DefElem *) lfirst(lc);
-
-        if (strcmp(def->defname, "username") == 0)
-            svr_username = defGetString(def);
-        if (strcmp(def->defname, "password") == 0)
-            svr_password = defGetString(def);
-    }
-
-    dbpath = firebirdDbPath(&svr_address, &svr_database, &svr_port);
-
-    return firebirdGetConnection(
-        dbpath,
-        svr_username,
-        svr_password
-        );
 }
 
 
@@ -549,15 +351,29 @@ static void
 firebirdEstimateCosts(PlannerInfo *root, RelOptInfo *baserel, Oid foreigntableid)
 {
     FirebirdFdwState *fdw_state = (FirebirdFdwState *)baserel->fdw_private;
-
+	ForeignServer *server;
+    ForeignTable *table;
+    char *svr_address  = NULL;
+    ListCell   *lc;
     elog(DEBUG2, "entering function %s", __func__);
+
+    table = GetForeignTable(foreigntableid);
+	server = GetForeignServer(table->serverid);
+
+    foreach(lc, server->options)
+    {
+        DefElem    *def = (DefElem *) lfirst(lc);
+
+        if (strcmp(def->defname, "address") == 0)
+            svr_address = defGetString(def);
+    }
 
     /* Set startup cost based on the localness of the database */
     /* XXX TODO:
         - is there an equivalent of socket connections?
         - other way of detecting local-hostedness, incluing IPv6
     */
-    if (strcmp(fdw_state->svr_address, "127.0.0.1") == 0 || strcmp(fdw_state->svr_address, "localhost") == 0)
+    if (strcmp(svr_address, "127.0.0.1") == 0 || strcmp(svr_address, "localhost") == 0)
         fdw_state->startup_cost = 10;
     else
         fdw_state->startup_cost = 25;
@@ -603,11 +419,28 @@ firebirdGetForeignRelSize(PlannerInfo *root,
     FQresult *res;
     StringInfoData query;
     ListCell *lc;
+
+    RangeTblEntry *rte;
+    Oid         userid;
+	ForeignTable *table;
+	ForeignServer *server;
+	UserMapping *user;
+
     elog(DEBUG2, "entering function %s", __func__);
 
+    rte = planner_rt_fetch(baserel->relid, root);
+	userid = rte->checkAsUser ? rte->checkAsUser : GetUserId();
+
+    table = GetForeignTable(foreigntableid);
+	server = GetForeignServer(table->serverid);
+	user = GetUserMapping(userid, server->serverid);
 
     /* get connection options, connect and get the remote table description */
     fdw_state = getFdwState(foreigntableid);
+
+    fdw_state->conn = firebirdInstantiateConnection(server, user);
+
+
     baserel->fdw_private = (void *) fdw_state;
     /* connect and get remote description */
     if(FQstatus(fdw_state->conn) == CONNECTION_BAD)
@@ -692,8 +525,6 @@ firebirdGetForeignRelSize(PlannerInfo *root,
     baserel->tuples = baserel->rows;
 
     elog(DEBUG1, "%s: rows estimated at %f", __func__, baserel->rows);
-
-    FQfinish(fdw_state->conn);
 }
 
 
@@ -893,16 +724,9 @@ static void
 firebirdBeginForeignScan(ForeignScanState *node,
                          int eflags)
 {
-    int     svr_port = 0;
-    char    *svr_address = NULL;
-    char    *svr_username = NULL;
-    char    *svr_password = NULL;
-    char    *svr_database = NULL;
     char    *svr_query = NULL;
     char    *svr_table = NULL;
     bool     disable_pushdowns = false;
-    char    *dbpath = NULL;
-    FQconn  *conn;
 
     ForeignScan *fsplan = (ForeignScan *) node->ss.ps.plan;
     FirebirdFdwScanState *fdw_state;
@@ -912,51 +736,33 @@ firebirdBeginForeignScan(ForeignScanState *node,
     TupleDesc tupdesc;
     int i;
 
+    EState	   *estate = node->ss.ps.state;
+	RangeTblEntry *rte;
+	Oid			userid;
+	ForeignTable *table;
+	ForeignServer *server;
+	UserMapping *user;
+
     elog(DEBUG2, "entering function %s", __func__);
 
+    rte = rt_fetch(fsplan->scan.scanrelid, estate->es_range_table);
+	userid = rte->checkAsUser ? rte->checkAsUser : GetUserId();
+	table = GetForeignTable(RelationGetRelid(node->ss.ss_currentRelation));
+	server = GetForeignServer(table->serverid);
+	user = GetUserMapping(userid, server->serverid);
+
+    /* needed for svr_query */
     firebirdGetOptions(foreigntableid,
-                       &svr_address,
-                       &svr_port,
-                       &svr_username,
-                       &svr_password,
-                       &svr_database,
                        &svr_query,
                        &svr_table,
                        &disable_pushdowns
         );
 
-    dbpath = firebirdDbPath(&svr_address, &svr_database, &svr_port);
-    conn = firebirdGetConnection(dbpath, svr_username, svr_password);
-    if(FQstatus(conn) != CONNECTION_OK)
-    {
-        ereport(ERROR,
-            (errcode(ERRCODE_FDW_UNABLE_TO_ESTABLISH_CONNECTION),
-            errmsg("Unable to to connect to foreign server")
-            ));
-        return;
-    }
-
-    conn->autocommit = true;
-    conn->client_min_messages = DEBUG1;
-
-    if(FQstatus(conn) == CONNECTION_BAD)
-    {
-        ereport(ERROR,
-                (errcode(ERRCODE_FDW_UNABLE_TO_ESTABLISH_CONNECTION),
-                 errmsg("failed to connect to Firebird")
-                    ));
-        return;
-    }
-
-    elog(DEBUG2, "DB connection OK");
-
-    /* Transaction support not yet implemented... */
-    conn->autocommit = true;
-
     /* Initialise FDW state */
     fdw_state = (FirebirdFdwScanState *) palloc0(sizeof(FirebirdFdwScanState));
     node->fdw_state = (void *) fdw_state;
-    fdw_state->conn = conn;
+
+    fdw_state->conn = firebirdInstantiateConnection(server, user);
 
     fdw_state->row = 0;
     fdw_state->result = NULL;
@@ -1305,13 +1111,6 @@ firebirdEndForeignScan(ForeignScanState *node)
     {
         FQclear(fdw_state->result);
         fdw_state->result = NULL;
-    }
-
-    if (fdw_state->conn)
-    {
-        elog(DEBUG2, "%s: terminating FB connection", __func__);
-        FQfinish(fdw_state->conn);
-        fdw_state->conn = NULL;
     }
 
     elog(DEBUG2, "leaving function %s", __func__);
@@ -2138,13 +1937,6 @@ firebirdEndForeignModify(EState *estate,
 
     if(fm_state == NULL)
         return;
-
-    if (fm_state->conn)
-    {
-        elog(DEBUG2, "%s: terminating FB connection", __func__);
-        FQfinish(fm_state->conn);
-        fm_state->conn = NULL;
-    }
 }
 
 

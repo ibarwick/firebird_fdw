@@ -1,3 +1,12 @@
+/*-------------------------------------------------------------------------
+ *
+ * options.c
+ *
+ * Helper functions to validate and parse the FDW options
+ *
+ *-------------------------------------------------------------------------
+ */
+
 #include "postgres.h"
 #include "firebird_fdw.h"
 
@@ -23,6 +32,7 @@ static struct FirebirdFdwOption valid_options[] =
     { "column_name",       AttributeRelationId     },
     { NULL,                InvalidOid }
 };
+
 extern Datum firebird_fdw_validator(PG_FUNCTION_ARGS);
 PG_FUNCTION_INFO_V1(firebird_fdw_validator);
 static bool firebirdIsValidOption(const char *option, Oid context);
@@ -188,6 +198,44 @@ firebird_fdw_validator(PG_FUNCTION_ARGS)
 
     PG_RETURN_VOID();
 }
+
+
+
+/**
+ * firebirdGetOptions()
+ *
+ * Fetch the options for a firebird_fdw foreign table.
+ */
+void
+firebirdGetOptions(Oid foreigntableid, char **query, char **table, bool *disable_pushdowns)
+{
+    ForeignTable  *f_table;
+    ListCell      *lc;
+
+    f_table = GetForeignTable(foreigntableid);
+
+    foreach(lc, f_table->options)
+    {
+        DefElem *def = (DefElem *) lfirst(lc);
+
+        if (strcmp(def->defname, "query") == 0)
+            *query = defGetString(def);
+
+        else if (strcmp(def->defname, "table_name") == 0)
+            *table = defGetString(def);
+
+        else if (strcmp(def->defname, "disable_pushdowns") == 0)
+            *disable_pushdowns = defGetBoolean(def);
+    }
+
+    /* Check we have the options we need to proceed */
+    if (!*table && !*query)
+        ereport(ERROR,
+            (errcode(ERRCODE_SYNTAX_ERROR),
+            errmsg("either a table or a query must be specified")
+                ));
+}
+
 
 /**
  * firebirdIsValidOption()
