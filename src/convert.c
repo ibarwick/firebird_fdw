@@ -88,6 +88,7 @@ static void convertScalarArrayOpExpr(ScalarArrayOpExpr *node, convert_expr_cxt *
 static void convertFunction(FuncExpr *node, convert_expr_cxt *context, char **result);
 static void convertVar(Var *node, convert_expr_cxt *context, char **result);
 
+static char *convertFunctionConcat(FuncExpr *node, convert_expr_cxt *context);
 static char *convertFunctionSubstring(FuncExpr *node, convert_expr_cxt *context);
 static char *convertFunctionTrim(FuncExpr *node, convert_expr_cxt *context, char *where);
 
@@ -1017,6 +1018,12 @@ convertFunction(FuncExpr *node, convert_expr_cxt *context, char **result)
 
     /* Special conversion needed for some functions */
 
+    if(strcmp(oprname, "concat") == 0)
+    {
+        *result = convertFunctionConcat(node, context);
+        return;
+    }
+
     if(strcmp(oprname, "substring") == 0)
     {
         *result = convertFunctionSubstring(node, context);
@@ -1037,7 +1044,7 @@ convertFunction(FuncExpr *node, convert_expr_cxt *context, char **result)
 
     initStringInfo(&buf);
 
-    /* Extra conversion needed for some functions */
+    /* Name conversion needed for some functions */
 
     if(strcmp(oprname, "length") == 0)
     {
@@ -1086,6 +1093,45 @@ convertFunction(FuncExpr *node, convert_expr_cxt *context, char **result)
     appendStringInfoChar(&buf, ')');
 
     *result = pstrdup(buf.data);
+}
+
+
+/**
+ * convertFunctionConcat()
+ *
+ * Convert PostgreSQL's CONCAT() function (introduced in 8.4) to
+ * || operator
+ */
+static char *
+convertFunctionConcat(FuncExpr *node, convert_expr_cxt *context)
+{
+    StringInfoData  buf;
+    ListCell *lc;
+    char *local_result;
+    bool first = true;
+
+    elog(DEBUG2, "entering function %s", __func__);
+    elog(DEBUG2, "arg length: %i", list_length(node->args));
+
+    initStringInfo(&buf);
+    appendStringInfoChar(&buf, '(');
+
+    foreach(lc, node->args)
+    {
+        if(first == true)
+            first = false;
+        else
+        {
+            appendStringInfoString(&buf, " || ");
+        }
+
+        convertExprRecursor((Expr *) lfirst(lc), context, &local_result);
+        appendStringInfoString(&buf, local_result);
+    }
+
+    appendStringInfoChar(&buf, ')');
+
+    return buf.data;
 }
 
 
@@ -1335,13 +1381,6 @@ isFirebirdExpr(PlannerInfo *root,
         return false;
     }
 
-    /*
-     * An expression which includes mutable functions can't be pushed to
-     * Firebird because its result will not be stable.
-     */
-    if (contain_mutable_functions((Node *) expr))
-        return false;
-
     /* OK to evaluate on the remote server */
     return true;
 }
@@ -1545,32 +1584,33 @@ foreign_expr_walker(Node *node,
              * BIN_AND()
              * BIN_OR()
              * BIN_XOR()
-             * concat()
-             *   -> rewrite with ||
-             *   -> http://www.firebirdsql.org/manual/qsg10-firebird-sql.html
              * extract()
              * iif() - no need to convert
              * initcap()
-             * left()  -> FB does not accept negative length
              * position()
-             * right() -> FB does not accept negative length
              * strpos()
              * to_char()
              * to_date()
              * to_number()
              * to_timestamp()
              * translate()
+             *
+             * left() -> FB does not accept negative length
+             * right() -> FB does not accept negative length
+             *   -> to handle these we'll need to examine the length value,
+             *      which is tricky
              */
             elog(DEBUG2, "Func name is %s", oprname);
 
             /* Firebird 1.5 or later */
             if(glob_cxt->firebird_version >= 10500)
             {
+                if (strcmp(oprname, "concat") == 0)
+                    return true;
+
                 /* Firebird's COALESCE() requires at least two arguments */
                 if ((strcmp(oprname, "coalesce") == 0 && list_length(func->args) >= 2))
-                {
                     return true;
-                }
             }
 
             /* Firebird 2.0 or later */
@@ -1632,6 +1672,7 @@ foreign_expr_walker(Node *node,
                  || strcmp(oprname, "ltrim") == 0
                  || strcmp(oprname, "length") == 0
                  || strcmp(oprname, "log") == 0
+                    /* XXX: LPAD() behaviour is slightly different between 2.1 and 2.5 */
                  || strcmp(oprname, "lpad") == 0
                  || strcmp(oprname, "mod") == 0
                  || strcmp(oprname, "nullif") == 0
@@ -1639,6 +1680,7 @@ foreign_expr_walker(Node *node,
                  || strcmp(oprname, "pow") == 0
                  || strcmp(oprname, "power") == 0
                  || strcmp(oprname, "reverse") == 0
+                    /* XXX: RPAD() behaviour is slightly different between 2.1 and 2.5 */
                  || strcmp(oprname, "rpad") == 0
                  || strcmp(oprname, "rtrim") == 0
                  || strcmp(oprname, "sign") == 0
@@ -1646,7 +1688,6 @@ foreign_expr_walker(Node *node,
                  || strcmp(oprname, "sqrt") == 0
                  || strcmp(oprname, "tan") == 0
                  || strcmp(oprname, "trunc") == 0)
-
                 {
                     return true;
                 }
