@@ -564,6 +564,7 @@ convertExprRecursor(Expr *node, convert_expr_cxt *context, char **result)
             break;
 
         case T_FuncExpr:
+            /* selected functions which can be passed to Firebird */
             convertFunction((FuncExpr *)node, context, result);
             break;
 
@@ -1008,8 +1009,6 @@ convertFunction(FuncExpr *node, convert_expr_cxt *context, char **result)
     /* Any implicit casts must be handled by Firebird */
     if (node->funcformat == COERCE_IMPLICIT_CAST)
     {
-        elog(DEBUG2, "implicit cast");
-
         lc = list_head(node->args);
         convertExprRecursor(lfirst(lc), context, &local_result);
 
@@ -1594,10 +1593,20 @@ foreign_expr_walker(Node *node,
                 elog(DEBUG2, "Cannot convert return type");
                 return false;
             }
+
+            if (func->funcformat == COERCE_IMPLICIT_CAST)
+            {
+                if(!foreign_expr_walker((Node *) func->args,
+                                        glob_cxt))
+                    return false;
+                return true;
+            }
+
             /* Recurse to input subexpressions */
             if(!foreign_expr_walker((Node *) func->args,
                                     glob_cxt))
                 return false;
+
             /* get function name and schema */
             tuple = SearchSysCache1(PROCOID, ObjectIdGetDatum(func->funcid));
             if (!HeapTupleIsValid(tuple))
