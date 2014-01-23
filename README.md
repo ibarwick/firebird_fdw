@@ -6,10 +6,9 @@ to Firebird. It provides basic functionality, including both read (SELECT)
 and write (INSERT/UPDATE/DELETE) support.However it is still very much
 work-in-progress; USE AT YOUR OWN RISK.
 
-firebird_fdw will work with PostgreSQL 9.3 or later (it was developed
-against the current development version) and in its current form will not
-work with pre-9.3 versions (although it should be simple enough to add
-read-only support for 9.2).
+firebird_fdw will work with PostgreSQL 9.2 or later (it was developed
+against the current development version). Write support is only available
+in PostgreSQL 9.3 and later.
 
 It was written for Firebird 2.5 and will probably work with Firebird 2.0 or
 later. It should work with earlier versions if the 'disable_pushdowns' option
@@ -136,7 +135,6 @@ As above, but with aliased column names:
       table_name 'fdw_test'
     );
 
-
 Create a foreign table as a Firebird query:
 
     CREATE FOREIGN TABLE fb_test_query(
@@ -176,7 +174,7 @@ Useful links
 ------------
 
 * Source
- - https://github.com/ibarwick/firebird_fdw
+ - https://github.com/ibarwick/firebird_fdw (public mirror)
  - http://pgxn.org/dist/firebird_fdw/
 
 * Documentation
