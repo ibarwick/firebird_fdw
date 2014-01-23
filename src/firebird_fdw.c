@@ -85,10 +85,11 @@ enum FdwScanPrivateIndex
 };
 
 
+#if (PG_VERSION_NUM >= 90300)
+
 /*
  * This enum describes what's kept in the fdw_private list for
  * a ModifyTable node referencing a firebird_fdw foreign table.
- * Items stored:
  */
 
 enum FdwModifyPrivateIndex
@@ -102,6 +103,7 @@ enum FdwModifyPrivateIndex
     /* Integer list of attribute numbers retrieved by RETURNING */
     FdwModifyPrivateRetrievedAttrs
 };
+#endif
 
 /* FDW handler/validator functions */
 
@@ -139,6 +141,7 @@ static void firebirdEndForeignScan(ForeignScanState *node);
 
 static int  firebirdIsForeignRelUpdatable(Relation rel);
 
+#if (PG_VERSION_NUM >= 90300)
 static void firebirdAddForeignUpdateTargets(Query *parsetree,
                                  RangeTblEntry *target_rte,
                                  Relation target_relation);
@@ -171,15 +174,18 @@ static TupleTableSlot *firebirdExecForeignDelete(EState *estate,
 
 static void firebirdEndForeignModify(EState *estate,
                           ResultRelInfo *rinfo);
+#endif
 
 static void firebirdExplainForeignScan(ForeignScanState *node,
                             struct ExplainState *es);
 
+#if (PG_VERSION_NUM >= 90300)
 static void firebirdExplainForeignModify(ModifyTableState *mtstate,
                               ResultRelInfo *rinfo,
                               List *fdw_private,
                               int subplan_index,
                               struct ExplainState *es);
+#endif
 
 static bool firebirdAnalyzeForeignTable(Relation relation,
                              AcquireSampleRowsFunc *func,
@@ -261,6 +267,7 @@ firebird_fdw_handler(PG_FUNCTION_ARGS)
     fdwroutine->ReScanForeignScan = firebirdReScanForeignScan;
     fdwroutine->EndForeignScan = firebirdEndForeignScan;
 
+#if (PG_VERSION_NUM >= 90300)
     /* support for insert / update / delete */
     fdwroutine->IsForeignRelUpdatable = firebirdIsForeignRelUpdatable;
     fdwroutine->AddForeignUpdateTargets = firebirdAddForeignUpdateTargets;
@@ -270,13 +277,19 @@ firebird_fdw_handler(PG_FUNCTION_ARGS)
     fdwroutine->ExecForeignUpdate = firebirdExecForeignUpdate;
     fdwroutine->ExecForeignDelete = firebirdExecForeignDelete;
     fdwroutine->EndForeignModify = firebirdEndForeignModify;
+#endif
 
     /* support for EXPLAIN */
     fdwroutine->ExplainForeignScan = firebirdExplainForeignScan;
-    fdwroutine->ExplainForeignModify = firebirdExplainForeignModify;
 
+#if (PG_VERSION_NUM >= 90300)
+    fdwroutine->ExplainForeignModify = firebirdExplainForeignModify;
+#endif
+
+#if (PG_VERSION_NUM >= 90200)
     /* support for ANALYZE */
     fdwroutine->AnalyzeForeignTable = firebirdAnalyzeForeignTable;
+#endif
 
     PG_RETURN_POINTER(fdwroutine);
 }
@@ -1158,7 +1171,7 @@ firebirdIsForeignRelUpdatable(Relation rel)
         (1 << CMD_INSERT) | (1 << CMD_UPDATE) | (1 << CMD_DELETE) : 0;
 }
 
-
+#if (PG_VERSION_NUM >= 90300)
 /**
  * firebirdAddForeignUpdateTargets()
  *
@@ -2005,7 +2018,7 @@ firebirdExplainForeignModify(ModifyTableState *mtstate,
 {
     elog(DEBUG2, "entering function %s", __func__);
 }
-
+#endif
 
 /**
  * firebirdAnalyzeForeignTable()
