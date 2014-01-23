@@ -157,6 +157,7 @@ Features
 - ANALYZE support
 - pushdown of some WHERE clause conditions to Firebird (including translation
   of built-in functions)
+- Connection caching
 
 
 Limitations
@@ -169,7 +170,6 @@ Many; among the more egregious:
 - No support for some Firebird datatypes (BLOB, ARRAY)
 - TIMESTAMP/TIME: currently sub-second units will be truncated on
   insertion or update
-- No connection caching
 
 
 Useful links
