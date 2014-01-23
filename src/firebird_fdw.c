@@ -22,7 +22,6 @@
 #include "fmgr.h"
 
 #include "funcapi.h"
-#include "access/htup_details.h"
 #include "access/reloptions.h"
 #include "access/sysattr.h"
 #include "catalog/pg_foreign_server.h"
@@ -51,6 +50,9 @@
 #include "utils/memutils.h"
 #include "utils/rel.h"
 
+#if (PG_VERSION_NUM >= 90300)
+#include "access/htup_details.h"
+#endif
 
 #include "libfq.h"
 
@@ -130,6 +132,10 @@ static ForeignScan *firebirdGetForeignPlan(PlannerInfo *root,
                         List *tlist,
                         List *scan_clauses);
 
+
+static void firebirdExplainForeignScan(ForeignScanState *node,
+                            struct ExplainState *es);
+
 static void firebirdBeginForeignScan(ForeignScanState *node,
                           int eflags);
 
@@ -174,18 +180,14 @@ static TupleTableSlot *firebirdExecForeignDelete(EState *estate,
 
 static void firebirdEndForeignModify(EState *estate,
                           ResultRelInfo *rinfo);
-#endif
 
-static void firebirdExplainForeignScan(ForeignScanState *node,
-                            struct ExplainState *es);
-
-#if (PG_VERSION_NUM >= 90300)
 static void firebirdExplainForeignModify(ModifyTableState *mtstate,
                               ResultRelInfo *rinfo,
                               List *fdw_private,
                               int subplan_index,
                               struct ExplainState *es);
 #endif
+
 
 static bool firebirdAnalyzeForeignTable(Relation relation,
                              AcquireSampleRowsFunc *func,
@@ -262,6 +264,7 @@ firebird_fdw_handler(PG_FUNCTION_ARGS)
     fdwroutine->GetForeignRelSize = firebirdGetForeignRelSize;
     fdwroutine->GetForeignPaths = firebirdGetForeignPaths;
     fdwroutine->GetForeignPlan = firebirdGetForeignPlan;
+    fdwroutine->ExplainForeignScan = firebirdExplainForeignScan;
     fdwroutine->BeginForeignScan = firebirdBeginForeignScan;
     fdwroutine->IterateForeignScan = firebirdIterateForeignScan;
     fdwroutine->ReScanForeignScan = firebirdReScanForeignScan;
@@ -279,10 +282,8 @@ firebird_fdw_handler(PG_FUNCTION_ARGS)
     fdwroutine->EndForeignModify = firebirdEndForeignModify;
 #endif
 
-    /* support for EXPLAIN */
-    fdwroutine->ExplainForeignScan = firebirdExplainForeignScan;
-
 #if (PG_VERSION_NUM >= 90300)
+    /* support for EXPLAIN */
     fdwroutine->ExplainForeignModify = firebirdExplainForeignModify;
 #endif
 
@@ -576,8 +577,8 @@ firebirdGetForeignRelSize(PlannerInfo *root,
 
 static void
 firebirdGetForeignPaths(PlannerInfo *root,
-                         RelOptInfo *baserel,
-                         Oid foreigntableid)
+                        RelOptInfo *baserel,
+                        Oid foreigntableid)
 {
     FirebirdFdwState *fdw_state = (FirebirdFdwState *)baserel->fdw_private;
 
@@ -630,11 +631,11 @@ firebirdGetForeignPaths(PlannerInfo *root,
 
 static ForeignScan *
 firebirdGetForeignPlan(PlannerInfo *root,
-                        RelOptInfo *baserel,
-                        Oid foreigntableid,
-                        ForeignPath *best_path,
-                        List *tlist,
-                        List *scan_clauses)
+                       RelOptInfo *baserel,
+                       Oid foreigntableid,
+                       ForeignPath *best_path,
+                       List *tlist,
+                       List *scan_clauses)
 {
     Index       scan_relid = baserel->relid;
     FirebirdFdwState *fdw_state = (FirebirdFdwState *)baserel->fdw_private;
@@ -705,6 +706,47 @@ firebirdGetForeignPlan(PlannerInfo *root,
                             scan_relid,
                             NIL,    /* no expressions to evaluate */
                             fdw_private);
+}
+
+
+/**
+ * firebirdExplainForeignScan()
+ *
+ * Display additional EXPLAIN information; if VERBOSE specified, add Firebird's
+ * somewhat rudimentary PLAN output.
+ *
+ * This function adds EXPLAIN output with ExplainPropertyText().
+ *
+ * See also:
+ *   include/commands/explain.h
+ */
+static void
+firebirdExplainForeignScan(ForeignScanState *node,
+                           ExplainState *es)
+{
+    FirebirdFdwScanState *fdw_state = (FirebirdFdwScanState *) node->fdw_state;
+
+    elog(DEBUG2, "entering function %s", __func__);
+
+    ExplainPropertyText("Firebird query", fdw_state->query, es);
+
+    /* Show Firebird's "PLAN" information" in verbose mode */
+    if (es->verbose)
+    {
+        char *plan = NULL;
+
+        FQstartTransaction(fdw_state->conn);
+        plan = FQexplainStatement(fdw_state->conn, fdw_state->query);
+        FQrollbackTransaction(fdw_state->conn);
+
+        if(plan != NULL)
+        {
+            ExplainPropertyText("Firebird plan", plan, es);
+            free(plan);
+        }
+        else
+            ExplainPropertyText("Firebird plan", "no plan available", es);
+    }
 }
 
 
@@ -1953,47 +1995,6 @@ firebirdEndForeignModify(EState *estate,
 }
 
 
-/**
- * firebirdExplainForeignScan()
- *
- * Display additional EXPLAIN information; if VERBOSE specified, add Firebird's
- * somewhat rudimentary PLAN output.
- *
- * This function adds EXPLAIN output with ExplainPropertyText().
- *
- * See also:
- *   include/commands/explain.h
- */
-static void
-firebirdExplainForeignScan(ForeignScanState *node,
-                           struct ExplainState *es)
-{
-    FirebirdFdwState *fdw_state = (FirebirdFdwState *) node->fdw_state;
-
-    elog(DEBUG2, "entering function %s", __func__);
-
-    /* display target query */
-    ExplainPropertyText("Firebird query", fdw_state->query, es);
-
-    /* Show Firebird's "PLAN" information" in verbose mode */
-    if (es->verbose)
-    {
-        char *plan = NULL;
-
-        FQstartTransaction(fdw_state->conn);
-        plan = FQexplainStatement(fdw_state->conn, fdw_state->query);
-        FQrollbackTransaction(fdw_state->conn);
-
-        if(plan != NULL)
-        {
-            ExplainPropertyText("Firebird plan", plan, es);
-            free(plan);
-        }
-        else
-            ExplainPropertyText("Firebird plan", "no plan available", es);
-    }
-}
-
 
 /**
  * firebirdExplainForeignModify()
@@ -2019,6 +2020,8 @@ firebirdExplainForeignModify(ModifyTableState *mtstate,
     elog(DEBUG2, "entering function %s", __func__);
 }
 #endif
+
+
 
 /**
  * firebirdAnalyzeForeignTable()
@@ -2082,8 +2085,17 @@ fbAcquireSampleRowsFunc(Relation relation, int elevel,
     char **tuple_values;
     Oid relid = RelationGetRelid(relation);
 
+	ForeignTable *table;
+	ForeignServer *server;
+	UserMapping *user;
+
     fdw_state = getFdwState(relid);
     fdw_state->row = 0;
+
+	table = GetForeignTable(RelationGetRelid(relation));
+	server = GetForeignServer(table->serverid);
+	user = GetUserMapping(relation->rd_rel->relowner, server->serverid);
+    fdw_state->conn = firebirdInstantiateConnection(server, user);
 
     /* Prepare for sampling rows */
     /* src/backend/commands/analyze.c */
@@ -2100,7 +2112,7 @@ fbAcquireSampleRowsFunc(Relation relation, int elevel,
     appendStringInfo(&analyze_query, "SELECT * FROM %s", quote_identifier(fdw_state->svr_table));
     fdw_state->query = analyze_query.data;
     elog(DEBUG1, "Analyze query is: %s", fdw_state->query);
-
+    elog(DEBUG1, "%s", FQserverVersionString(fdw_state->conn));
     res = FQexec(fdw_state->conn, fdw_state->query);
 
     if(FQresultStatus(res) != FBRES_TUPLES_OK)
