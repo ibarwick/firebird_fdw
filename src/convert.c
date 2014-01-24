@@ -1747,7 +1747,7 @@ foreign_expr_walker(Node *node,
         }
         case T_List:
         {
-            List	   *l = (List *) node;
+            List       *l = (List *) node;
             ListCell   *lc;
             foreach(lc, l)
             {

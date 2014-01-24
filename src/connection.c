@@ -17,14 +17,14 @@
 
 typedef struct ConnCacheKey
 {
-	Oid			serverid;		/* OID of foreign server */
-	Oid			userid;			/* OID of local user whose mapping we use */
+    Oid         serverid;       /* OID of foreign server */
+    Oid         userid;         /* OID of local user whose mapping we use */
 } ConnCacheKey;
 
 typedef struct ConnCacheEntry
 {
-	ConnCacheKey key;			/* hash key (must be first) */
-	FQconn	   *conn;			/* connection to foreign server, or NULL */
+    ConnCacheKey key;           /* hash key (must be first) */
+    FQconn     *conn;           /* connection to foreign server, or NULL */
 } ConnCacheEntry;
 
 /*
@@ -35,15 +35,12 @@ static HTAB *ConnectionHash = NULL;
 
 static char *firebirdDbPath(char **address, char **database, int *port);
 static FQconn *firebirdGetConnection(char *dbpath, char *svr_username, char *svr_password);
+
 /**
  * firebirdGetConnection()
  *
  * Establish DB connection
- *
- * TODO:
- * - some sort of connection pooling
  */
-
 static FQconn *
 firebirdGetConnection(char *dbpath, char *svr_username, char *svr_password)
 {
@@ -79,44 +76,44 @@ firebirdGetConnection(char *dbpath, char *svr_username, char *svr_password)
 FQconn *
 firebirdInstantiateConnection(ForeignServer *server, UserMapping *user)
 {
-	bool		found;
-	ConnCacheEntry *entry;
-	ConnCacheKey key;
+    bool        found;
+    ConnCacheEntry *entry;
+    ConnCacheKey key;
 
     /* set up connection cache */
     if (ConnectionHash == NULL)
-	{
-		HASHCTL		ctl;
+    {
+        HASHCTL     ctl;
 
         elog(DEBUG2, "%s(): instantiating conn cache", __func__);
 
         MemSet(&ctl, 0, sizeof(ctl));
-		ctl.keysize = sizeof(ConnCacheKey);
-		ctl.entrysize = sizeof(ConnCacheEntry);
-		ctl.hash = tag_hash;
-/* allocate ConnectionHash in the cache context */
-		ctl.hcxt = CacheMemoryContext;
-		ConnectionHash = hash_create("firebird_fdw connections", 8,
-									 &ctl,
-								   HASH_ELEM | HASH_FUNCTION | HASH_CONTEXT);
+        ctl.keysize = sizeof(ConnCacheKey);
+        ctl.entrysize = sizeof(ConnCacheEntry);
+        ctl.hash = tag_hash;
+
+        ctl.hcxt = CacheMemoryContext;
+        ConnectionHash = hash_create("firebird_fdw connections", 8,
+                                     &ctl,
+                                     HASH_ELEM | HASH_FUNCTION | HASH_CONTEXT);
     }
 
-	/* Create hash key for the entry.  Assume no pad bytes in key struct */
-	key.serverid = server->serverid;
+    /* Create hash key for the entry.  Assume no pad bytes in key struct */
+    key.serverid = server->serverid;
     key.userid = user->userid;
 
-	/*
-	 * Find or create cached entry for requested connection.
-	 */
+    /*
+     * Find or create cached entry for requested connection.
+     */
     entry = hash_search(ConnectionHash, &key, HASH_ENTER, &found);
     if (!found)
     {
        /* initialize new hashtable entry */
-		entry->conn = NULL;
+        entry->conn = NULL;
     }
 
-	if (entry->conn == NULL)
-	{
+    if (entry->conn == NULL)
+    {
         char *svr_address  = NULL;
         char *svr_database = NULL;
         char *svr_username = NULL;
@@ -155,8 +152,8 @@ firebirdInstantiateConnection(ForeignServer *server, UserMapping *user)
             svr_password
         );
 
-		elog(DEBUG2, "%s(): new firebird_fdw connection %p for server \"%s\"",
-			 __func__,entry->conn, server->servername);
+        elog(DEBUG2, "%s(): new firebird_fdw connection %p for server \"%s\"",
+             __func__,entry->conn, server->servername);
     }
     else
     {
@@ -167,12 +164,12 @@ firebirdInstantiateConnection(ForeignServer *server, UserMapping *user)
     return entry->conn;
 }
 
+
 /**
  * firebirdCloseConnections()
  *
  * Close any open connections before exiting
  */
-
 void
 firebirdCloseConnections(void)
 {

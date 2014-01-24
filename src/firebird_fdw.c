@@ -61,8 +61,6 @@
 PG_MODULE_MAGIC;
 
 
-
-
 /*
  * Indexes of FDW-private information stored in fdw_private lists.
  *
@@ -88,12 +86,10 @@ enum FdwScanPrivateIndex
 
 
 #if (PG_VERSION_NUM >= 90300)
-
 /*
  * This enum describes what's kept in the fdw_private list for
  * a ModifyTable node referencing a firebird_fdw foreign table.
  */
-
 enum FdwModifyPrivateIndex
 {
     /* SQL statement to execute remotely (as a String node) */
@@ -132,7 +128,6 @@ static ForeignScan *firebirdGetForeignPlan(PlannerInfo *root,
                         List *tlist,
                         List *scan_clauses);
 
-
 static void firebirdExplainForeignScan(ForeignScanState *node,
                             struct ExplainState *es);
 
@@ -146,6 +141,11 @@ static void firebirdReScanForeignScan(ForeignScanState *node);
 static void firebirdEndForeignScan(ForeignScanState *node);
 
 static int  firebirdIsForeignRelUpdatable(Relation rel);
+
+
+static bool firebirdAnalyzeForeignTable(Relation relation,
+                             AcquireSampleRowsFunc *func,
+                             BlockNumber *totalpages);
 
 #if (PG_VERSION_NUM >= 90300)
 static void firebirdAddForeignUpdateTargets(Query *parsetree,
@@ -188,19 +188,12 @@ static void firebirdExplainForeignModify(ModifyTableState *mtstate,
                               struct ExplainState *es);
 #endif
 
-
-static bool firebirdAnalyzeForeignTable(Relation relation,
-                             AcquireSampleRowsFunc *func,
-                             BlockNumber *totalpages);
-
 /* Internal functions */
 
 static void exitHook(int code, Datum arg);
 static FirebirdFdwState *getFdwState(Oid foreigntableid);
 
 static void firebirdEstimateCosts(PlannerInfo *root, RelOptInfo *baserel,  Oid foreigntableid);
-
-
 
 static const char **convert_prep_stmt_params(FirebirdFdwModifyState *fmstate,
                                              ItemPointer tupleid,
@@ -280,10 +273,6 @@ firebird_fdw_handler(PG_FUNCTION_ARGS)
     fdwroutine->ExecForeignUpdate = firebirdExecForeignUpdate;
     fdwroutine->ExecForeignDelete = firebirdExecForeignDelete;
     fdwroutine->EndForeignModify = firebirdEndForeignModify;
-#endif
-
-#if (PG_VERSION_NUM >= 90300)
-    /* support for EXPLAIN */
     fdwroutine->ExplainForeignModify = firebirdExplainForeignModify;
 #endif
 
@@ -321,8 +310,6 @@ exitHook(int code, Datum arg)
     elog(DEBUG2, "entering function %s", __func__);
     firebirdCloseConnections();
 }
-
-
 
 
 /**
@@ -365,14 +352,14 @@ static void
 firebirdEstimateCosts(PlannerInfo *root, RelOptInfo *baserel, Oid foreigntableid)
 {
     FirebirdFdwState *fdw_state = (FirebirdFdwState *)baserel->fdw_private;
-	ForeignServer *server;
+    ForeignServer *server;
     ForeignTable *table;
     char *svr_address  = NULL;
     ListCell   *lc;
     elog(DEBUG2, "entering function %s", __func__);
 
     table = GetForeignTable(foreigntableid);
-	server = GetForeignServer(table->serverid);
+    server = GetForeignServer(table->serverid);
 
     foreach(lc, server->options)
     {
@@ -436,18 +423,18 @@ firebirdGetForeignRelSize(PlannerInfo *root,
 
     RangeTblEntry *rte;
     Oid         userid;
-	ForeignTable *table;
-	ForeignServer *server;
-	UserMapping *user;
+    ForeignTable *table;
+    ForeignServer *server;
+    UserMapping *user;
 
     elog(DEBUG2, "entering function %s", __func__);
 
     rte = planner_rt_fetch(baserel->relid, root);
-	userid = rte->checkAsUser ? rte->checkAsUser : GetUserId();
+    userid = rte->checkAsUser ? rte->checkAsUser : GetUserId();
 
     table = GetForeignTable(foreigntableid);
-	server = GetForeignServer(table->serverid);
-	user = GetUserMapping(userid, server->serverid);
+    server = GetForeignServer(table->serverid);
+    user = GetUserMapping(userid, server->serverid);
 
     /* get connection options, connect and get the remote table description */
     fdw_state = getFdwState(foreigntableid);
@@ -791,20 +778,20 @@ firebirdBeginForeignScan(ForeignScanState *node,
     TupleDesc tupdesc;
     int i;
 
-    EState	   *estate = node->ss.ps.state;
-	RangeTblEntry *rte;
-	Oid			userid;
-	ForeignTable *table;
-	ForeignServer *server;
-	UserMapping *user;
+    EState     *estate = node->ss.ps.state;
+    RangeTblEntry *rte;
+    Oid         userid;
+    ForeignTable *table;
+    ForeignServer *server;
+    UserMapping *user;
 
     elog(DEBUG2, "entering function %s", __func__);
 
     rte = rt_fetch(fsplan->scan.scanrelid, estate->es_range_table);
-	userid = rte->checkAsUser ? rte->checkAsUser : GetUserId();
-	table = GetForeignTable(RelationGetRelid(node->ss.ss_currentRelation));
-	server = GetForeignServer(table->serverid);
-	user = GetUserMapping(userid, server->serverid);
+    userid = rte->checkAsUser ? rte->checkAsUser : GetUserId();
+    table = GetForeignTable(RelationGetRelid(node->ss.ss_currentRelation));
+    server = GetForeignServer(table->serverid);
+    user = GetUserMapping(userid, server->serverid);
 
     /* needed for svr_query */
     firebirdGetOptions(foreigntableid,
@@ -1212,6 +1199,7 @@ firebirdIsForeignRelUpdatable(Relation rel)
     return updatable ?
         (1 << CMD_INSERT) | (1 << CMD_UPDATE) | (1 << CMD_DELETE) : 0;
 }
+
 
 #if (PG_VERSION_NUM >= 90300)
 /**
@@ -1689,7 +1677,6 @@ firebirdBeginForeignModify(ModifyTableState *mtstate,
  * RETURNING clause. However, some slot must be returned to indicate
  * success, or the query's reported rowcount will be wrong.
  */
-
 static TupleTableSlot *
 firebirdExecForeignInsert(EState *estate,
                           ResultRelInfo *resultRelInfo,
@@ -1995,7 +1982,6 @@ firebirdEndForeignModify(EState *estate,
 }
 
 
-
 /**
  * firebirdExplainForeignModify()
  *
@@ -2020,7 +2006,6 @@ firebirdExplainForeignModify(ModifyTableState *mtstate,
     elog(DEBUG2, "entering function %s", __func__);
 }
 #endif
-
 
 
 /**
@@ -2085,16 +2070,16 @@ fbAcquireSampleRowsFunc(Relation relation, int elevel,
     char **tuple_values;
     Oid relid = RelationGetRelid(relation);
 
-	ForeignTable *table;
-	ForeignServer *server;
-	UserMapping *user;
+    ForeignTable *table;
+    ForeignServer *server;
+    UserMapping *user;
 
     fdw_state = getFdwState(relid);
     fdw_state->row = 0;
 
-	table = GetForeignTable(RelationGetRelid(relation));
-	server = GetForeignServer(table->serverid);
-	user = GetUserMapping(relation->rd_rel->relowner, server->serverid);
+    table = GetForeignTable(RelationGetRelid(relation));
+    server = GetForeignServer(table->serverid);
+    user = GetUserMapping(relation->rd_rel->relowner, server->serverid);
     fdw_state->conn = firebirdInstantiateConnection(server, user);
 
     /* Prepare for sampling rows */
@@ -2282,7 +2267,6 @@ convert_prep_stmt_params(FirebirdFdwModifyState *fmstate,
 
     return p_values;
 }
-
 
 
 /**
