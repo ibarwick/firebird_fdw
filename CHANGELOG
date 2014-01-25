@@ -1,5 +1,8 @@
 Revision history for firebird_fdw
 
+0.2.2   2014-01-25
+        - Implement basic transaction support
+
 0.2.1   2014-01-23
 	- Make extension compatible with PostgreSQL 9.2
 	- Fix some regressions

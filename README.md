@@ -163,7 +163,6 @@ Limitations
 
 Many; among the more egregious:
 
-- No Firebird transaction support
 - No explicit character set/encoding support
 - No support for some Firebird datatypes (BLOB, ARRAY)
 - TIMESTAMP/TIME: currently sub-second units will be truncated on
@@ -187,3 +186,6 @@ Useful links
 * Other FDWs
  - https://wiki.postgresql.org/wiki/Fdw
  - http://pgxn.org/tag/fdw/
+
+If you appreciate PostgreSQL's psql client, why not try fbsql, a psql-style
+client for Firebird. See: https://github.com/ibarwick/fbsql for details.

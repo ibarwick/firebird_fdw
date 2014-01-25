@@ -436,25 +436,12 @@ firebirdGetForeignRelSize(PlannerInfo *root,
     server = GetForeignServer(table->serverid);
     user = GetUserMapping(userid, server->serverid);
 
-    /* get connection options, connect and get the remote table description */
     fdw_state = getFdwState(foreigntableid);
+    baserel->fdw_private = (void *) fdw_state;
+
+    /* get connection options, connect and get the remote table description */
 
     fdw_state->conn = firebirdInstantiateConnection(server, user);
-
-
-    baserel->fdw_private = (void *) fdw_state;
-    /* connect and get remote description */
-    if(FQstatus(fdw_state->conn) == CONNECTION_BAD)
-    {
-        ereport(ERROR,
-                (errcode(ERRCODE_FDW_UNABLE_TO_ESTABLISH_CONNECTION),
-                 errmsg("Unable to to connect to foreign server")
-                    ));
-        return;
-    }
-
-    elog(DEBUG2, "DB connection OK");
-
     /*
      * Identify which baserestrictinfo clauses can be sent to the remote
      * server and which can't.
@@ -466,6 +453,7 @@ firebirdGetForeignRelSize(PlannerInfo *root,
                              fdw_state->disable_pushdowns,
                              FQserverVersion(fdw_state->conn)
         );
+
 
     /*
      * Identify which attributes will need to be retrieved from the remote
@@ -500,6 +488,7 @@ firebirdGetForeignRelSize(PlannerInfo *root,
     pfree(query.data);
     elog(DEBUG1, "%s", fdw_state->query);
 
+
     res = FQexec(fdw_state->conn, fdw_state->query);
 
     if(FQresultStatus(res) != FBRES_TUPLES_OK)
@@ -524,6 +513,7 @@ firebirdGetForeignRelSize(PlannerInfo *root,
 
     baserel->rows = atof(FQgetvalue(res, 0, 0));
     baserel->tuples = baserel->rows;
+    FQclear(res);
 
     elog(DEBUG1, "%s: rows estimated at %f", __func__, baserel->rows);
 }
@@ -1701,7 +1691,7 @@ firebirdExecForeignInsert(EState *estate,
     {
         elog(DEBUG2, "Param %i: %s", i, p_values[i]);
     }
-    FQstartTransaction(fmstate->conn);
+
     result = FQexecParams(fmstate->conn,
                           fmstate->query,
                           fmstate->p_nums,
@@ -1710,7 +1700,7 @@ firebirdExecForeignInsert(EState *estate,
                           NULL,
                           NULL,
                           0);
-    FQcommitTransaction(fmstate->conn);
+
     elog(DEBUG2, " result status: %s", FQresStatus(FQresultStatus(result)));
     elog(DEBUG1, " returned rows: %i", FQntuples(result));
     switch(FQresultStatus(result))
