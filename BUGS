@@ -1,0 +1,6 @@
+BUGS
+====
+
+- During a long running operation (e.g. inserting a large number
+  of records into a foreign table), pressing CTRL-C in psql results in
+  the connection to the server being lost

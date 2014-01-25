@@ -166,6 +166,8 @@ Many; among the more egregious:
 - No explicit character set/encoding support
 - No support for some Firebird datatypes (BLOB, ARRAY)
 
+See also file "BUGS" for known issues.
+
 
 Useful links
 ------------
