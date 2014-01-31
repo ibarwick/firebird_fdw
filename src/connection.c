@@ -270,7 +270,7 @@ fb_xact_callback(XactEvent event, void *arg)
     HASH_SEQ_STATUS scan;
     ConnCacheEntry *entry;
 
-    elog(DEBUG2, "entering function %s", __func__);
+    elog(DEBUG3, "entering function %s", __func__);
 
     /* Connection has no transactions - do nothing */
     if (!xact_got_connection)
@@ -284,13 +284,13 @@ fb_xact_callback(XactEvent event, void *arg)
     {
         FQresult   *res;
 
-        elog(DEBUG2, "closing remote transaction on connection %p",
+        elog(DEBUG3, "closing remote transaction on connection %p",
              entry->conn);
 
         /* We only care about connections with open remote transactions */
         if (entry->conn == NULL || entry->xact_depth == 0)
         {
-            elog(DEBUG2, "%s(): no connection or no open transaction",
+            elog(DEBUG3, "%s(): no connection or no open transaction",
                  __func__);
             continue;
         }
@@ -298,7 +298,7 @@ fb_xact_callback(XactEvent event, void *arg)
         /* This shouldn't happen, but log just in case */
         if(!FQisActiveTransaction(entry->conn))
         {
-            elog(DEBUG2, "%s(): no active transaction",
+            elog(DEBUG3, "%s(): no active transaction",
                  __func__);
             continue;
         }
@@ -352,7 +352,7 @@ fb_subxact_callback(SubXactEvent event,
     ConnCacheEntry *entry;
     int         curlevel;
 
-    elog(DEBUG2, "entering function %s", __func__);
+    elog(DEBUG3, "entering function %s", __func__);
 
     /* Nothing to do at subxact start, nor after commit. */
     if (!(event == SUBXACT_EVENT_PRE_COMMIT_SUB ||
