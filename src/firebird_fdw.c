@@ -1730,6 +1730,8 @@ firebirdExecForeignInsert(EState *estate,
     if(result)
         FQclear(result);
 
+    MemoryContextReset(fmstate->temp_cxt);
+
     return slot;
 }
 
@@ -1839,6 +1841,8 @@ firebirdExecForeignUpdate(EState *estate,
     if(result)
         FQclear(result);
 
+    MemoryContextReset(fmstate->temp_cxt);
+
     return slot;
 }
 
@@ -1946,6 +1950,8 @@ firebirdExecForeignDelete(EState *estate,
 
     if(result)
         FQclear(result);
+
+    MemoryContextReset(fmstate->temp_cxt);
 
     return slot;
 }
