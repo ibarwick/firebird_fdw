@@ -146,7 +146,7 @@ firebird_fdw_validator(PG_FUNCTION_ARGS)
             if (svr_table)
                 ereport(ERROR,
                     (errcode(ERRCODE_SYNTAX_ERROR),
-                    errmsg("conflicting options: query cannot be used with table")
+                    errmsg("conflicting options: 'query' cannot be used with 'table_name'")
                     ));
 
             if (svr_query)
@@ -228,12 +228,10 @@ firebirdGetOptions(Oid foreigntableid, char **query, char **table, bool *disable
             *disable_pushdowns = defGetBoolean(def);
     }
 
-    /* Check we have the options we need to proceed */
+    /* If no query and no table name specified, default to PostgreSQL
+     * table name */
     if (!*table && !*query)
-        ereport(ERROR,
-            (errcode(ERRCODE_SYNTAX_ERROR),
-            errmsg("either a table or a query must be specified")
-                ));
+        *table = get_rel_name(foreigntableid);
 }
 
 
