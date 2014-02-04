@@ -3,7 +3,7 @@ Firebird Foreign Data Wrapper for PostgreSQL
 
 This is an experimental foreign data wrapper (FDW) to connect PostgreSQL
 to Firebird. It provides basic functionality, including both read (SELECT)
-and write (INSERT/UPDATE/DELETE) support.However it is still very much
+and write (INSERT/UPDATE/DELETE) support. However it is still very much
 work-in-progress; USE AT YOUR OWN RISK.
 
 firebird_fdw will work with PostgreSQL 9.2 or later (it was developed
@@ -81,8 +81,8 @@ firebird_fdw accepts the following options:
         table-level settings override server-level settings.
 
     'disable_pushdowns':
-        Turns off pushdowns of WHERE clause elements to Firebird. Increases
-        stability at the expense of speed.
+        Turns off pushdowns of WHERE clause elements to Firebird. Useful
+        mainly for debugging and benchmarking.
 
 Note that while PostgreSQL allows a foreign table to be defined without
 any columns, firebird_fdw  will raise an error as soon as any operations

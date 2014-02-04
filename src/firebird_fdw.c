@@ -2469,7 +2469,7 @@ fbFormatMsg(char *msg, ...)
     va_list argp;
     char *buffer = palloc(2048 + FB_FDW_LOGPREFIX_LEN);
 
-    sprintf(buffer, "%s", FB_FDW_LOGPREFIX);
+    snprintf(buffer, FB_FDW_LOGPREFIX_LEN, "%s", FB_FDW_LOGPREFIX);
 
     va_start(argp, msg);
     vsnprintf(buffer + FB_FDW_LOGPREFIX_LEN, 2048 + FB_FDW_LOGPREFIX_LEN, msg, argp);
