@@ -1,5 +1,8 @@
 Revision history for firebird_fdw
 
+0.2.4   2014-02-03
+        - libfq now supports a "client_encoding" 
+
 0.2.3   2014-02-02
 	- Default to PostgreSQL table name if no 'table_name' option
 	  explicitly provided

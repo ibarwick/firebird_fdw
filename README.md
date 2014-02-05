@@ -161,10 +161,8 @@ Features
 Limitations
 -----------
 
-Many; among the more egregious:
-
-- No explicit character set/encoding support
 - No support for some Firebird datatypes (BLOB, ARRAY)
+- Firebird error messages are not very pretty
 
 See also file "BUGS" for known issues.
 

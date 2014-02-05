@@ -58,12 +58,35 @@ static FQconn *
 firebirdGetConnection(char *dbpath, char *svr_username, char *svr_password)
 {
     FQconn *volatile conn;
+    const char *kw[5];
+    const char *val[5];
+    int i = 0;
 
-    conn = FQconnect(
-        dbpath,
-        svr_username,
-        svr_password
-        );
+    kw[i] = "db_path";
+    val[i] = dbpath;
+    i++;
+
+    kw[i] = "user";
+    val[i] = svr_username;
+    i++;
+
+    kw[i] = "password";
+    val[i] = svr_password;
+    i++;
+
+    /* XXX I am taking a calculated risk and passing the PostgreSQL
+     * encoding name directly to Firebird. Firebird seems to be pretty
+     * good at parsing encoding names but I can't rule out errors
+     * with more obscure encoding combinations.
+     */
+    kw[i] = "client_encoding";
+    val[i] = GetDatabaseEncodingName();
+    i++;
+
+    kw[i] = NULL;
+    val[i] = NULL;
+
+    conn = FQconnectdbParams(kw, val);
 
     if(FQstatus(conn) != CONNECTION_OK)
         ereport(ERROR,
