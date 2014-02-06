@@ -1,10 +1,12 @@
 Revision history for firebird_fdw
 
-0.2.4   2014-02-03
+0.2.4   2014-02-06
         - libfq now supports a "client_encoding" connection parameter,
           which enables us to cover most reasonably common encoding
           combinations by passing the value provided by
-          GetDatabaseEncodingName()
+          GetDatabaseEncodingName() to Firebird. See caveat in code
+	  regarding compatibility between PostgreSQL and Firebird encoding
+	  names.
 
 0.2.3   2014-02-02
 	- Default to PostgreSQL table name if no 'table_name' option

@@ -162,7 +162,7 @@ Limitations
 -----------
 
 - No support for some Firebird datatypes (BLOB, ARRAY)
-- Firebird error messages are not very pretty
+- Display of messages returned by Firebird is not very pretty
 
 See also file "BUGS" for known issues.
 
