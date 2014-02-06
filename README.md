@@ -174,7 +174,7 @@ Useful links
  - https://github.com/ibarwick/firebird_fdw (public mirror)
  - http://pgxn.org/dist/firebird_fdw/
 
-* Documentation
+* General FDW Documentation
  - http://www.postgresql.org/docs/current/interactive/ddl-foreign-data.html
  - http://www.postgresql.org/docs/current/interactive/sql-createforeigndatawrapper.html
  - http://www.postgresql.org/docs/current/interactive/sql-createforeigntable.html
