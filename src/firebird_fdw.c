@@ -408,8 +408,6 @@ firebirdEstimateCosts(PlannerInfo *root, RelOptInfo *baserel, Oid foreigntableid
  * just a constant default estimate, which should be replaced if at all
  * possible. The function may also choose to update baserel->width if it
  * can compute a better estimate of the average result row width.
- *
- * XXX here: validate column data types?
  */
 static void
 firebirdGetForeignRelSize(PlannerInfo *root,
