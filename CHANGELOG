@@ -1,59 +1,62 @@
 Revision history for firebird_fdw
 
+0.2.5   2014-02-11
+        - Add RPM spec files for openSUSE and Red Hat
+
 0.2.4   2014-02-06
         - libfq now supports a "client_encoding" connection parameter,
           which enables us to cover most reasonably common encoding
           combinations by passing the value provided by
           GetDatabaseEncodingName() to Firebird. See caveat in code
-	  regarding compatibility between PostgreSQL and Firebird encoding
-	  names.
+          regarding compatibility between PostgreSQL and Firebird encoding
+          names.
 
 0.2.3   2014-02-02
-	- Default to PostgreSQL table name if no 'table_name' option
-	  explicitly provided
+        - Default to PostgreSQL table name if no 'table_name' option
+          explicitly provided
 
 0.2.2   2014-01-25
         - Implement basic transaction support
 
 0.2.1   2014-01-23
-	- Make extension compatible with PostgreSQL 9.2
-	- Fix some regressions
+        - Make extension compatible with PostgreSQL 9.2
+        - Fix some regressions
 
 0.2.0   2014-01-23
         - Implement basic connection caching
         - Fix implicit cast handling
 
 0.1.6   2014-01-21
-	- Push down bitwise operators << and >> (FB 2.1 and later)
-	- Push down two-argument form of SUBSTRING()
-	- Push down CONCAT()
-	- Push down POSITION() / STRPOS()
-	- Don't check for mutable functions - we are explicitly
-	  whitelisting functions which can be pushed down
-	  (need to double-check if that's a valid approach)
+        - Push down bitwise operators << and >> (FB 2.1 and later)
+        - Push down two-argument form of SUBSTRING()
+        - Push down CONCAT()
+        - Push down POSITION() / STRPOS()
+        - Don't check for mutable functions - we are explicitly
+          whitelisting functions which can be pushed down
+          (need to double-check if that's a valid approach)
 
 0.1.5   2014-01-20
-	- Add basic Firebird version detection to ensure that only
-	  functions available on the remote Firebird server are actually
-	  pushed down
-	- Push down functions COALESCE(), NULLIF()
-	- Only push down SUBSTRING() if 2nd and 3rd arguments are INTs
+        - Add basic Firebird version detection to ensure that only
+          functions available on the remote Firebird server are actually
+          pushed down
+        - Push down functions COALESCE(), NULLIF()
+        - Only push down SUBSTRING() if 2nd and 3rd arguments are INTs
 
 0.1.4   2014-01-13
-	- Prevent implicit casts from being pushed down to Firebird
+        - Prevent implicit casts from being pushed down to Firebird
 
 0.1.3   2014-01-13
-	- Partial pushdown of functions in WHERE clauses to Firebird
-	- Ensure parameter "disable_pushdowns" is treated as a boolean
-	- Add CREATE FOREIGN SERVER/CREATE FOREIGN TABLE parameter
-	  "updatable", matching the postgres_fdw parameter
+        - Partial pushdown of functions in WHERE clauses to Firebird
+        - Ensure parameter "disable_pushdowns" is treated as a boolean
+        - Add CREATE FOREIGN SERVER/CREATE FOREIGN TABLE parameter
+          "updatable", matching the postgres_fdw parameter
 
 0.1.2   2014-01-11
-	- Partial pushdown of WHERE clauses to Firebird
-	- new CREATE FOREIGN SERVER parameter "disable_pushdowns"
-	- CREATE FOREIGN TABLE parameter "table" renamed to "table_name"
-	  (matching the postgres_fdw parameter and for consistency with the
-	  column option "column_name")
+        - Partial pushdown of WHERE clauses to Firebird
+        - new CREATE FOREIGN SERVER parameter "disable_pushdowns"
+        - CREATE FOREIGN TABLE parameter "table" renamed to "table_name"
+          (matching the postgres_fdw parameter and for consistency with the
+          column option "column_name")
 
 0.1.1   2014-01-01
         - Add support for column aliases (column option "column_name")

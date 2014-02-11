@@ -43,6 +43,8 @@ pg_config binary for the target installation to be in the shell path.
 
 The usual 'make && make install' should take care of the actual compilation.
 
+I am currently creating RPM packages for firebird_fdw and libfq and hope
+to make these available in the next few days for openSUSE and Red Hat.
 
 Usage
 -----
