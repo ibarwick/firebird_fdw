@@ -773,6 +773,8 @@ firebirdBeginForeignScan(ForeignScanState *node,
     ForeignServer *server;
     UserMapping *user;
 
+    ListCell *lc;
+
     elog(DEBUG2, "entering function %s", __func__);
 
     rte = rt_fetch(fsplan->scan.scanrelid, estate->es_range_table);
@@ -856,34 +858,32 @@ firebirdBeginForeignScan(ForeignScanState *node,
     }
 
     /* Construct query */
+
     if (svr_query)
     {
         fdw_state->query = svr_query;
         fdw_state->db_key_used = false;
     }
-    else
-    {
-        ListCell *lc;
-
+    else {
         fdw_state->query = strVal(list_nth(fsplan->fdw_private,
                                            FdwScanPrivateSelectSql));
 
-        fdw_state->retrieved_attrs = (List *) list_nth(fsplan->fdw_private,
-                                             FdwScanPrivateRetrievedAttrs);
-
         fdw_state->db_key_used = (bool)intVal(list_nth(fsplan->fdw_private,
                                                        FdwScanDbKeyUsed));
+    }
 
-        /* Mark columns used in the query */
-        foreach(lc, fdw_state->retrieved_attrs)
-        {
-            int attnum = lfirst_int(lc);
+    fdw_state->retrieved_attrs = (List *) list_nth(fsplan->fdw_private,
+                                                   FdwScanPrivateRetrievedAttrs);
 
-            if(attnum < 0)
-                continue;
-            elog(DEBUG2, "attnum %i used", attnum);
-            fdw_state->table->columns[attnum - 1]->used = true;
-        }
+    /* Mark columns used in the query */
+    foreach(lc, fdw_state->retrieved_attrs)
+    {
+        int attnum = lfirst_int(lc);
+
+        if(attnum < 0)
+            continue;
+        elog(DEBUG2, "attnum %i used", attnum);
+        fdw_state->table->columns[attnum - 1]->used = true;
     }
 
     elog(DEBUG2, "leaving function %s", __func__);
@@ -998,10 +998,7 @@ firebirdIterateForeignScan(ForeignScanState *node)
         if(fdw_state->table->columns[pg_field_nr]->used == false)
         {
             elog(DEBUG2, " pg_column %i not used", pg_field_nr);
-            if(pg_field_nr == 0)
-                values[pg_field_nr] = "1";
-            else
-                values[pg_field_nr] = NULL;
+            values[pg_field_nr] = NULL;
             continue;
         }
 
