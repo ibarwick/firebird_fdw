@@ -1701,7 +1701,8 @@ firebirdExecForeignInsert(EState *estate,
     elog(DEBUG1, "Executing: %s", fmstate->query);
     for(i = 0; i < fmstate->p_nums; i++)
     {
-        elog(DEBUG2, "Param %i: %s", i, p_values[i]);
+        if(p_values[i] != NULL)
+            elog(DEBUG2, "Param %i: %s", i, p_values[i]);
     }
 
     result = FQexecParams(fmstate->conn,
