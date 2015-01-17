@@ -188,6 +188,11 @@ static void firebirdExplainForeignModify(ModifyTableState *mtstate,
                               struct ExplainState *es);
 #endif
 
+#if (PG_VERSION_NUM >= 90500)
+static List *firebirdImportForeignSchema(ImportForeignSchemaStmt *stmt,
+                                         Oid serverOid);
+#endif
+
 /* Internal functions */
 
 static void exitHook(int code, Datum arg);
@@ -233,6 +238,8 @@ extractDbKeyParts(TupleTableSlot *planSlot,
                   Datum *datum_ctid,
                   Datum *datum_oid);
 
+
+
 static char *
 fbFormatMsg(char *msg, ...)
 __attribute__((format(__printf__, 1, 2)));
@@ -263,6 +270,11 @@ firebird_fdw_handler(PG_FUNCTION_ARGS)
     fdwroutine->ReScanForeignScan = firebirdReScanForeignScan;
     fdwroutine->EndForeignScan = firebirdEndForeignScan;
 
+#if (PG_VERSION_NUM >= 90200)
+    /* support for ANALYZE */
+    fdwroutine->AnalyzeForeignTable = firebirdAnalyzeForeignTable;
+#endif
+
 #if (PG_VERSION_NUM >= 90300)
     /* support for insert / update / delete */
     fdwroutine->IsForeignRelUpdatable = firebirdIsForeignRelUpdatable;
@@ -276,9 +288,9 @@ firebird_fdw_handler(PG_FUNCTION_ARGS)
     fdwroutine->ExplainForeignModify = firebirdExplainForeignModify;
 #endif
 
-#if (PG_VERSION_NUM >= 90200)
-    /* support for ANALYZE */
-    fdwroutine->AnalyzeForeignTable = firebirdAnalyzeForeignTable;
+#if (PG_VERSION_NUM >= 90500)
+    /* support for IMPORT FOREIGN SCHEMA */
+    fdwroutine->ImportForeignSchema = firebirdImportForeignSchema;
 #endif
 
     PG_RETURN_POINTER(fdwroutine);
@@ -2154,6 +2166,95 @@ fbAcquireSampleRowsFunc(Relation relation, int elevel,
     *totaldeadrows = 0;
 
     return collected_rows;
+}
+
+
+/**
+ * firebirdImportForeignSchema()
+ *
+ * Generate table definitions for import into PostgreSQL
+ *
+ * TODO:
+ *  - preserve quoted names
+ *  - verify data types
+ *  - verify object names (FB is generally somewhat stricter than Pg,
+ *    so range of names valid in FB but not in Pg should be fairly small)
+ *  - warn about comments
+ *  - move code to convert.c
+ */
+List *firebirdImportForeignSchema(ImportForeignSchemaStmt *stmt,
+                                  Oid serverOid)
+{
+    ForeignServer *server;
+    UserMapping *user;
+    FQconn     *conn;
+    FQresult *res;
+    int row;
+    StringInfoData table_query;
+
+    List *firebirdTables = NIL;
+
+    server = GetForeignServer(serverOid);
+    user = GetUserMapping(GetUserId(), server->serverid);
+    conn = firebirdInstantiateConnection(server, user);
+
+    /* Query to list all non-system tables */
+    initStringInfo(&table_query);
+    appendStringInfo(&table_query,
+"   SELECT TRIM(LOWER(rdb$relation_name)) AS table_name \n"
+"     FROM rdb$relations  \n"
+"    WHERE rdb$view_blr IS NULL \n"
+"      AND rdb$system_flag = 0 \n"
+" ORDER BY 1"
+        );
+
+    /* Loop through tables */
+    res = FQexec(conn, table_query.data);
+
+    if(FQresultStatus(res) != FBRES_TUPLES_OK)
+    {
+        FQclear(res);
+        ereport(ERROR,
+                (errcode(ERRCODE_FDW_ERROR),
+                 errmsg("Unable to execute metadata query on %s", server->servername)
+                    ));
+        return 0;
+    }
+
+    elog(DEBUG1, "%s: %i", server->servername, FQntuples(res));
+
+    for(row = 0; row < FQntuples(res); row++)
+    {
+        char *table_name;
+        char *column_query;
+        FQresult *colres;
+
+        char *foreign_table_definition;
+
+        table_name = FQgetvalue(res, row, 0);
+
+        /* List all columns for the table */
+        column_query = _dataTypeSQL(table_name);
+        colres = FQexec(conn, column_query);
+
+        if(FQresultStatus(colres) != FBRES_TUPLES_OK)
+        {
+            FQclear(res);
+            FQclear(colres);
+            ereport(ERROR,
+                    (errcode(ERRCODE_FDW_ERROR),
+                     errmsg("Unable to execute metadata query on %s", server->servername)
+                    ));
+            return 0;
+        }
+
+        foreign_table_definition = convertFirebirdTable(server->servername, table_name, colres);
+
+        firebirdTables = lappend(firebirdTables, foreign_table_definition);
+    }
+
+    FQclear(res);
+    return firebirdTables;
 }
 
 

@@ -2,6 +2,7 @@ Revision history for firebird_fdw
 
 0.2.6   2014-??-??
 	- Ensure tables defined with the 'query' option actually work
+	- Add support for IMPORT FOREIGN SCHEMA (PostgreSQL 9.5 and later)
 
 0.2.5   2014-02-11
         - Add RPM spec files for openSUSE and Red Hat

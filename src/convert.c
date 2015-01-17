@@ -5,8 +5,11 @@
  * Helper functions to:
  *   - examine WHERE clauses for expressions which can be sent to Firebird
  *     for execution;
- *   - for these generate Firebird SQL queries from the PostgreSQL
- *     parse tree
+ *   - for these expressions, generate Firebird SQL queries from the
+ *     PostgreSQL parse tree
+ *   - convert Firebird table definitions to PostgreSQL foreign table
+ *     definitions to support IMPORT FOREIGN SCHEMA (PostgreSQL 9.5 and
+ *     later)
  *
  *-------------------------------------------------------------------------
  */
@@ -265,10 +268,14 @@ buildDeleteSql(StringInfo buf, PlannerInfo *root,
     appendStringInfoString(buf, " WHERE rdb$db_key = ?");
 
     if (returningList)
+    {
         convertReturningList(buf, root, rtindex, rel, returningList,
                              retrieved_attrs);
+    }
     else
+    {
         *retrieved_attrs = NIL;
+    }
 }
 
 
@@ -327,6 +334,73 @@ buildWhereClause(StringInfo output,
     }
 }
 
+
+#if (PG_VERSION_NUM >= 90500)
+/**
+ * convertFirebirdTable()
+ *
+ * Convert table to PostgreSQL format to implement IMPORT FOREIGN SCHEMA
+ */
+char *
+convertFirebirdTable(char *server_name, char *table_name, FQresult *colres)
+{
+    int colnr, coltotal;
+
+    StringInfoData create_table;
+
+    initStringInfo(&create_table);
+    appendStringInfo(&create_table,
+"CREATE FOREIGN TABLE %s (\n",
+                     table_name
+        );
+
+    coltotal = FQntuples(colres);
+    for(colnr = 0; colnr < coltotal; colnr++)
+    {
+        char *datatype;
+        char *default_value;
+
+        /* Column name and datatype */
+        datatype = FQgetvalue(colres, colnr, 2);
+        appendStringInfo(&create_table,
+                         "  %s %s",
+                         FQgetvalue(colres, colnr, 0),
+                         datatype
+            );
+
+        /* Default value */
+        default_value = FQgetvalue(colres, colnr, 3);
+        if(strlen(default_value))
+        {
+            appendStringInfo(&create_table, " %s", default_value);
+        }
+
+        /* NOT NULL */
+        if(FQgetvalue(colres, colnr, 4) != NULL)
+        {
+            appendStringInfo(&create_table, " NOT NULL");
+        }
+
+        if(colnr < (coltotal -1))
+        {
+            appendStringInfo(&create_table, ",\n");
+        }
+        else
+        {
+            appendStringInfo(&create_table, "\n");
+        }
+    }
+
+    appendStringInfo(&create_table,
+") SERVER %s",
+                     server_name
+        );
+
+    elog(DEBUG1, "%s", create_table.data);
+
+    return create_table.data;
+}
+#endif
 
 /**
  * convertDatum()
@@ -1906,3 +1980,71 @@ getFirebirdColumnName(Oid foreigntableid, int varattno)
 
     return colname;
 }
+
+#if (PG_VERSION_NUM >= 90500)
+/**
+ * _dataTypeSQL()
+ *
+ * Generate query to get column metadata for a table
+ */
+char *
+_dataTypeSQL(char *table_name)
+{
+    StringInfoData data_type_sql;
+
+    initStringInfo(&data_type_sql);
+    appendStringInfo(&data_type_sql,
+"   SELECT TRIM(LOWER(rf.rdb$field_name)) AS column_name,\n"
+"          f.rdb$field_type, \n"
+"          CASE f.rdb$field_type\n"
+"            WHEN 261 THEN \n"
+"              CASE f.rdb$field_sub_type \n"
+"                WHEN 1 THEN 'TEXT' \n"
+"                ELSE 'BYTEA' \n"
+"              END \n"
+"            WHEN 14  THEN 'CHAR(' || f.rdb$field_length|| ')'\n"
+"            WHEN 40  THEN 'CSTRING'\n"
+"            WHEN 11  THEN 'D_FLOAT'\n"
+"            WHEN 27  THEN 'DOUBLE'\n"
+"            WHEN 10  THEN 'FLOAT'\n"
+"            WHEN 16  THEN \n"
+"              CASE f.rdb$field_sub_type \n"
+"                WHEN 1 THEN 'NUMERIC(' || f.rdb$field_precision || ',' || (-f.rdb$field_scale) || ')' \n"
+"                WHEN 2 THEN 'DECIMAL(' || f.rdb$field_precision || ',' || (-f.rdb$field_scale) || ')' \n"
+"                ELSE 'BIGINT' \n"
+"              END \n"
+"            WHEN 8   THEN \n"
+"              CASE f.rdb$field_sub_type \n"
+"                WHEN 1 THEN 'NUMERIC(' || f.rdb$field_precision || ',' || (-f.rdb$field_scale) || ')' \n"
+"                WHEN 2 THEN 'DECIMAL(' || f.rdb$field_precision || ',' || (-f.rdb$field_scale) || ')' \n"
+"                ELSE 'INTEGER' \n"
+"              END \n"
+"            WHEN 9   THEN 'QUAD'\n"
+"            WHEN 7   THEN \n"
+"              CASE f.rdb$field_sub_type \n"
+"                WHEN 1 THEN 'NUMERIC(' || f.rdb$field_precision || ',' || (-f.rdb$field_scale) || ')' \n"
+"                WHEN 2 THEN 'DECIMAL(' || f.rdb$field_precision || ',' || (-f.rdb$field_scale) || ')' \n"
+"                ELSE 'SMALLINT' \n"
+"              END \n"
+"            WHEN 12  THEN 'DATE'\n"
+"            WHEN 13  THEN 'TIME'\n"
+"            WHEN 35  THEN 'TIMESTAMP'\n"
+"            WHEN 37  THEN 'VARCHAR(' || f.rdb$field_length|| ')'\n"
+"            ELSE 'UNKNOWN'\n"
+"          END AS data_type,\n"
+"         COALESCE(CAST(rf.rdb$default_source AS VARCHAR(80)), '') \n"
+"           AS \"Default value\", \n"
+"         rf.rdb$null_flag AS null_flag, \n"
+"         COALESCE(CAST(rf.rdb$description AS VARCHAR(80)), '') \n"
+"           AS \"Description\" \n"
+"      FROM rdb$relation_fields rf \n"
+" LEFT JOIN rdb$fields f \n"
+"        ON rf.rdb$field_source = f.rdb$field_name\n"
+"     WHERE TRIM(LOWER(rf.rdb$relation_name)) = LOWER('%s')\n"
+"  ORDER BY rf.rdb$field_position\n",
+                     table_name
+        );
+
+    return data_type_sql.data;
+}
+#endif

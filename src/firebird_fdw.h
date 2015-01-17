@@ -202,4 +202,12 @@ isFirebirdExpr(PlannerInfo *root,
 
 extern char *
 getFirebirdColumnName(Oid foreigntableid, int varattno);
+
+#if (PG_VERSION_NUM >= 90500)
+extern char *
+convertFirebirdTable(char *server_name, char *table_name, FQresult *colres);
+extern char *
+_dataTypeSQL(char *table_name);
+#endif
+
 #endif   /* FIREBIRD_FDW_H */
