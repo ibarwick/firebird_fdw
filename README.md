@@ -152,13 +152,13 @@ Create a foreign table as a Firebird query:
 Features
 --------
 
-- UPDATE and DELETE statements use Firebird's row identifier RDB$DB_KEY
+- `UPDATE` and `DELETE` statements use Firebird's row identifier `RDB$DB_KEY`
   to operate on arbitrary rows
-- ANALYZE support
-- pushdown of some WHERE clause conditions to Firebird (including translation
+- `ANALYZE` support
+- pushdown of some `WHERE` clause conditions to Firebird (including translation
   of built-in functions)
 - Connection caching
-- Supports IMPORT FOREIGN SCHEMA (PostgreSQL 9.5 and later)
+- Supports `IMPORT FOREIGN SCHEMA` (PostgreSQL 9.5 and later)
 
 
 Limitations
@@ -183,6 +183,7 @@ Useful links
  - http://www.postgresql.org/docs/current/interactive/sql-createforeigntable.html
  - http://www.postgresql.org/docs/current/interactive/fdwhandler.html
  - http://www.postgresql.org/docs/current/interactive/postgres-fdw.html
+ - http://www.postgresql.org/docs/devel/static/sql-importforeignschema.html
 
 * Other FDWs
  - https://wiki.postgresql.org/wiki/Fdw
