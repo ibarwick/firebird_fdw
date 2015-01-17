@@ -6,19 +6,19 @@ to Firebird. It provides basic functionality, including both read (SELECT)
 and write (INSERT/UPDATE/DELETE) support. However it is still very much
 work-in-progress; USE AT YOUR OWN RISK.
 
-firebird_fdw will work with PostgreSQL 9.2 or later (it was developed
+`firebird_fdw` will work with PostgreSQL 9.2 or later (it was developed
 against the current development version). Write support is only available
 in PostgreSQL 9.3 and later.
 
 It was written for Firebird 2.5 and will probably work with Firebird 2.0 or
-later. It should work with earlier versions if the 'disable_pushdowns' option
+later. It should work with earlier versions if the `disable_pushdowns` option
 is set (see below).
 
 
 Supported platforms
 -------------------
 
-firebird_fdw was developed on Linux and OS X, and should run on any
+`firebird_fdw` was developed on Linux and OS X, and should run on any
 reasonably POSIX-compliant system.
 
 
@@ -27,8 +27,8 @@ Installation
 
 Prerequisites:
 
-- Firebird client library (libfbclient) and API header file (ibase.h)
-- libfq, a slightly saner API wrapper for the Firebird C API; see:
+- Firebird client library (`libfbclient`) and API header file (`ibase.h`)
+- `libfq`, a slightly saner API wrapper for the Firebird C API; see:
   https://github.com/ibarwick/libfq
 
 The Firebird include/library files often end up in non-standard locations;
@@ -38,20 +38,20 @@ For OS X they would look something like this:
     export PG_CPPFLAGS="-I /Library/Frameworks/Firebird.framework/Versions/A/Headers/"
     export SHLIB_LINK="-L/Library/Frameworks/Firebird.framework/Versions/A/Libraries/"
 
-firebird_fdw is installed as a PostgreSQL extension; it requires the
+`firebird_fdw` is installed as a PostgreSQL extension; it requires the
 pg_config binary for the target installation to be in the shell path.
 
-The usual 'make && make install' should take care of the actual compilation.
+The usual `make && make install` should take care of the actual compilation.
 
-I am currently creating RPM packages for firebird_fdw and libfq and hope
-to make these available in the next few days for openSUSE and Red Hat.
+I am currently creating RPM packages for `firebird_fdw` and `libfq`and hope
+to make these available for openSUSE and Red Hat.
 
 Usage
 -----
 
 **NOTE: these options are provisional and may change**
 
-firebird_fdw accepts the following options:
+`firebird_fdw` accepts the following options:
 
     'address':
         The Firebird server's address (default: localhost)
@@ -87,7 +87,7 @@ firebird_fdw accepts the following options:
         mainly for debugging and benchmarking.
 
 Note that while PostgreSQL allows a foreign table to be defined without
-any columns, firebird_fdw  will raise an error as soon as any operations
+any columns, `firebird_fdw`  will raise an error as soon as any operations
 are carried out on it.
 
 
@@ -115,7 +115,7 @@ Create an appropriate user mapping:
     CREATE USER MAPPING FOR CURRENT_USER SERVER firebird_server
       OPTIONS(username 'sysdba', password 'masterke');
 
-Create a foreign table referencing the Firebird table_name 'fdw_test':
+Create a foreign table referencing the Firebird table `fdw_test`:
 
     CREATE FOREIGN TABLE fb_test(
       id SMALLINT,
@@ -158,12 +158,13 @@ Features
 - pushdown of some WHERE clause conditions to Firebird (including translation
   of built-in functions)
 - Connection caching
+- Supports IMPORT FOREIGN SCHEMA (PostgreSQL 9.5 and later)
 
 
 Limitations
 -----------
 
-- No support for some Firebird datatypes (BLOB, ARRAY)
+- No support for some Firebird datatypes (`BLOB`, `ARRAY`)
 - Display of messages returned by Firebird is not very pretty
 
 See also file "BUGS" for known issues.
@@ -187,5 +188,5 @@ Useful links
  - https://wiki.postgresql.org/wiki/Fdw
  - http://pgxn.org/tag/fdw/
 
-If you appreciate PostgreSQL's psql client, why not try fbsql, a psql-style
+If you appreciate PostgreSQL's `psql` client, why not try `fbsql`, a `psql`-style
 client for Firebird? See: https://github.com/ibarwick/fbsql for details.
