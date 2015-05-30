@@ -354,6 +354,14 @@ fb_xact_callback(XactEvent event, void *arg)
                     elog(DEBUG1, "ROLLBACK failed %i", FQresultStatus(res));
                 }
                 FQclear(res);
+#if (PG_VERSION_NUM >= 90500)
+            case XACT_EVENT_PARALLEL_COMMIT:
+            case XACT_EVENT_PARALLEL_ABORT:
+            case XACT_EVENT_PARALLEL_PRE_COMMIT:
+                /* XXX Handle these */
+                elog(WARNING, "Unhandled XACT_EVENT_PARALLEL_* event");
+                break;
+#endif
         }
 
         /* Reset state to show we're out of a transaction */

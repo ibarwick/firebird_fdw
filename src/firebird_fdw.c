@@ -688,11 +688,20 @@ firebirdGetForeignPlan(PlannerInfo *root,
         );
 
     /* Create the ForeignScan node */
+#if (PG_VERSION_NUM >= 90500)
+    return make_foreignscan(tlist,
+                            local_exprs,
+                            scan_relid,
+                            NIL,    /* no expressions to evaluate */
+                            fdw_private,
+							NIL /* no custom tlist */ );
+#else
     return make_foreignscan(tlist,
                             local_exprs,
                             scan_relid,
                             NIL,    /* no expressions to evaluate */
                             fdw_private);
+#endif
 }
 
 
@@ -1392,8 +1401,13 @@ firebirdPlanForeignModify(PlannerInfo *root,
         }
     }
     else if (operation == CMD_UPDATE)
+
     {
+#if (PG_VERSION_NUM >= 90500)
+        Bitmapset  *tmpset = bms_copy(rte->updatedCols);
+#else
         Bitmapset  *tmpset = bms_copy(rte->modifiedCols);
+#endif
         AttrNumber  col;
 
         elog(DEBUG2, " * operation is UPDATE");
@@ -2175,6 +2189,7 @@ fbAcquireSampleRowsFunc(Relation relation, int elevel,
 }
 
 
+#if (PG_VERSION_NUM >= 90500)
 /**
  * firebirdImportForeignSchema()
  *
@@ -2262,6 +2277,7 @@ List *firebirdImportForeignSchema(ImportForeignSchemaStmt *stmt,
     FQclear(res);
     return firebirdTables;
 }
+#endif
 
 
 /**

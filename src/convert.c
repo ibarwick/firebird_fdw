@@ -1021,7 +1021,11 @@ convertScalarArrayOpExpr(ScalarArrayOpExpr *node, convert_expr_cxt *context, cha
     leftargtype = ((Form_pg_operator)GETSTRUCT(tuple))->oprleft;
     ReleaseSysCache(tuple);
     /* loop through the array elements */
+#if (PG_VERSION_NUM >= 90500)
+    iterator = array_create_iterator(DatumGetArrayTypeP(constant->constvalue), 0, NULL);
+#else
     iterator = array_create_iterator(DatumGetArrayTypeP(constant->constvalue), 0);
+#endif
     first_arg = true;
     while (array_iterate(iterator, &datum, &isNull))
     {
