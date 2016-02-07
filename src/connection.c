@@ -29,6 +29,9 @@ typedef struct ConnCacheEntry
     int         xact_depth;     /* 0 = no xact open, 1 = main xact open, 2 =
                                  * one level of subxact open, etc */
     bool        have_error;     /* have any subxacts aborted in this xact? */
+    char *dbpath;
+    char *svr_username;
+    char *svr_password;
 } ConnCacheEntry;
 
 /*
@@ -39,6 +42,8 @@ static HTAB *ConnectionHash = NULL;
 /* tracks whether any work is needed in callback functions */
 static bool xact_got_connection = false;
 
+
+static void firebirdReconnect(ConnCacheEntry *entry);
 
 static char *firebirdDbPath(char **address, char **database, int *port);
 static FQconn *firebirdGetConnection(char *dbpath, char *svr_username, char *svr_password);
@@ -151,6 +156,9 @@ firebirdInstantiateConnection(ForeignServer *server, UserMapping *user)
         entry->conn = NULL;
         entry->xact_depth = 0;
         entry->have_error = false;
+        entry->dbpath = NULL;
+        entry->svr_username = NULL;
+        entry->svr_password = NULL;
     }
 
     if (entry->conn == NULL)
@@ -189,7 +197,11 @@ firebirdInstantiateConnection(ForeignServer *server, UserMapping *user)
         }
 
         dbpath = firebirdDbPath(&svr_address, &svr_database, &svr_port);
-
+	
+	entry->dbpath = strdup(dbpath);
+	entry->svr_username = strdup(svr_username);
+	entry->svr_password = strdup(svr_password);
+		
         entry->conn = firebirdGetConnection(
             dbpath,
             svr_username,
@@ -211,7 +223,18 @@ firebirdInstantiateConnection(ForeignServer *server, UserMapping *user)
     return entry->conn;
 }
 
-
+static void
+firebirdReconnect(ConnCacheEntry *entry)
+{
+	FQfinish(entry->conn);
+        entry->conn = firebirdGetConnection(
+            entry->dbpath,
+            entry->svr_username,
+            entry->svr_password
+        );
+        elog(DEBUG2, "%s(): reconnected firebird_fdw connection %p",
+             __func__,entry->conn);
+}
 
 /**
  * fb_begin_remote_xact()
@@ -244,6 +267,10 @@ fb_begin_remote_xact(ConnCacheEntry *entry)
              entry->conn);
 
         res = FQexec(entry->conn, "SET TRANSACTION SNAPSHOT");
+	if(FQresultStatus(res) == FBRES_FATAL_ERROR) {
+		firebirdReconnect(entry);
+		res = FQexec(entry->conn, "SET TRANSACTION SNAPSHOT");
+	}
 
         if(FQresultStatus(res) != FBRES_TRANSACTION_START)
         {
