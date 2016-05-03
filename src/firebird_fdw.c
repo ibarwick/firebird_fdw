@@ -121,12 +121,22 @@ static void firebirdGetForeignPaths(PlannerInfo *root,
                          RelOptInfo *baserel,
                          Oid foreigntableid);
 
+#if (PG_VERSION_NUM >= 90500)
+static ForeignScan *firebirdGetForeignPlan(PlannerInfo *root,
+                        RelOptInfo *baserel,
+                        Oid foreigntableid,
+                        ForeignPath *best_path,
+                        List *tlist,
+                        List *scan_clauses,
+                        Plan *outer_plan);
+#else
 static ForeignScan *firebirdGetForeignPlan(PlannerInfo *root,
                         RelOptInfo *baserel,
                         Oid foreigntableid,
                         ForeignPath *best_path,
                         List *tlist,
                         List *scan_clauses);
+#endif
 
 static void firebirdExplainForeignScan(ForeignScanState *node,
                             struct ExplainState *es);
@@ -575,6 +585,7 @@ firebirdGetForeignPaths(PlannerInfo *root,
     firebirdEstimateCosts(root, baserel, foreigntableid);
 
     /* Create a ForeignPath node and add it as only possible path */
+#if (PG_VERSION_NUM >= 90500)
     add_path(baserel, (Path *)
              create_foreignscan_path(root, baserel,
                                      baserel->rows,
@@ -582,7 +593,18 @@ firebirdGetForeignPaths(PlannerInfo *root,
                                      fdw_state->total_cost,
                                      NIL,       /* no pathkeys */
                                      NULL,      /* no outer rel either */
+                                     NULL,		/* no extra plan */
                                      NIL));     /* no fdw_private data */
+#else
+    add_path(baserel, (Path *)
+             create_foreignscan_path(root, baserel,
+                                     baserel->rows,
+                                     fdw_state->startup_cost,
+                                     fdw_state->total_cost,
+                                     NIL,       /* no pathkeys */
+                                     NULL,      /* no outer rel either */
+                                     NULL));	/* no extra plan */
+#endif
 }
 
 
@@ -617,12 +639,22 @@ firebirdGetForeignPaths(PlannerInfo *root,
  */
 
 static ForeignScan *
+#if (PG_VERSION_NUM >= 90500)
+firebirdGetForeignPlan(PlannerInfo *root,
+                       RelOptInfo *baserel,
+                       Oid foreigntableid,
+                       ForeignPath *best_path,
+                       List *tlist,
+                       List *scan_clauses,
+                       Plan *outer_plan)
+#else
 firebirdGetForeignPlan(PlannerInfo *root,
                        RelOptInfo *baserel,
                        Oid foreigntableid,
                        ForeignPath *best_path,
                        List *tlist,
                        List *scan_clauses)
+#endif
 {
     Index       scan_relid = baserel->relid;
     FirebirdFdwState *fdw_state = (FirebirdFdwState *)baserel->fdw_private;
@@ -694,7 +726,9 @@ firebirdGetForeignPlan(PlannerInfo *root,
                             scan_relid,
                             NIL,    /* no expressions to evaluate */
                             fdw_private,
-							NIL /* no custom tlist */ );
+							NIL,	/* no custom tlist */
+							NIL,	/* no remote quals */
+                            outer_plan);
 #else
     return make_foreignscan(tlist,
                             local_exprs,
