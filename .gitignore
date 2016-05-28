@@ -1,4 +1,6 @@
-fbsql
+test/regression.diffs
+test/regression.out
+test/results
 *.o
 *.so
 *~
