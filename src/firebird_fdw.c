@@ -1129,7 +1129,11 @@ firebirdIterateForeignScan(ForeignScanState *node)
     if(fdw_state->db_key_used)
     {
         /* include/storage/itemptr.h */
+#if (PG_VERSION_NUM >= 10000)
+        ItemPointer ctid_dummy = palloc(sizeof(ItemPointerData));
+#else
         ItemPointer ctid_dummy = palloc(SizeOfIptrData);
+#endif
 
         /* Set CTID and OID with values extrapolated from RDB$DB_KEY */
         ctid_dummy->ip_blkid.bi_hi = (uint16) (key_ctid_part >> 16);
