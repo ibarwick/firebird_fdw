@@ -484,8 +484,15 @@ firebirdGetForeignRelSize(PlannerInfo *root,
      * columns used in them.  Doesn't seem worth detecting that case though.)
      */
     fdw_state->attrs_used = NULL;
+
+#if (PG_VERSION_NUM >= 90600)
+    pull_varattnos((Node *) baserel->reltarget->exprs, baserel->relid,
+                   &fdw_state->attrs_used);
+#else
     pull_varattnos((Node *) baserel->reltargetlist, baserel->relid,
                    &fdw_state->attrs_used);
+#endif
+
     foreach(lc, fdw_state->local_conds)
     {
         RestrictInfo *rinfo = (RestrictInfo *) lfirst(lc);
@@ -585,7 +592,18 @@ firebirdGetForeignPaths(PlannerInfo *root,
     firebirdEstimateCosts(root, baserel, foreigntableid);
 
     /* Create a ForeignPath node and add it as only possible path */
-#if (PG_VERSION_NUM >= 90500)
+#if (PG_VERSION_NUM >= 90600)
+    add_path(baserel, (Path *)
+             create_foreignscan_path(root, baserel,
+                                     NULL,      /* default pathtarget */
+                                     baserel->rows,
+                                     fdw_state->startup_cost,
+                                     fdw_state->total_cost,
+                                     NIL,       /* no pathkeys */
+                                     NULL,      /* no outer rel either */
+                                     NULL,      /* no extra plan */
+                                     NIL));     /* no fdw_private data */
+#elif (PG_VERSION_NUM >= 90500)
     add_path(baserel, (Path *)
              create_foreignscan_path(root, baserel,
                                      baserel->rows,
