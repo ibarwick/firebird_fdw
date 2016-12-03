@@ -874,7 +874,7 @@ firebirdBeginForeignScan(ForeignScanState *node,
 
     /* Get information about table */
 
-    fdw_state->table = (fbTable *) palloc(sizeof(fbTable));
+    fdw_state->table = (fbTable *) palloc0(sizeof(fbTable));
 
     fdw_state->table->foreigntableid = foreigntableid;
 
@@ -887,7 +887,7 @@ firebirdBeginForeignScan(ForeignScanState *node,
 
     tupdesc = rel->rd_att;
     fdw_state->table->pg_column_total = 0;
-    fdw_state->table->columns = (fbTableColumn **)palloc(sizeof(fbTableColumn *) * tupdesc->natts);
+    fdw_state->table->columns = (fbTableColumn **)palloc0(sizeof(fbTableColumn *) * tupdesc->natts);
 
     for (i = 0; i < tupdesc->natts; i++)
     {
@@ -895,7 +895,7 @@ firebirdBeginForeignScan(ForeignScanState *node,
         char     *pg_colname = NULL;
         char     *fb_colname = NULL;
 
-        fdw_state->table->columns[fdw_state->table->pg_column_total] = (fbTableColumn *)palloc(sizeof(fbTableColumn));
+        fdw_state->table->columns[fdw_state->table->pg_column_total] = (fbTableColumn *)palloc0(sizeof(fbTableColumn));
 
         pg_colname = NameStr(att_tuple->attname);
         elog(DEBUG2, "PG column: %s", pg_colname);
@@ -1055,7 +1055,7 @@ firebirdIterateForeignScan(ForeignScanState *node)
     pg_column_total = fdw_state->table->pg_column_total;
 
     /* Build the tuple */
-    values = (char **) palloc(sizeof(char *) * pg_column_total);
+    values = (char **) palloc0(sizeof(char *) * pg_column_total);
     elog(DEBUG2, " pg_column_total %i", pg_column_total);
 
     for (pg_field_nr = field_nr = 0; pg_field_nr < pg_column_total; pg_field_nr++)
@@ -1129,10 +1129,11 @@ firebirdIterateForeignScan(ForeignScanState *node)
     if(fdw_state->db_key_used)
     {
         /* include/storage/itemptr.h */
+
 #if (PG_VERSION_NUM >= 10000)
-        ItemPointer ctid_dummy = palloc(sizeof(ItemPointerData));
+        ItemPointer ctid_dummy = palloc0(sizeof(ItemPointerData));
 #else
-        ItemPointer ctid_dummy = palloc(SizeOfIptrData);
+        ItemPointer ctid_dummy = palloc0(SizeOfIptrData);
 #endif
 
         /* Set CTID and OID with values extrapolated from RDB$DB_KEY */
@@ -1486,6 +1487,8 @@ firebirdPlanForeignModify(PlannerInfo *root,
     if (plan->returningLists)
         returningList = (List *) list_nth(plan->returningLists, subplan_index);
 
+
+    elog(INFO, "Construct the SQL command string ");
     /* Construct the SQL command string */
     switch (operation)
     {
@@ -1513,6 +1516,7 @@ firebirdPlanForeignModify(PlannerInfo *root,
     }
 
     heap_close(rel, NoLock);
+    elog(INFO, "Constructed the SQL command string ");
 
     /*
      * Build the fdw_private list that will be available to the executor.
@@ -1613,7 +1617,7 @@ firebirdBeginForeignModify(ModifyTableState *mtstate,
     if(FQstatus(fmstate->conn) != CONNECTION_OK)
         ereport(ERROR,
             (errcode(ERRCODE_FDW_UNABLE_TO_ESTABLISH_CONNECTION),
-            errmsg("Unable to to connect to foreign server")
+            errmsg("Unable to connect to foreign server")
             ));
 
 
@@ -2160,7 +2164,7 @@ fbAcquireSampleRowsFunc(Relation relation, int elevel,
     server = GetForeignServer(table->serverid);
     user = GetUserMapping(relation->rd_rel->relowner, server->serverid);
     fdw_state->conn = firebirdInstantiateConnection(server, user);
-
+    elog(DEBUG2, "here");
     /* Prepare for sampling rows */
     /* src/backend/commands/analyze.c */
     rstate = anl_init_selection_state(targrows);
@@ -2193,7 +2197,7 @@ fbAcquireSampleRowsFunc(Relation relation, int elevel,
 
     elog(DEBUG1, "%i rows returned", result_rows);
     attinmeta = TupleDescGetAttInMetadata(tupDesc);
-    tuple_values = (char **) palloc(sizeof(char *) * FQnfields(res));
+    tuple_values = (char **) palloc0(sizeof(char *) * FQnfields(res));
 
     for(fdw_state->row = 0; fdw_state->row < result_rows; fdw_state->row++)
     {
@@ -2385,7 +2389,7 @@ convert_prep_stmt_params(FirebirdFdwModifyState *fmstate,
 
     oldcontext = MemoryContextSwitchTo(fmstate->temp_cxt);
 
-    p_values = (const char **) palloc(sizeof(char *) * fmstate->p_nums);
+    p_values = (const char **) palloc0(sizeof(char *) * fmstate->p_nums);
 
     /* get following parameters from slot */
     if (slot != NULL && fmstate->target_attrs != NIL)
@@ -2418,7 +2422,7 @@ convert_prep_stmt_params(FirebirdFdwModifyState *fmstate,
     if (tupleid != NULL)
     {
         char *oidout;
-        char *db_key = (char *)palloc(17);
+        char *db_key = (char *)palloc0(17);
         elog(DEBUG2, "extracting RDB$DB_KEY...");
         oidout = OutputFunctionCall(&fmstate->p_flinfo[pindex],
                                  PointerGetDatum(tupleid2));
@@ -2460,7 +2464,7 @@ get_stmt_param_formats(FirebirdFdwModifyState *fmstate,
 
     oldcontext = MemoryContextSwitchTo(fmstate->temp_cxt);
 
-    paramFormats = (int *) palloc(sizeof(int *) * fmstate->p_nums);
+    paramFormats = (int *) palloc0(sizeof(int *) * fmstate->p_nums);
 
     /* get parameters from slot */
     if (slot != NULL && fmstate->target_attrs != NIL)
@@ -2577,7 +2581,7 @@ create_tuple_from_result(FQresult *res,
     orig_context = MemoryContextSwitchTo(tmp_context);
 
     values = (Datum *) palloc0(tupdesc->natts * sizeof(Datum));
-    nulls = (bool *) palloc(tupdesc->natts * sizeof(bool));
+    nulls = (bool *) palloc0(tupdesc->natts * sizeof(bool));
 
     /* Initialize columns not present in result as NULLs */
     memset(nulls, true, tupdesc->natts * sizeof(bool));
@@ -2641,7 +2645,7 @@ char *
 fbFormatMsg(char *msg, ...)
 {
     va_list argp;
-    char *buffer = palloc(2048 + FB_FDW_LOGPREFIX_LEN);
+    char *buffer = palloc0(2048 + FB_FDW_LOGPREFIX_LEN);
 
     snprintf(buffer, FB_FDW_LOGPREFIX_LEN, "%s", FB_FDW_LOGPREFIX);
 

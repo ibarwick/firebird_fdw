@@ -499,12 +499,12 @@ firebirdDbPath(char **address, char **database, int *port)
     char *hostname;
     if(*address != NULL)
     {
-        hostname = palloc(strlen(*address) + strlen(*database) + 1);
+        hostname = palloc0(strlen(*address) + strlen(*database) + 1);
         sprintf(hostname, "%s:%s", *address, *database);
     }
     else
     {
-        hostname = palloc(strlen(*database) + 1);
+        hostname = palloc0(strlen(*database) + 1);
         sprintf(hostname, "%s", *database);
     }
 
