@@ -2,9 +2,9 @@ Firebird Foreign Data Wrapper for PostgreSQL
 ============================================
 
 This is an experimental foreign data wrapper (FDW) to connect PostgreSQL
-to Firebird. It provides basic functionality, including both read (SELECT)
-and write (INSERT/UPDATE/DELETE) support. However it is still very much
-work-in-progress; USE AT YOUR OWN RISK.
+to Firebird. It provides basic functionality, including both read (`SELECT`)
+and write (`INSERT`/`UPDATE`/`DELETE`) support. However it is still very much
+work-in-progress; *USE AT YOUR OWN RISK*.
 
 `firebird_fdw` will work with PostgreSQL 9.2 or later (it was developed
 against the current development version). Write support is only available
@@ -32,19 +32,17 @@ Prerequisites:
   https://github.com/ibarwick/libfq
 
 The Firebird include/library files often end up in non-standard locations;
-PG_CPPFLAGS and SHLIB_LINK can be used to provide the appropriate flags.
+`PG_CPPFLAGS` and `SHLIB_LINK` can be used to provide the appropriate flags.
 For OS X they would look something like this:
 
     export PG_CPPFLAGS="-I /Library/Frameworks/Firebird.framework/Versions/A/Headers/"
     export SHLIB_LINK="-L/Library/Frameworks/Firebird.framework/Versions/A/Libraries/"
 
 `firebird_fdw` is installed as a PostgreSQL extension; it requires the
-pg_config binary for the target installation to be in the shell path.
+`pg_config` binary for the target installation to be in the shell path.
 
 The usual `make && make install` should take care of the actual compilation.
 
-I am currently creating RPM packages for `firebird_fdw` and `libfq`and hope
-to make these available for openSUSE and Red Hat.
 
 Usage
 -----
@@ -213,3 +211,4 @@ Useful links
 
 If you appreciate PostgreSQL's `psql` client, why not try `fbsql`, a `psql`-style
 client for Firebird? See: https://github.com/ibarwick/fbsql for details.
+
