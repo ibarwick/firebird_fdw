@@ -18,17 +18,17 @@
 
 typedef struct ConnCacheKey
 {
-    Oid         serverid;       /* OID of foreign server */
-    Oid         userid;         /* OID of local user whose mapping we use */
+	Oid			serverid;		/* OID of foreign server */
+	Oid			userid;			/* OID of local user whose mapping we use */
 } ConnCacheKey;
 
 typedef struct ConnCacheEntry
 {
-    ConnCacheKey key;           /* hash key (must be first) */
-    FQconn     *conn;           /* connection to foreign server, or NULL */
-    int         xact_depth;     /* 0 = no xact open, 1 = main xact open, 2 =
-                                 * one level of subxact open, etc */
-    bool        have_error;     /* have any subxacts aborted in this xact? */
+	ConnCacheKey key;			/* hash key (must be first) */
+	FQconn	   *conn;			/* connection to foreign server, or NULL */
+	int			xact_depth;		/* 0 = no xact open, 1 = main xact open, 2 =
+								 * one level of subxact open, etc */
+	bool		have_error;		/* have any subxacts aborted in this xact? */
 } ConnCacheEntry;
 
 /*
@@ -45,9 +45,9 @@ static FQconn *firebirdGetConnection(char *dbpath, char *svr_username, char *svr
 static void fb_begin_remote_xact(ConnCacheEntry *entry);
 static void fb_xact_callback(XactEvent event, void *arg);
 static void fb_subxact_callback(SubXactEvent event,
-                       SubTransactionId mySubid,
-                       SubTransactionId parentSubid,
-                       void *arg);
+					   SubTransactionId mySubid,
+					   SubTransactionId parentSubid,
+					   void *arg);
 
 /**
  * firebirdGetConnection()
@@ -57,49 +57,49 @@ static void fb_subxact_callback(SubXactEvent event,
 static FQconn *
 firebirdGetConnection(char *dbpath, char *svr_username, char *svr_password)
 {
-    FQconn *volatile conn;
-    const char *kw[5];
-    const char *val[5];
-    int i = 0;
+	FQconn *volatile conn;
+	const char *kw[5];
+	const char *val[5];
+	int i = 0;
 
-    kw[i] = "db_path";
-    val[i] = dbpath;
-    i++;
+	kw[i] = "db_path";
+	val[i] = dbpath;
+	i++;
 
-    kw[i] = "user";
-    val[i] = svr_username;
-    i++;
+	kw[i] = "user";
+	val[i] = svr_username;
+	i++;
 
-    kw[i] = "password";
-    val[i] = svr_password;
-    i++;
+	kw[i] = "password";
+	val[i] = svr_password;
+	i++;
 
-    /* XXX I am taking a calculated risk and passing the PostgreSQL
-     * encoding name directly to Firebird. Firebird seems to be pretty
-     * good at parsing encoding names but I can't rule out errors
-     * with more obscure encoding combinations.
-     */
-    kw[i] = "client_encoding";
-    val[i] = GetDatabaseEncodingName();
-    i++;
+	/* XXX I am taking a calculated risk and passing the PostgreSQL
+	 * encoding name directly to Firebird. Firebird seems to be pretty
+	 * good at parsing encoding names but I can't rule out errors
+	 * with more obscure encoding combinations.
+	 */
+	kw[i] = "client_encoding";
+	val[i] = GetDatabaseEncodingName();
+	i++;
 
-    kw[i] = NULL;
-    val[i] = NULL;
+	kw[i] = NULL;
+	val[i] = NULL;
 
-    conn = FQconnectdbParams(kw, val);
+	conn = FQconnectdbParams(kw, val);
 
-    if(FQstatus(conn) != CONNECTION_OK)
-        ereport(ERROR,
-            (errcode(ERRCODE_FDW_UNABLE_TO_ESTABLISH_CONNECTION),
-            errmsg("Unable to to connect to foreign server")
-            ));
+	if (FQstatus(conn) != CONNECTION_OK)
+		ereport(ERROR,
+			(errcode(ERRCODE_FDW_UNABLE_TO_ESTABLISH_CONNECTION),
+			errmsg("Unable to to connect to foreign server")
+			));
 
-    FQsetAutocommit(conn, false);
-    conn->client_min_messages = DEBUG2;
+	FQsetAutocommit(conn, false);
+	conn->client_min_messages = DEBUG2;
 
-    elog(DEBUG2, "%s(): DB connection OK", __func__);
+	elog(DEBUG2, "%s(): DB connection OK", __func__);
 
-    return conn;
+	return conn;
 }
 
 
@@ -111,104 +111,104 @@ firebirdGetConnection(char *dbpath, char *svr_username, char *svr_password)
 FQconn *
 firebirdInstantiateConnection(ForeignServer *server, UserMapping *user)
 {
-    bool        found;
-    ConnCacheEntry *entry;
-    ConnCacheKey key;
+	bool		found;
+	ConnCacheEntry *entry;
+	ConnCacheKey key;
 
-    /* set up connection cache */
-    if (ConnectionHash == NULL)
-    {
-        HASHCTL     ctl;
+	/* set up connection cache */
+	if (ConnectionHash == NULL)
+	{
+		HASHCTL		ctl;
 
-        elog(DEBUG2, "%s(): instantiating conn cache", __func__);
+		elog(DEBUG2, "%s(): instantiating conn cache", __func__);
 
-        MemSet(&ctl, 0, sizeof(ctl));
-        ctl.keysize = sizeof(ConnCacheKey);
-        ctl.entrysize = sizeof(ConnCacheEntry);
-        ctl.hash = tag_hash;
+		MemSet(&ctl, 0, sizeof(ctl));
+		ctl.keysize = sizeof(ConnCacheKey);
+		ctl.entrysize = sizeof(ConnCacheEntry);
+		ctl.hash = tag_hash;
 
-        ctl.hcxt = CacheMemoryContext;
-        ConnectionHash = hash_create("firebird_fdw connections", 8,
-                                     &ctl,
-                                     HASH_ELEM | HASH_FUNCTION | HASH_CONTEXT);
+		ctl.hcxt = CacheMemoryContext;
+		ConnectionHash = hash_create("firebird_fdw connections", 8,
+									 &ctl,
+									 HASH_ELEM | HASH_FUNCTION | HASH_CONTEXT);
 
-        /* Set up transaction callbacks */
-        RegisterXactCallback(fb_xact_callback, NULL);
-        RegisterSubXactCallback(fb_subxact_callback, NULL);
-    }
+		/* Set up transaction callbacks */
+		RegisterXactCallback(fb_xact_callback, NULL);
+		RegisterSubXactCallback(fb_subxact_callback, NULL);
+	}
 
-    /* Set flag that we did GetConnection during the current transaction */
-    xact_got_connection = true;
-    /* Create hash key for the entry.  Assume no pad bytes in key struct. */
-    key.serverid = server->serverid;
-    key.userid = user->userid;
+	/* Set flag that we did GetConnection during the current transaction */
+	xact_got_connection = true;
+	/* Create hash key for the entry.  Assume no pad bytes in key struct. */
+	key.serverid = server->serverid;
+	key.userid = user->userid;
 
-    /* Find or create cached entry for requested connection */
-    entry = hash_search(ConnectionHash, &key, HASH_ENTER, &found);
-    if (!found)
-    {
-        /* initialize new hashtable entry */
-        entry->conn = NULL;
-        entry->xact_depth = 0;
-        entry->have_error = false;
-    }
+	/* Find or create cached entry for requested connection */
+	entry = hash_search(ConnectionHash, &key, HASH_ENTER, &found);
+	if (!found)
+	{
+		/* initialize new hashtable entry */
+		entry->conn = NULL;
+		entry->xact_depth = 0;
+		entry->have_error = false;
+	}
 
-    if (entry->conn == NULL)
-    {
-        char *svr_address  = NULL;
-        char *svr_database = NULL;
-        char *svr_username = NULL;
-        char *svr_password = NULL;
-        int   svr_port     = 0;
-        char *dbpath;
-        ListCell   *lc;
+	if (entry->conn == NULL)
+	{
+		char *svr_address  = NULL;
+		char *svr_database = NULL;
+		char *svr_username = NULL;
+		char *svr_password = NULL;
+		int	  svr_port	   = 0;
+		char *dbpath;
+		ListCell   *lc;
 
-        elog(DEBUG2, "%s(): no cache entry found", __func__);
+		elog(DEBUG2, "%s(): no cache entry found", __func__);
 
-        entry->xact_depth = 0;  /* just to be sure */
-        entry->have_error = false;
+		entry->xact_depth = 0;	/* just to be sure */
+		entry->have_error = false;
 
-        foreach(lc, server->options)
-        {
-            DefElem    *def = (DefElem *) lfirst(lc);
+		foreach (lc, server->options)
+		{
+			DefElem	   *def = (DefElem *) lfirst(lc);
 
-            if (strcmp(def->defname, "address") == 0)
-                svr_address = defGetString(def);
-            if (strcmp(def->defname, "database") == 0)
-                svr_database = defGetString(def);
-        }
+			if (strcmp(def->defname, "address") == 0)
+				svr_address = defGetString(def);
+			if (strcmp(def->defname, "database") == 0)
+				svr_database = defGetString(def);
+		}
 
-        foreach(lc, user->options)
-        {
-            DefElem    *def = (DefElem *) lfirst(lc);
+		foreach (lc, user->options)
+		{
+			DefElem	   *def = (DefElem *) lfirst(lc);
 
-            if (strcmp(def->defname, "username") == 0)
-                svr_username = defGetString(def);
-            if (strcmp(def->defname, "password") == 0)
-                svr_password = defGetString(def);
-        }
+			if (strcmp(def->defname, "username") == 0)
+				svr_username = defGetString(def);
+			if (strcmp(def->defname, "password") == 0)
+				svr_password = defGetString(def);
+		}
 
-        dbpath = firebirdDbPath(&svr_address, &svr_database, &svr_port);
+		dbpath = firebirdDbPath(&svr_address, &svr_database, &svr_port);
 
-        entry->conn = firebirdGetConnection(
-            dbpath,
-            svr_username,
-            svr_password
-        );
+		entry->conn = firebirdGetConnection(
+			dbpath,
+			svr_username,
+			svr_password
+		);
 
-        elog(DEBUG2, "%s(): new firebird_fdw connection %p for server \"%s\"",
-             __func__,entry->conn, server->servername);
-    }
-    else
-    {
-        elog(DEBUG2, "%s(): cache entry %p found",
-             __func__, entry->conn);
-    }
+		elog(DEBUG2, "%s(): new firebird_fdw connection %p for server \"%s\"",
+			 __func__,entry->conn, server->servername);
+	}
+	else
+	{
+		elog(DEBUG2, "%s(): cache entry %p found",
+			 __func__, entry->conn);
+	}
 
-    /* Start a new transaction or subtransaction if needed */
-    fb_begin_remote_xact(entry);
+	/* Start a new transaction or subtransaction if needed */
+	fb_begin_remote_xact(entry);
 
-    return entry->conn;
+	return entry->conn;
 }
 
 
@@ -232,55 +232,55 @@ firebirdInstantiateConnection(ForeignServer *server, UserMapping *user)
 static void
 fb_begin_remote_xact(ConnCacheEntry *entry)
 {
-    FQresult *res;
-    int         curlevel = GetCurrentTransactionNestLevel();
+	FQresult *res;
+	int			curlevel = GetCurrentTransactionNestLevel();
 
-    elog(DEBUG2, "xact depth: %i", entry->xact_depth);
+	elog(DEBUG2, "xact depth: %i", entry->xact_depth);
 
-    /* Start main transaction if we haven't yet */
-    if (entry->xact_depth <= 0)
-    {
-        elog(DEBUG2, "starting remote transaction on connection %p",
-             entry->conn);
+	/* Start main transaction if we haven't yet */
+	if (entry->xact_depth <= 0)
+	{
+		elog(DEBUG2, "starting remote transaction on connection %p",
+			 entry->conn);
 
-        res = FQexec(entry->conn, "SET TRANSACTION SNAPSHOT");
+		res = FQexec(entry->conn, "SET TRANSACTION SNAPSHOT");
 
-        if(FQresultStatus(res) != FBRES_TRANSACTION_START)
-        {
-            elog(ERROR, "ERROR: res is %i", FQresultStatus(res));
-        }
+		if (FQresultStatus(res) != FBRES_TRANSACTION_START)
+		{
+			elog(ERROR, "ERROR: res is %i", FQresultStatus(res));
+		}
 
-        FQclear(res);
+		FQclear(res);
 
-        entry->xact_depth = 1;
-    }
-    else
-    {
-        if(FQisActiveTransaction(entry->conn))
-            elog(DEBUG2, "%s(): xact_depth > 0, active transaction",
-                 __func__);
-        else
-            elog(DEBUG2, "%s(): xact_depth > 0, no active transaction!",
-                 __func__);
-    }
+		entry->xact_depth = 1;
+	}
+	else
+	{
+		if (FQisActiveTransaction(entry->conn))
+			elog(DEBUG2, "%s(): xact_depth > 0, active transaction",
+				 __func__);
+		else
+			elog(DEBUG2, "%s(): xact_depth > 0, no active transaction!",
+				 __func__);
+	}
 
-    /*
-     * If we're in a subtransaction, stack up savepoints to match our level.
-     * This ensures we can rollback just the desired effects when a
-     * subtransaction aborts.
-     */
-    while (entry->xact_depth < curlevel)
-    {
-        char        sql[64];
+	/*
+	 * If we're in a subtransaction, stack up savepoints to match our level.
+	 * This ensures we can rollback just the desired effects when a
+	 * subtransaction aborts.
+	 */
+	while (entry->xact_depth < curlevel)
+	{
+		char		sql[64];
 
-        snprintf(sql, sizeof(sql), "SAVEPOINT s%d", entry->xact_depth + 1);
-        res = FQexec(entry->conn, sql);
-        elog(DEBUG2, "savepoint:\n%s", sql);
-        elog(DEBUG2, "res is %i", FQresultStatus(res));
-        FQclear(res);
+		snprintf(sql, sizeof(sql), "SAVEPOINT s%d", entry->xact_depth + 1);
+		res = FQexec(entry->conn, sql);
+		elog(DEBUG2, "savepoint:\n%s", sql);
+		elog(DEBUG2, "res is %i", FQresultStatus(res));
+		FQclear(res);
 
-        entry->xact_depth++;
-    }
+		entry->xact_depth++;
+	}
 }
 
 
@@ -290,83 +290,83 @@ fb_begin_remote_xact(ConnCacheEntry *entry)
 static void
 fb_xact_callback(XactEvent event, void *arg)
 {
-    HASH_SEQ_STATUS scan;
-    ConnCacheEntry *entry;
+	HASH_SEQ_STATUS scan;
+	ConnCacheEntry *entry;
 
-    elog(DEBUG3, "entering function %s", __func__);
+	elog(DEBUG3, "entering function %s", __func__);
 
-    /* Connection has no transactions - do nothing */
-    if (!xact_got_connection)
-        return;
+	/* Connection has no transactions - do nothing */
+	if (!xact_got_connection)
+		return;
 
-    /*
-     * Scan all connection cache entries and close any open remote transactions
-     */
-    hash_seq_init(&scan, ConnectionHash);
-    while ((entry = (ConnCacheEntry *) hash_seq_search(&scan)))
-    {
-        FQresult   *res;
+	/*
+	 * Scan all connection cache entries and close any open remote transactions
+	 */
+	hash_seq_init(&scan, ConnectionHash);
+	while ((entry = (ConnCacheEntry *) hash_seq_search(&scan)))
+	{
+		FQresult   *res;
 
-        elog(DEBUG3, "closing remote transaction on connection %p",
-             entry->conn);
+		elog(DEBUG3, "closing remote transaction on connection %p",
+			 entry->conn);
 
-        /* We only care about connections with open remote transactions */
-        if (entry->conn == NULL || entry->xact_depth == 0)
-        {
-            elog(DEBUG3, "%s(): no connection or no open transaction",
-                 __func__);
-            continue;
-        }
+		/* We only care about connections with open remote transactions */
+		if (entry->conn == NULL || entry->xact_depth == 0)
+		{
+			elog(DEBUG3, "%s(): no connection or no open transaction",
+				 __func__);
+			continue;
+		}
 
-        /* This shouldn't happen, but log just in case */
-        if(!FQisActiveTransaction(entry->conn))
-        {
-            elog(DEBUG3, "%s(): no active transaction",
-                 __func__);
-            continue;
-        }
+		/* This shouldn't happen, but log just in case */
+		if (!FQisActiveTransaction(entry->conn))
+		{
+			elog(DEBUG3, "%s(): no active transaction",
+				 __func__);
+			continue;
+		}
 
 
-        switch (event)
-        {
-            case XACT_EVENT_PRE_COMMIT:
-                elog(DEBUG2, "COMMIT");
-                res = FQexec(entry->conn, "COMMIT");
-                if(FQresultStatus(res) != FBRES_TRANSACTION_COMMIT)
-                {
-                    elog(DEBUG1, "COMMIT failed");
-                }
-                FQclear(res);
-                break;
-            case XACT_EVENT_PRE_PREPARE:
-                /* XXX not sure how to handle this */
-                elog(DEBUG2, "PREPARE");
-                break;
-            case XACT_EVENT_COMMIT:
-            case XACT_EVENT_PREPARE:
-                /* Should not get here -- pre-commit should have handled it */
-                elog(ERROR, "missed cleaning up connection during pre-commit");
-                break;
-            case XACT_EVENT_ABORT:
-                res = FQexec(entry->conn, "ROLLBACK");
-                if(FQresultStatus(res) != FBRES_TRANSACTION_ROLLBACK)
-                {
-                    elog(DEBUG1, "ROLLBACK failed %i", FQresultStatus(res));
-                }
-                FQclear(res);
+		switch (event)
+		{
+			case XACT_EVENT_PRE_COMMIT:
+				elog(DEBUG2, "COMMIT");
+				res = FQexec(entry->conn, "COMMIT");
+				if (FQresultStatus(res) != FBRES_TRANSACTION_COMMIT)
+				{
+					elog(DEBUG1, "COMMIT failed");
+				}
+				FQclear(res);
+				break;
+			case XACT_EVENT_PRE_PREPARE:
+				/* XXX not sure how to handle this */
+				elog(DEBUG2, "PREPARE");
+				break;
+			case XACT_EVENT_COMMIT:
+			case XACT_EVENT_PREPARE:
+				/* Should not get here -- pre-commit should have handled it */
+				elog(ERROR, "missed cleaning up connection during pre-commit");
+				break;
+			case XACT_EVENT_ABORT:
+				res = FQexec(entry->conn, "ROLLBACK");
+				if (FQresultStatus(res) != FBRES_TRANSACTION_ROLLBACK)
+				{
+					elog(DEBUG1, "ROLLBACK failed %i", FQresultStatus(res));
+				}
+				FQclear(res);
 #if (PG_VERSION_NUM >= 90500)
-            case XACT_EVENT_PARALLEL_COMMIT:
-            case XACT_EVENT_PARALLEL_ABORT:
-            case XACT_EVENT_PARALLEL_PRE_COMMIT:
-                /* XXX Handle these */
-                elog(WARNING, "Unhandled XACT_EVENT_PARALLEL_* event");
-                break;
+			case XACT_EVENT_PARALLEL_COMMIT:
+			case XACT_EVENT_PARALLEL_ABORT:
+			case XACT_EVENT_PARALLEL_PRE_COMMIT:
+				/* XXX Handle these */
+				elog(WARNING, "Unhandled XACT_EVENT_PARALLEL_* event");
+				break;
 #endif
-        }
+		}
 
-        /* Reset state to show we're out of a transaction */
-        entry->xact_depth = 0;
-    }
+		/* Reset state to show we're out of a transaction */
+		entry->xact_depth = 0;
+	}
 }
 
 
@@ -375,89 +375,89 @@ fb_xact_callback(XactEvent event, void *arg)
  */
 static void
 fb_subxact_callback(SubXactEvent event,
-                    SubTransactionId mySubid,
-                    SubTransactionId parentSubid,
-                    void *arg)
+					SubTransactionId mySubid,
+					SubTransactionId parentSubid,
+					void *arg)
 {
-    HASH_SEQ_STATUS scan;
-    ConnCacheEntry *entry;
-    int         curlevel;
+	HASH_SEQ_STATUS scan;
+	ConnCacheEntry *entry;
+	int			curlevel;
 
-    elog(DEBUG3, "entering function %s", __func__);
+	elog(DEBUG3, "entering function %s", __func__);
 
-    /* Nothing to do at subxact start, nor after commit. */
-    if (!(event == SUBXACT_EVENT_PRE_COMMIT_SUB ||
-          event == SUBXACT_EVENT_ABORT_SUB))
-        return;
+	/* Nothing to do at subxact start, nor after commit. */
+	if (!(event == SUBXACT_EVENT_PRE_COMMIT_SUB ||
+		  event == SUBXACT_EVENT_ABORT_SUB))
+		return;
 
-    /* Quick exit if no connections were touched in this transaction. */
-    if (!xact_got_connection)
-        return;
+	/* Quick exit if no connections were touched in this transaction. */
+	if (!xact_got_connection)
+		return;
 
-    /*
-     * Scan all connection cache entries to find open remote subtransactions
-     * of the current level, and close them.
-     */
+	/*
+	 * Scan all connection cache entries to find open remote subtransactions
+	 * of the current level, and close them.
+	 */
 
-    curlevel = GetCurrentTransactionNestLevel();
-    hash_seq_init(&scan, ConnectionHash);
-    while ((entry = (ConnCacheEntry *) hash_seq_search(&scan)))
-    {
-        FQresult   *res;
-        char        sql[100];
+	curlevel = GetCurrentTransactionNestLevel();
+	hash_seq_init(&scan, ConnectionHash);
+	while ((entry = (ConnCacheEntry *) hash_seq_search(&scan)))
+	{
+		FQresult   *res;
+		char		sql[100];
 
-        /*
-         * We only care about connections with open remote subtransactions of
-         * the current level.
-         */
-        if (entry->conn == NULL || entry->xact_depth < curlevel)
-            continue;
+		/*
+		 * We only care about connections with open remote subtransactions of
+		 * the current level.
+		 */
+		if (entry->conn == NULL || entry->xact_depth < curlevel)
+			continue;
 
-        if (entry->xact_depth > curlevel)
-            elog(ERROR, "missed cleaning up remote subtransaction at level %d",
-                 entry->xact_depth);
+		if (entry->xact_depth > curlevel)
+			elog(ERROR, "missed cleaning up remote subtransaction at level %d",
+				 entry->xact_depth);
 
-        if (event == SUBXACT_EVENT_PRE_COMMIT_SUB)
-        {
-            /* Commit all remote subtransactions during pre-commit */
-            snprintf(sql, sizeof(sql), "RELEASE SAVEPOINT s%d", curlevel);
-            elog(DEBUG2, "%s(): %s", __func__, sql);
-            res = FQexec(entry->conn, sql);
-            elog(DEBUG2, "%s(): res %i", __func__, FQresultStatus(res));
-        }
-        else
-        {
-            /* Assume we might have lost track of prepared statements */
-            entry->have_error = true;
-            /* Rollback all remote subtransactions during abort */
-            snprintf(sql, sizeof(sql),
-                     "ROLLBACK TO SAVEPOINT s%d",
-                     curlevel);
-            res = FQexec(entry->conn, sql);
-            if(FQresultStatus(res) != FBRES_COMMAND_OK)
-            {
-                elog(WARNING, "%s(): unable to execute '%s'",
-                     __func__, sql);
-                FQclear(res);
-            }
-            else
-            {
-                snprintf(sql, sizeof(sql),
-                         "RELEASE SAVEPOINT s%d",
-                         curlevel);
-                res = FQexec(entry->conn, sql);
-                if(FQresultStatus(res) != FBRES_COMMAND_OK)
-                {
-                    elog(WARNING, "%s(): unable to execute '%s'",
-                         __func__, sql);
-                }
-                FQclear(res);
-            }
-        }
+		if (event == SUBXACT_EVENT_PRE_COMMIT_SUB)
+		{
+			/* Commit all remote subtransactions during pre-commit */
+			snprintf(sql, sizeof(sql), "RELEASE SAVEPOINT s%d", curlevel);
+			elog(DEBUG2, "%s(): %s", __func__, sql);
+			res = FQexec(entry->conn, sql);
+			elog(DEBUG2, "%s(): res %i", __func__, FQresultStatus(res));
+		}
+		else
+		{
+			/* Assume we might have lost track of prepared statements */
+			entry->have_error = true;
+			/* Rollback all remote subtransactions during abort */
+			snprintf(sql, sizeof(sql),
+					 "ROLLBACK TO SAVEPOINT s%d",
+					 curlevel);
+			res = FQexec(entry->conn, sql);
+			if (FQresultStatus(res) != FBRES_COMMAND_OK)
+			{
+				elog(WARNING, "%s(): unable to execute '%s'",
+					 __func__, sql);
+				FQclear(res);
+			}
+			else
+			{
+				snprintf(sql, sizeof(sql),
+						 "RELEASE SAVEPOINT s%d",
+						 curlevel);
+				res = FQexec(entry->conn, sql);
+				if (FQresultStatus(res) != FBRES_COMMAND_OK)
+				{
+					elog(WARNING, "%s(): unable to execute '%s'",
+						 __func__, sql);
+				}
+				FQclear(res);
+			}
+		}
 
-        /* Leaving current subtransaction level */
-        entry->xact_depth--;
-    }
+		/* Leaving current subtransaction level */
+		entry->xact_depth--;
+	}
 }
 
 
@@ -469,20 +469,20 @@ fb_subxact_callback(SubXactEvent event,
 void
 firebirdCloseConnections(void)
 {
-    HASH_SEQ_STATUS fstat;
-    ConnCacheEntry *entry;
+	HASH_SEQ_STATUS fstat;
+	ConnCacheEntry *entry;
 
-    if(ConnectionHash == NULL)
-        return;
+	if (ConnectionHash == NULL)
+		return;
 
-    hash_seq_init(&fstat, ConnectionHash);
-    while ((entry = (ConnCacheEntry *)hash_seq_search(&fstat)) != NULL)
-    {
-        if(entry->conn == NULL)
-            continue;
-        elog(DEBUG2, "%s(): closing cached connection %p", __func__, entry->conn);
-        FQfinish(entry->conn);
-    }
+	hash_seq_init(&fstat, ConnectionHash);
+	while ((entry = (ConnCacheEntry *)hash_seq_search(&fstat)) != NULL)
+	{
+		if (entry->conn == NULL)
+			continue;
+		elog(DEBUG2, "%s(): closing cached connection %p", __func__, entry->conn);
+		FQfinish(entry->conn);
+	}
 }
 
 
@@ -496,17 +496,17 @@ firebirdCloseConnections(void)
 static char *
 firebirdDbPath(char **address, char **database, int *port)
 {
-    char *hostname;
-    if(*address != NULL)
-    {
-        hostname = palloc0(strlen(*address) + strlen(*database) + 1);
-        sprintf(hostname, "%s:%s", *address, *database);
-    }
-    else
-    {
-        hostname = palloc0(strlen(*database) + 1);
-        sprintf(hostname, "%s", *database);
-    }
+	char *hostname;
+	if (*address != NULL)
+	{
+		hostname = palloc0(strlen(*address) + strlen(*database) + 1);
+		sprintf(hostname, "%s:%s", *address, *database);
+	}
+	else
+	{
+		hostname = palloc0(strlen(*database) + 1);
+		sprintf(hostname, "%s", *database);
+	}
 
-    return hostname;
+	return hostname;
 }

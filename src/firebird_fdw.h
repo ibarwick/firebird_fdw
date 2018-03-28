@@ -40,27 +40,27 @@
  * converted to a Firebird type
  */
 #define canConvertPgType(x) ((x) == TEXTOID || (x) == CHAROID || (x) == BPCHAROID \
-                             || (x) == VARCHAROID || (x) == NAMEOID || (x) == INT8OID || (x) == INT2OID \
-                             || (x) == INT4OID ||  (x) == FLOAT4OID || (x) == FLOAT8OID \
-                             || (x) == NUMERICOID || (x) == DATEOID || (x) == TIMESTAMPOID \
-                             || (x) == TIMEOID)
+							 || (x) == VARCHAROID || (x) == NAMEOID || (x) == INT8OID || (x) == INT2OID \
+							 || (x) == INT4OID ||  (x) == FLOAT4OID || (x) == FLOAT8OID \
+							 || (x) == NUMERICOID || (x) == DATEOID || (x) == TIMESTAMPOID \
+							 || (x) == TIMEOID)
 
 typedef struct fbTableColumn
 {
-    char *fbname;            /* Firebird column name */
-    char *pgname;            /* PostgreSQL column name */
-    int pgattnum;            /* PostgreSQL attribute number */
-    Oid pgtype;              /* PostgreSQL data type */
-    int pgtypmod;            /* PostgreSQL type modifier */
-    bool isdropped;          /* indicate if PostgreSQL column is dropped */
-    bool used;               /* indicate if column used in current query */
+	char *fbname;			 /* Firebird column name */
+	char *pgname;			 /* PostgreSQL column name */
+	int pgattnum;			 /* PostgreSQL attribute number */
+	Oid pgtype;				 /* PostgreSQL data type */
+	int pgtypmod;			 /* PostgreSQL type modifier */
+	bool isdropped;			 /* indicate if PostgreSQL column is dropped */
+	bool used;				 /* indicate if column used in current query */
 } fbTableColumn;
 
 typedef struct fbTable
 {
-    Oid foreigntableid;
-    int pg_column_total;
-    char *pg_table_name;
+	Oid foreigntableid;
+	int pg_column_total;
+	char *pg_table_name;
 	fbTableColumn **columns;
 } fbTable;
 
@@ -70,8 +70,8 @@ typedef struct fbTable
  */
 struct FirebirdFdwOption
 {
-    const char *optname;
-    Oid         optcontext;     /* Oid of catalog in which option may appear */
+	const char *optname;
+	Oid			optcontext;		/* Oid of catalog in which option may appear */
 };
 
 
@@ -83,19 +83,19 @@ struct FirebirdFdwOption
  */
 typedef struct FirebirdFdwState
 {
-    char       *svr_query;
-    char       *svr_table;
-    bool        disable_pushdowns;  /* true if server option "disable_pushdowns" supplied */
+	char	   *svr_query;
+	char	   *svr_table;
+	bool		disable_pushdowns;	/* true if server option "disable_pushdowns" supplied */
 
-    FQconn     *conn;
-	List       *remote_conds;
-	List       *local_conds;
+	FQconn	   *conn;
+	List	   *remote_conds;
+	List	   *local_conds;
 
-	Bitmapset  *attrs_used;         /* Bitmap of attr numbers to be fetched from the remote server. */
-    Cost        startup_cost;       /* cost estimate, only needed for planning */
-    Cost        total_cost;         /* cost estimate, only needed for planning */
-    int         row;
-    char        *query;             /* query to send to Firebird */
+	Bitmapset  *attrs_used;			/* Bitmap of attr numbers to be fetched from the remote server. */
+	Cost		startup_cost;		/* cost estimate, only needed for planning */
+	Cost		total_cost;			/* cost estimate, only needed for planning */
+	int			row;
+	char		*query;				/* query to send to Firebird */
 } FirebirdFdwState;
 
 /*
@@ -103,16 +103,16 @@ typedef struct FirebirdFdwState
  */
 typedef struct FirebirdFdwScanState
 {
-    FQconn     *conn;
-    /* Foreign table information */
-    fbTable    *table;
-    List       *retrieved_attrs;    /* attr numbers retrieved by RETURNING */
-    /* Query information */
-    char       *query;              /* query to send to Firebird */
-    bool        db_key_used;        /* indicate whether RDB$DB_KEY was requested */
+	FQconn	   *conn;
+	/* Foreign table information */
+	fbTable	   *table;
+	List	   *retrieved_attrs;	/* attr numbers retrieved by RETURNING */
+	/* Query information */
+	char	   *query;				/* query to send to Firebird */
+	bool		db_key_used;		/* indicate whether RDB$DB_KEY was requested */
 
-    FQresult   *result;
-    int         row;
+	FQresult   *result;
+	int			row;
 
 } FirebirdFdwScanState;
 
@@ -121,27 +121,27 @@ typedef struct FirebirdFdwScanState
  */
 typedef struct FirebirdFdwModifyState
 {
-    Relation    rel;               /* relcache entry for the foreign table */
-    AttInMetadata *attinmeta;      /* attribute datatype conversion metadata */
+	Relation	rel;			   /* relcache entry for the foreign table */
+	AttInMetadata *attinmeta;	   /* attribute datatype conversion metadata */
 
-    /* for remote query execution */
-    FQconn       *conn;            /* connection for the scan */
+	/* for remote query execution */
+	FQconn		 *conn;			   /* connection for the scan */
 
-    /* extracted fdw_private data */
-    char         *query;           /* text of INSERT/UPDATE/DELETE command */
-    List         *target_attrs;    /* list of target attribute numbers */
-    bool          has_returning;   /* is there a RETURNING clause? */
-    List         *retrieved_attrs; /* attr numbers retrieved by RETURNING */
+	/* extracted fdw_private data */
+	char		 *query;		   /* text of INSERT/UPDATE/DELETE command */
+	List		 *target_attrs;	   /* list of target attribute numbers */
+	bool		  has_returning;   /* is there a RETURNING clause? */
+	List		 *retrieved_attrs; /* attr numbers retrieved by RETURNING */
 
-    /* info about parameters for prepared statement */
-    AttrNumber    db_keyAttno_CtidPart;  /* attnum of input resjunk rdb$db_key column */
-    AttrNumber    db_keyAttno_OidPart;   /* attnum of input resjunk rdb$db_key column (OID part)*/
+	/* info about parameters for prepared statement */
+	AttrNumber	  db_keyAttno_CtidPart;	 /* attnum of input resjunk rdb$db_key column */
+	AttrNumber	  db_keyAttno_OidPart;	 /* attnum of input resjunk rdb$db_key column (OID part)*/
 
-    int           p_nums;         /* number of parameters to transmit */
-    FmgrInfo     *p_flinfo;       /* output conversion functions for them */
+	int			  p_nums;		  /* number of parameters to transmit */
+	FmgrInfo	 *p_flinfo;		  /* output conversion functions for them */
 
-    /* working memory context */
-    MemoryContext temp_cxt;       /* context for per-tuple temporary data */
+	/* working memory context */
+	MemoryContext temp_cxt;		  /* context for per-tuple temporary data */
 } FirebirdFdwModifyState;
 
 
@@ -157,47 +157,47 @@ extern void firebirdGetOptions(Oid foreigntableid, char **query, char **table, b
 /* query-building functions (in convert.c) */
 
 extern void buildInsertSql(StringInfo buf, PlannerInfo *root,
-                 Index rtindex, Relation rel,
-                 List *targetAttrs, List *returningList,
-                 List **retrieved_attrs);
+				 Index rtindex, Relation rel,
+				 List *targetAttrs, List *returningList,
+				 List **retrieved_attrs);
 
 extern void buildUpdateSql(StringInfo buf, PlannerInfo *root,
-                 Index rtindex, Relation rel,
-                 List *targetAttrs, List *returningList,
-                 List **retrieved_attrs);
+				 Index rtindex, Relation rel,
+				 List *targetAttrs, List *returningList,
+				 List **retrieved_attrs);
 
 extern void buildDeleteSql(StringInfo buf, PlannerInfo *root,
-                           Index rtindex, Relation rel,
-                           List *returningList,
-                           List **retrieved_attrs);
+						   Index rtindex, Relation rel,
+						   List *returningList,
+						   List **retrieved_attrs);
 
 extern void buildSelectSql(StringInfo buf,
-               PlannerInfo *root,
-               RelOptInfo *baserel,
-               Bitmapset *attrs_used,
-               List **retrieved_attrs,
-               bool *db_key_used);
+			   PlannerInfo *root,
+			   RelOptInfo *baserel,
+			   Bitmapset *attrs_used,
+			   List **retrieved_attrs,
+			   bool *db_key_used);
 
 extern void buildWhereClause(StringInfo buf,
-                 PlannerInfo *root,
-                 RelOptInfo *baserel,
-                 List *exprs,
-                 bool is_first,
-                 List **params);
+				 PlannerInfo *root,
+				 RelOptInfo *baserel,
+				 List *exprs,
+				 bool is_first,
+				 List **params);
 
 extern void
 identifyRemoteConditions(PlannerInfo *root,
-                         RelOptInfo *baserel,
-                         List **remote_conds,
-                         List **local_conds,
-                         bool disable_pushdowns,
-                         int firebird_version);
+						 RelOptInfo *baserel,
+						 List **remote_conds,
+						 List **local_conds,
+						 bool disable_pushdowns,
+						 int firebird_version);
 
 extern bool
 isFirebirdExpr(PlannerInfo *root,
-               RelOptInfo *baserel,
-               Expr *expr,
-               int firebird_version);
+			   RelOptInfo *baserel,
+			   Expr *expr,
+			   int firebird_version);
 
 
 extern char *
@@ -210,4 +210,4 @@ extern char *
 _dataTypeSQL(char *table_name);
 #endif
 
-#endif   /* FIREBIRD_FDW_H */
+#endif	 /* FIREBIRD_FDW_H */

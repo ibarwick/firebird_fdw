@@ -16,21 +16,21 @@
  */
 static struct FirebirdFdwOption valid_options[] =
 {
-    /* Connection options */
-    { "address",           ForeignServerRelationId },
-    { "port",              ForeignServerRelationId }, /* not implemented (!) */
-    { "database",          ForeignServerRelationId },
-    { "disable_pushdowns", ForeignServerRelationId },
-    /* User options */
-    { "username",          UserMappingRelationId   },
-    { "password",          UserMappingRelationId   },
-    /* Table options */
-    { "query",             ForeignTableRelationId  },
-    { "table_name",        ForeignTableRelationId  },
-    { "updatable",         ForeignTableRelationId  },
-    /* Table column options */
-    { "column_name",       AttributeRelationId     },
-    { NULL,                InvalidOid }
+	/* Connection options */
+	{ "address",		   ForeignServerRelationId },
+	{ "port",			   ForeignServerRelationId }, /* not implemented (!) */
+	{ "database",		   ForeignServerRelationId },
+	{ "disable_pushdowns", ForeignServerRelationId },
+	/* User options */
+	{ "username",		   UserMappingRelationId   },
+	{ "password",		   UserMappingRelationId   },
+	/* Table options */
+	{ "query",			   ForeignTableRelationId  },
+	{ "table_name",		   ForeignTableRelationId  },
+	{ "updatable",		   ForeignTableRelationId  },
+	/* Table column options */
+	{ "column_name",	   AttributeRelationId	   },
+	{ NULL,				   InvalidOid }
 };
 
 extern Datum firebird_fdw_validator(PG_FUNCTION_ARGS);
@@ -45,158 +45,158 @@ static bool firebirdIsValidOption(const char *option, Oid context);
 Datum
 firebird_fdw_validator(PG_FUNCTION_ARGS)
 {
-    List        *options_list = untransformRelOptions(PG_GETARG_DATUM(0));
-    Oid          catalog = PG_GETARG_OID(1);
-    ListCell    *cell;
+	List		*options_list = untransformRelOptions(PG_GETARG_DATUM(0));
+	Oid			 catalog = PG_GETARG_OID(1);
+	ListCell	*cell;
 
-    char        *svr_address = NULL;
-    int          svr_port = 0;
-    char        *svr_username = NULL;
-    char        *svr_password = NULL;
-    char        *svr_database = NULL;
-    char        *svr_query = NULL;
-    char        *svr_table = NULL;
+	char		*svr_address = NULL;
+	int			 svr_port = 0;
+	char		*svr_username = NULL;
+	char		*svr_password = NULL;
+	char		*svr_database = NULL;
+	char		*svr_query = NULL;
+	char		*svr_table = NULL;
 
-    bool         disable_pushdowns_set = false;
-    bool         updatable_set = false;
+	bool		 disable_pushdowns_set = false;
+	bool		 updatable_set = false;
 
-    elog(DEBUG2, "entering function %s", __func__);
+	elog(DEBUG2, "entering function %s", __func__);
 
-    /*
-     * Check that only options supported by firebird_fdw,
-     * and allowed for the current object type, are given.
-     */
-    foreach(cell, options_list)
-    {
-        DefElem    *def = (DefElem *) lfirst(cell);
+	/*
+	 * Check that only options supported by firebird_fdw,
+	 * and allowed for the current object type, are given.
+	 */
+	foreach (cell, options_list)
+	{
+		DefElem	   *def = (DefElem *) lfirst(cell);
 
-        if (!firebirdIsValidOption(def->defname, catalog))
-        {
-            struct FirebirdFdwOption *opt;
-            StringInfoData buf;
+		if (!firebirdIsValidOption(def->defname, catalog))
+		{
+			struct FirebirdFdwOption *opt;
+			StringInfoData buf;
 
-            /*
-             * Unknown option specified, complain about it. Provide a hint
-             * with list of valid options for the object.
-             */
-            initStringInfo(&buf);
-            for (opt = valid_options; opt->optname; opt++)
-            {
-                if (catalog == opt->optcontext)
-                    appendStringInfo(&buf, "%s%s", (buf.len > 0) ? ", " : "",
-                             opt->optname);
-            }
+			/*
+			 * Unknown option specified, complain about it. Provide a hint
+			 * with list of valid options for the object.
+			 */
+			initStringInfo(&buf);
+			for (opt = valid_options; opt->optname; opt++)
+			{
+				if (catalog == opt->optcontext)
+					appendStringInfo(&buf, "%s%s", (buf.len > 0) ? ", " : "",
+							 opt->optname);
+			}
 
-            ereport(ERROR,
-                (errcode(ERRCODE_FDW_INVALID_OPTION_NAME),
-                errmsg("invalid option \"%s\"", def->defname),
-                errhint("Valid options in this context are: %s", buf.len ? buf.data : "<none>")
-                ));
-        }
+			ereport(ERROR,
+				(errcode(ERRCODE_FDW_INVALID_OPTION_NAME),
+				errmsg("invalid option \"%s\"", def->defname),
+				errhint("Valid options in this context are: %s", buf.len ? buf.data : "<none>")
+				));
+		}
 
-        if (strcmp(def->defname, "address") == 0)
-        {
-            if (svr_address)
-                ereport(ERROR, (errcode(ERRCODE_SYNTAX_ERROR),
-                    errmsg("conflicting or redundant options: address (%s)", defGetString(def))
-                    ));
+		if (strcmp(def->defname, "address") == 0)
+		{
+			if (svr_address)
+				ereport(ERROR, (errcode(ERRCODE_SYNTAX_ERROR),
+					errmsg("conflicting or redundant options: address (%s)", defGetString(def))
+					));
 
-            svr_address = defGetString(def);
-        }
-        else if (strcmp(def->defname, "port") == 0)
-        {
-            if (svr_port)
-                ereport(ERROR,
-                    (errcode(ERRCODE_SYNTAX_ERROR),
-                    errmsg("conflicting or redundant options: port (%s)", defGetString(def))
-                    ));
+			svr_address = defGetString(def);
+		}
+		else if (strcmp(def->defname, "port") == 0)
+		{
+			if (svr_port)
+				ereport(ERROR,
+					(errcode(ERRCODE_SYNTAX_ERROR),
+					errmsg("conflicting or redundant options: port (%s)", defGetString(def))
+					));
 
-            svr_port = atoi(defGetString(def));
-        }
-        if (strcmp(def->defname, "username") == 0)
-        {
-            if (svr_username)
-                ereport(ERROR, (errcode(ERRCODE_SYNTAX_ERROR),
-                    errmsg("conflicting or redundant options: username (%s)", defGetString(def))
-                    ));
+			svr_port = atoi(defGetString(def));
+		}
+		if (strcmp(def->defname, "username") == 0)
+		{
+			if (svr_username)
+				ereport(ERROR, (errcode(ERRCODE_SYNTAX_ERROR),
+					errmsg("conflicting or redundant options: username (%s)", defGetString(def))
+					));
 
-            svr_username = defGetString(def);
-        }
-        if (strcmp(def->defname, "password") == 0)
-        {
-            if (svr_password)
-                ereport(ERROR, (errcode(ERRCODE_SYNTAX_ERROR),
-                    errmsg("conflicting or redundant options: password")
-                    ));
+			svr_username = defGetString(def);
+		}
+		if (strcmp(def->defname, "password") == 0)
+		{
+			if (svr_password)
+				ereport(ERROR, (errcode(ERRCODE_SYNTAX_ERROR),
+					errmsg("conflicting or redundant options: password")
+					));
 
-            svr_password = defGetString(def);
-        }
-        else if (strcmp(def->defname, "database") == 0)
-        {
-            if (svr_database)
-                ereport(ERROR,
-                    (errcode(ERRCODE_SYNTAX_ERROR),
-                    errmsg("conflicting or redundant options: database (%s)", defGetString(def))
-                    ));
+			svr_password = defGetString(def);
+		}
+		else if (strcmp(def->defname, "database") == 0)
+		{
+			if (svr_database)
+				ereport(ERROR,
+					(errcode(ERRCODE_SYNTAX_ERROR),
+					errmsg("conflicting or redundant options: database (%s)", defGetString(def))
+					));
 
-            svr_database = defGetString(def);
-        }
-        else if (strcmp(def->defname, "query") == 0)
-        {
-            if (svr_table)
-                ereport(ERROR,
-                    (errcode(ERRCODE_SYNTAX_ERROR),
-                    errmsg("conflicting options: 'query' cannot be used with 'table_name'")
-                    ));
+			svr_database = defGetString(def);
+		}
+		else if (strcmp(def->defname, "query") == 0)
+		{
+			if (svr_table)
+				ereport(ERROR,
+					(errcode(ERRCODE_SYNTAX_ERROR),
+					errmsg("conflicting options: 'query' cannot be used with 'table_name'")
+					));
 
-            if (svr_query)
-                ereport(ERROR,
-                    (errcode(ERRCODE_SYNTAX_ERROR),
-                    errmsg("conflicting or redundant options: query (%s)", defGetString(def))
-                    ));
+			if (svr_query)
+				ereport(ERROR,
+					(errcode(ERRCODE_SYNTAX_ERROR),
+					errmsg("conflicting or redundant options: query (%s)", defGetString(def))
+					));
 
-            svr_query = defGetString(def);
-        }
-        else if (strcmp(def->defname, "table_name") == 0)
-        {
-            if (svr_query)
-                ereport(ERROR,
-                    (errcode(ERRCODE_SYNTAX_ERROR),
-                    errmsg("conflicting options: table cannot be used with query")
-                    ));
+			svr_query = defGetString(def);
+		}
+		else if (strcmp(def->defname, "table_name") == 0)
+		{
+			if (svr_query)
+				ereport(ERROR,
+					(errcode(ERRCODE_SYNTAX_ERROR),
+					errmsg("conflicting options: table cannot be used with query")
+					));
 
-            if (svr_table)
-                ereport(ERROR,
-                    (errcode(ERRCODE_SYNTAX_ERROR),
-                    errmsg("conflicting or redundant options: table (%s)", defGetString(def))
-                    ));
+			if (svr_table)
+				ereport(ERROR,
+					(errcode(ERRCODE_SYNTAX_ERROR),
+					errmsg("conflicting or redundant options: table (%s)", defGetString(def))
+					));
 
-            svr_table = defGetString(def);
-        }
-        else if(strcmp(def->defname, "disable_pushdowns") == 0)
-        {
-            if(disable_pushdowns_set)
-                ereport(ERROR,
-                    (errcode(ERRCODE_SYNTAX_ERROR),
-                    errmsg("redundant option: 'disable_pushdowns' set more than once")
-                    ));
-            (void) defGetBoolean(def);
+			svr_table = defGetString(def);
+		}
+		else if (strcmp(def->defname, "disable_pushdowns") == 0)
+		{
+			if (disable_pushdowns_set)
+				ereport(ERROR,
+					(errcode(ERRCODE_SYNTAX_ERROR),
+					errmsg("redundant option: 'disable_pushdowns' set more than once")
+					));
+			(void) defGetBoolean(def);
 
-            disable_pushdowns_set = true;
-        }
-        else if(strcmp(def->defname, "updatable") == 0)
-        {
-            if(updatable_set)
-                ereport(ERROR,
-                    (errcode(ERRCODE_SYNTAX_ERROR),
-                    errmsg("redundant option: 'updatable' set more than once")
-                    ));
-            (void) defGetBoolean(def);
-            updatable_set = true;
-        }
-    }
+			disable_pushdowns_set = true;
+		}
+		else if (strcmp(def->defname, "updatable") == 0)
+		{
+			if (updatable_set)
+				ereport(ERROR,
+					(errcode(ERRCODE_SYNTAX_ERROR),
+					errmsg("redundant option: 'updatable' set more than once")
+					));
+			(void) defGetBoolean(def);
+			updatable_set = true;
+		}
+	}
 
-    PG_RETURN_VOID();
+	PG_RETURN_VOID();
 }
 
 
@@ -209,29 +209,29 @@ firebird_fdw_validator(PG_FUNCTION_ARGS)
 void
 firebirdGetOptions(Oid foreigntableid, char **query, char **table, bool *disable_pushdowns)
 {
-    ForeignTable  *f_table;
-    ListCell      *lc;
+	ForeignTable  *f_table;
+	ListCell	  *lc;
 
-    f_table = GetForeignTable(foreigntableid);
+	f_table = GetForeignTable(foreigntableid);
 
-    foreach(lc, f_table->options)
-    {
-        DefElem *def = (DefElem *) lfirst(lc);
+	foreach (lc, f_table->options)
+	{
+		DefElem *def = (DefElem *) lfirst(lc);
 
-        if (strcmp(def->defname, "query") == 0)
-            *query = defGetString(def);
+		if (strcmp(def->defname, "query") == 0)
+			*query = defGetString(def);
 
-        else if (strcmp(def->defname, "table_name") == 0)
-            *table = defGetString(def);
+		else if (strcmp(def->defname, "table_name") == 0)
+			*table = defGetString(def);
 
-        else if (strcmp(def->defname, "disable_pushdowns") == 0)
-            *disable_pushdowns = defGetBoolean(def);
-    }
+		else if (strcmp(def->defname, "disable_pushdowns") == 0)
+			*disable_pushdowns = defGetBoolean(def);
+	}
 
-    /* If no query and no table name specified, default to PostgreSQL
-     * table name */
-    if (!*table && !*query)
-        *table = get_rel_name(foreigntableid);
+	/* If no query and no table name specified, default to PostgreSQL
+	 * table name */
+	if (!*table && !*query)
+		*table = get_rel_name(foreigntableid);
 }
 
 
@@ -244,13 +244,13 @@ firebirdGetOptions(Oid foreigntableid, char **query, char **table, bool *disable
 static bool
 firebirdIsValidOption(const char *option, Oid context)
 {
-    struct FirebirdFdwOption *opt;
+	struct FirebirdFdwOption *opt;
 
-    for (opt = valid_options; opt->optname; opt++)
-    {
-        if (context == opt->optcontext && strcmp(opt->optname, option) == 0)
-            return true;
-    }
+	for (opt = valid_options; opt->optname; opt++)
+	{
+		if (context == opt->optcontext && strcmp(opt->optname, option) == 0)
+			return true;
+	}
 
-    return false;
+	return false;
 }

@@ -45,9 +45,9 @@
  */
 typedef struct foreign_glob_cxt
 {
-    PlannerInfo *root;          /* global planner state */
-    RelOptInfo *foreignrel;     /* the foreign relation we are planning for */
-    int firebird_version;       /* Firebird version integer provided by libfq (e.g. 20501) */
+	PlannerInfo *root;			/* global planner state */
+	RelOptInfo *foreignrel;		/* the foreign relation we are planning for */
+	int firebird_version;		/* Firebird version integer provided by libfq (e.g. 20501) */
 } foreign_glob_cxt;
 
 
@@ -56,10 +56,10 @@ typedef struct foreign_glob_cxt
  */
 typedef struct convert_expr_cxt
 {
-    PlannerInfo *root;          /* global planner state */
-    RelOptInfo *foreignrel;     /* the foreign relation we are planning for */
-    StringInfo  buf;            /* cumulative final output */
-    List      **params_list;    /* exprs that will become remote Params */
+	PlannerInfo *root;			/* global planner state */
+	RelOptInfo *foreignrel;		/* the foreign relation we are planning for */
+	StringInfo	buf;			/* cumulative final output */
+	List	  **params_list;	/* exprs that will become remote Params */
 } convert_expr_cxt;
 
 static char *convertDatum(Datum datum, Oid type);
@@ -70,16 +70,16 @@ static void convertRelation(StringInfo buf, Relation rel);
 static void convertStringLiteral(StringInfo buf, const char *val);
 static void convertOperatorName(StringInfo buf, Form_pg_operator opform, char *left, char *right);
 static void convertReturningList(StringInfo buf, PlannerInfo *root,
-                                 Index rtindex, Relation rel,
-                                 List *returningList,
-                                 List **retrieved_attrs);
+								 Index rtindex, Relation rel,
+								 List *returningList,
+								 List **retrieved_attrs);
 static void convertTargetList(StringInfo buf,
-                              PlannerInfo *root,
-                              Index rtindex,
-                              Relation rel,
-                              Bitmapset *attrs_used,
-                              List **retrieved_attrs,
-                              bool *db_key_used);
+							  PlannerInfo *root,
+							  Index rtindex,
+							  Relation rel,
+							  Bitmapset *attrs_used,
+							  List **retrieved_attrs,
+							  bool *db_key_used);
 
 static void convertExpr(Expr *node, convert_expr_cxt *context);
 static void convertExprRecursor(Expr *node, convert_expr_cxt *context, char **result);
@@ -100,7 +100,7 @@ static char *convertFunctionSubstring(FuncExpr *node, convert_expr_cxt *context)
 static char *convertFunctionTrim(FuncExpr *node, convert_expr_cxt *context, char *where);
 
 static bool foreign_expr_walker(Node *node,
-                    foreign_glob_cxt *glob_cxt);
+					foreign_glob_cxt *glob_cxt);
 
 static bool canConvertOp(OpExpr *oe, int firebird_version);
 static bool is_builtin(Oid procid);
@@ -113,31 +113,31 @@ static bool is_builtin(Oid procid);
  */
 void
 buildSelectSql(StringInfo buf,
-               PlannerInfo *root,
-               RelOptInfo *baserel,
-               Bitmapset *attrs_used,
-               List **retrieved_attrs,
-               bool *db_key_used)
+			   PlannerInfo *root,
+			   RelOptInfo *baserel,
+			   Bitmapset *attrs_used,
+			   List **retrieved_attrs,
+			   bool *db_key_used)
 {
-    RangeTblEntry *rte = planner_rt_fetch(baserel->relid, root);
-    Relation    rel;
+	RangeTblEntry *rte = planner_rt_fetch(baserel->relid, root);
+	Relation	rel;
 
-    /*
-     * Core code already has some lock on each rel being planned, so we can
-     * use NoLock here.
-     */
-    rel = heap_open(rte->relid, NoLock);
+	/*
+	 * Core code already has some lock on each rel being planned, so we can
+	 * use NoLock here.
+	 */
+	rel = heap_open(rte->relid, NoLock);
 
-    /* Construct SELECT list */
-    appendStringInfoString(buf, "SELECT ");
-    convertTargetList(buf, root, baserel->relid, rel, attrs_used,
-                      retrieved_attrs, db_key_used);
+	/* Construct SELECT list */
+	appendStringInfoString(buf, "SELECT ");
+	convertTargetList(buf, root, baserel->relid, rel, attrs_used,
+					  retrieved_attrs, db_key_used);
 
-    /* Construct FROM clause */
-    appendStringInfoString(buf, " FROM ");
-    convertRelation(buf, rel);
+	/* Construct FROM clause */
+	appendStringInfoString(buf, " FROM ");
+	convertRelation(buf, rel);
 
-    heap_close(rel, NoLock);
+	heap_close(rel, NoLock);
 }
 
 
@@ -148,49 +148,49 @@ buildSelectSql(StringInfo buf,
  */
 void
 buildInsertSql(StringInfo buf, PlannerInfo *root,
-               Index rtindex, Relation rel,
-               List *targetAttrs, List *returningList,
-               List **retrieved_attrs)
+			   Index rtindex, Relation rel,
+			   List *targetAttrs, List *returningList,
+			   List **retrieved_attrs)
 {
-    bool        first;
-    ListCell   *lc;
+	bool		first;
+	ListCell   *lc;
 
-    appendStringInfoString(buf, "INSERT INTO ");
-    convertRelation(buf, rel);
-    appendStringInfoString(buf, " (");
-    first = true;
-    foreach(lc, targetAttrs)
-    {
-        int         attnum = lfirst_int(lc);
+	appendStringInfoString(buf, "INSERT INTO ");
+	convertRelation(buf, rel);
+	appendStringInfoString(buf, " (");
+	first = true;
+	foreach (lc, targetAttrs)
+	{
+		int			attnum = lfirst_int(lc);
 
-        if (!first)
-            appendStringInfoString(buf, ", ");
-        else
-            first = false;
+		if (!first)
+			appendStringInfoString(buf, ", ");
+		else
+			first = false;
 
-        convertColumnRef(buf, rtindex, attnum, root);
-    }
+		convertColumnRef(buf, rtindex, attnum, root);
+	}
 
-    appendStringInfoString(buf, ")\n VALUES (");
+	appendStringInfoString(buf, ")\n VALUES (");
 
-    first = true;
-    foreach(lc, targetAttrs)
-    {
-        if (!first)
-            appendStringInfoString(buf, ", ");
-        else
-            first = false;
+	first = true;
+	foreach (lc, targetAttrs)
+	{
+		if (!first)
+			appendStringInfoString(buf, ", ");
+		else
+			first = false;
 
-        appendStringInfoString(buf, "?");
-    }
+		appendStringInfoString(buf, "?");
+	}
 
-    appendStringInfoString(buf, ")");
+	appendStringInfoString(buf, ")");
 
-    if (returningList)
-        convertReturningList(buf, root, rtindex, rel, returningList,
-                             retrieved_attrs);
-    else
-        *retrieved_attrs = NIL;
+	if (returningList)
+		convertReturningList(buf, root, rtindex, rel, returningList,
+							 retrieved_attrs);
+	else
+		*retrieved_attrs = NIL;
 }
 
 
@@ -205,34 +205,34 @@ buildUpdateSql(StringInfo buf, PlannerInfo *root,
                List *targetAttrs, List *returningList,
                List **retrieved_attrs)
 {
-    bool        first;
-    ListCell   *lc;
+	bool		first;
+	ListCell   *lc;
 
-    appendStringInfoString(buf, "UPDATE ");
-    convertRelation(buf, rel);
-    appendStringInfoString(buf, " SET ");
+	appendStringInfoString(buf, "UPDATE ");
+	convertRelation(buf, rel);
+	appendStringInfoString(buf, " SET ");
 
-    first = true;
-    foreach(lc, targetAttrs)
-    {
-        int attnum = lfirst_int(lc);
+	first = true;
+	foreach (lc, targetAttrs)
+	{
+		int attnum = lfirst_int(lc);
 
-        if (!first)
-            appendStringInfoString(buf, ", ");
-        else
-            first = false;
+		if (!first)
+			appendStringInfoString(buf, ", ");
+		else
+			first = false;
 
-        convertColumnRef(buf, rtindex, attnum, root);
-        appendStringInfo(buf, " = ?");
-    }
+		convertColumnRef(buf, rtindex, attnum, root);
+		appendStringInfo(buf, " = ?");
+	}
 
-    appendStringInfoString(buf, " WHERE rdb$db_key = ?");
+	appendStringInfoString(buf, " WHERE rdb$db_key = ?");
 
-    if (returningList)
-        convertReturningList(buf, root, rtindex, rel, returningList,
-                             retrieved_attrs);
-    else
-        *retrieved_attrs = NIL;
+	if (returningList)
+		convertReturningList(buf, root, rtindex, rel, returningList,
+							 retrieved_attrs);
+	else
+		*retrieved_attrs = NIL;
 }
 
 
@@ -258,24 +258,24 @@ buildUpdateSql(StringInfo buf, PlannerInfo *root,
 
 void
 buildDeleteSql(StringInfo buf, PlannerInfo *root,
-                 Index rtindex, Relation rel,
-                 List *returningList,
-                 List **retrieved_attrs)
+				 Index rtindex, Relation rel,
+				 List *returningList,
+				 List **retrieved_attrs)
 {
 
-    appendStringInfoString(buf, "DELETE FROM ");
-    convertRelation(buf, rel);
-    appendStringInfoString(buf, " WHERE rdb$db_key = ?");
+	appendStringInfoString(buf, "DELETE FROM ");
+	convertRelation(buf, rel);
+	appendStringInfoString(buf, " WHERE rdb$db_key = ?");
 
-    if (returningList)
-    {
-        convertReturningList(buf, root, rtindex, rel, returningList,
-                             retrieved_attrs);
-    }
-    else
-    {
-        *retrieved_attrs = NIL;
-    }
+	if (returningList)
+	{
+		convertReturningList(buf, root, rtindex, rel, returningList,
+							 retrieved_attrs);
+	}
+	else
+	{
+		*retrieved_attrs = NIL;
+	}
 }
 
 
@@ -297,41 +297,41 @@ buildDeleteSql(StringInfo buf, PlannerInfo *root,
  */
 void
 buildWhereClause(StringInfo output,
-                 PlannerInfo *root,
-                 RelOptInfo *baserel,
-                 List *exprs,
-                 bool is_first,
-                 List **params)
+				 PlannerInfo *root,
+				 RelOptInfo *baserel,
+				 List *exprs,
+				 bool is_first,
+				 List **params)
 {
-    convert_expr_cxt context;
-    ListCell   *lc;
+	convert_expr_cxt context;
+	ListCell   *lc;
 
-    if (params)
-        *params = NIL;          /* initialize result list to empty */
+	if (params)
+		*params = NIL;			/* initialize result list to empty */
 
-    /* Set up context struct for recursion */
-    context.root = root;
-    context.foreignrel = baserel;
-    context.buf = output;
-    context.params_list = params;
+	/* Set up context struct for recursion */
+	context.root = root;
+	context.foreignrel = baserel;
+	context.buf = output;
+	context.params_list = params;
 
-    foreach(lc, exprs)
-    {
-        RestrictInfo *ri = (RestrictInfo *) lfirst(lc);
+	foreach (lc, exprs)
+	{
+		RestrictInfo *ri = (RestrictInfo *) lfirst(lc);
 
-        /* Connect expressions with "AND" and parenthesize each condition. */
-        if (is_first)
-        {
-            appendStringInfoString(output, " WHERE ");
-            is_first = false;
-        }
-        else
-            appendStringInfoString(output, " AND ");
+		/* Connect expressions with "AND" and parenthesize each condition. */
+		if (is_first)
+		{
+			appendStringInfoString(output, " WHERE ");
+			is_first = false;
+		}
+		else
+			appendStringInfoString(output, " AND ");
 
-        appendStringInfoChar(output, '(');
-        convertExpr(ri->clause, &context);
-        appendStringInfoChar(output, ')');
-    }
+		appendStringInfoChar(output, '(');
+		convertExpr(ri->clause, &context);
+		appendStringInfoChar(output, ')');
+	}
 }
 
 
@@ -344,61 +344,61 @@ buildWhereClause(StringInfo output,
 char *
 convertFirebirdTable(char *server_name, char *table_name, FQresult *colres)
 {
-    int colnr, coltotal;
+	int colnr, coltotal;
 
-    StringInfoData create_table;
+	StringInfoData create_table;
 
-    initStringInfo(&create_table);
-    appendStringInfo(&create_table,
+	initStringInfo(&create_table);
+	appendStringInfo(&create_table,
 "CREATE FOREIGN TABLE %s (\n",
-                     table_name
-        );
+					 table_name
+		);
 
-    coltotal = FQntuples(colres);
-    for(colnr = 0; colnr < coltotal; colnr++)
-    {
-        char *datatype;
-        char *default_value;
+	coltotal = FQntuples(colres);
+	for (colnr = 0; colnr < coltotal; colnr++)
+	{
+		char *datatype;
+		char *default_value;
 
-        /* Column name and datatype */
-        datatype = FQgetvalue(colres, colnr, 2);
-        appendStringInfo(&create_table,
-                         "  %s %s",
-                         FQgetvalue(colres, colnr, 0),
-                         datatype
-            );
+		/* Column name and datatype */
+		datatype = FQgetvalue(colres, colnr, 2);
+		appendStringInfo(&create_table,
+						 "	%s %s",
+						 FQgetvalue(colres, colnr, 0),
+						 datatype
+			);
 
-        /* Default value */
-        default_value = FQgetvalue(colres, colnr, 3);
-        if(strlen(default_value))
-        {
-            appendStringInfo(&create_table, " %s", default_value);
-        }
+		/* Default value */
+		default_value = FQgetvalue(colres, colnr, 3);
+		if (strlen(default_value))
+		{
+			appendStringInfo(&create_table, " %s", default_value);
+		}
 
-        /* NOT NULL */
-        if(FQgetvalue(colres, colnr, 4) != NULL)
-        {
-            appendStringInfo(&create_table, " NOT NULL");
-        }
+		/* NOT NULL */
+		if (FQgetvalue(colres, colnr, 4) != NULL)
+		{
+			appendStringInfo(&create_table, " NOT NULL");
+		}
 
-        if(colnr < (coltotal -1))
-        {
-            appendStringInfo(&create_table, ",\n");
-        }
-        else
-        {
-            appendStringInfo(&create_table, "\n");
-        }
-    }
+		if (colnr < (coltotal -1))
+		{
+			appendStringInfo(&create_table, ",\n");
+		}
+		else
+		{
+			appendStringInfo(&create_table, "\n");
+		}
+	}
 
-    appendStringInfo(&create_table,
+	appendStringInfo(&create_table,
 ") SERVER %s",
-                     server_name
-        );
+					 server_name
+		);
 
-    elog(DEBUG1, "%s", create_table.data);
+	elog(DEBUG1, "%s", create_table.data);
 
-    return create_table.data;
+	return create_table.data;
 }
 #endif
 
@@ -411,66 +411,66 @@ convertFirebirdTable(char *server_name, char *table_name, FQresult *colres)
 static char *
 convertDatum(Datum datum, Oid type)
 {
-    StringInfoData result;
-    regproc typoutput;
-    HeapTuple tuple;
-    char *str, *p;
+	StringInfoData result;
+	regproc typoutput;
+	HeapTuple tuple;
+	char *str, *p;
 
-    elog(DEBUG2, "entering function %s", __func__);
+	elog(DEBUG2, "entering function %s", __func__);
 
-    /* get the type's output function */
-    tuple = SearchSysCache1(TYPEOID, ObjectIdGetDatum(type));
+	/* get the type's output function */
+	tuple = SearchSysCache1(TYPEOID, ObjectIdGetDatum(type));
 
-    if (!HeapTupleIsValid(tuple))
-        elog(ERROR, "cache lookup failed for type %u", type);
+	if (!HeapTupleIsValid(tuple))
+		elog(ERROR, "cache lookup failed for type %u", type);
 
-    typoutput = ((Form_pg_type)GETSTRUCT(tuple))->typoutput;
-    ReleaseSysCache(tuple);
+	typoutput = ((Form_pg_type)GETSTRUCT(tuple))->typoutput;
+	ReleaseSysCache(tuple);
 
-    switch (type) {
-        case TEXTOID:
-        case CHAROID:
-        case BPCHAROID:
-        case VARCHAROID:
-        case NAMEOID:
-            str = DatumGetCString(OidFunctionCall1(typoutput, datum));
-            /* quote string */
-            initStringInfo(&result);
-            appendStringInfo(&result, "'");
-            for (p=str; *p; ++p)
-            {
-                if (*p == '\'')
-                    appendStringInfo(&result, "'");
-                appendStringInfo(&result, "%c", *p);
-            }
-            appendStringInfo(&result, "'");
-            break;
+	switch (type) {
+		case TEXTOID:
+		case CHAROID:
+		case BPCHAROID:
+		case VARCHAROID:
+		case NAMEOID:
+			str = DatumGetCString(OidFunctionCall1(typoutput, datum));
+			/* quote string */
+			initStringInfo(&result);
+			appendStringInfo(&result, "'");
+			for (p=str; *p; ++p)
+			{
+				if (*p == '\'')
+					appendStringInfo(&result, "'");
+				appendStringInfo(&result, "%c", *p);
+			}
+			appendStringInfo(&result, "'");
+			break;
 
-        case INT8OID:
-        case INT2OID:
-        case INT4OID:
-        case OIDOID:
-        case FLOAT4OID:
-        case FLOAT8OID:
-        case NUMERICOID:
-            str = DatumGetCString(OidFunctionCall1(typoutput, datum));
-            initStringInfo(&result);
-            appendStringInfo(&result, "%s", str);
-            break;
+		case INT8OID:
+		case INT2OID:
+		case INT4OID:
+		case OIDOID:
+		case FLOAT4OID:
+		case FLOAT8OID:
+		case NUMERICOID:
+			str = DatumGetCString(OidFunctionCall1(typoutput, datum));
+			initStringInfo(&result);
+			appendStringInfo(&result, "%s", str);
+			break;
 
-        case TIMESTAMPOID:
-        case TIMEOID:
-        case DATEOID:
-            str = DatumGetCString(OidFunctionCall1(typoutput, datum));
-            initStringInfo(&result);
-            appendStringInfo(&result, "'%s'", str);
-            break;
+		case TIMESTAMPOID:
+		case TIMEOID:
+		case DATEOID:
+			str = DatumGetCString(OidFunctionCall1(typoutput, datum));
+			initStringInfo(&result);
+			appendStringInfo(&result, "'%s'", str);
+			break;
 
-        default:
-            return NULL;
-    }
+		default:
+			return NULL;
+	}
 
-    return result.data;
+	return result.data;
 }
 
 
@@ -483,25 +483,25 @@ convertDatum(Datum datum, Oid type)
 static void
 convertColumnRef(StringInfo buf, int varno, int varattno, PlannerInfo *root)
 {
-    RangeTblEntry *rte;
-    char       *colname = NULL;
+	RangeTblEntry *rte;
+	char	   *colname = NULL;
 
-    /* varno must not be any of OUTER_VAR, INNER_VAR and INDEX_VAR. */
-    Assert(!IS_SPECIAL_VARNO(varno));
+	/* varno must not be any of OUTER_VAR, INNER_VAR and INDEX_VAR. */
+	Assert(!IS_SPECIAL_VARNO(varno));
 
-    elog(DEBUG2, "entering function %s", __func__);
+	elog(DEBUG2, "entering function %s", __func__);
 
-    /* Get RangeTblEntry from array in PlannerInfo. */
-    rte = planner_rt_fetch(varno, root);
+	/* Get RangeTblEntry from array in PlannerInfo. */
+	rte = planner_rt_fetch(varno, root);
 
-    /* Use Firebird column name if defined */
-    colname = getFirebirdColumnName(rte->relid, varattno);
+	/* Use Firebird column name if defined */
+	colname = getFirebirdColumnName(rte->relid, varattno);
 
-    /* otherwise use Postgres column name */
-    if (colname == NULL)
-        colname = get_relid_attribute_name(rte->relid, varattno);
+	/* otherwise use Postgres column name */
+	if (colname == NULL)
+		colname = get_relid_attribute_name(rte->relid, varattno);
 
-    appendStringInfoString(buf, quote_identifier(colname));
+	appendStringInfoString(buf, quote_identifier(colname));
 }
 
 
@@ -515,30 +515,30 @@ convertColumnRef(StringInfo buf, int varno, int varattno, PlannerInfo *root)
 static void
 convertRelation(StringInfo buf, Relation rel)
 {
-    ForeignTable *table;
-    const char *relname = NULL;
-    ListCell   *lc;
+	ForeignTable *table;
+	const char *relname = NULL;
+	ListCell   *lc;
 
-    elog(DEBUG2, "entering function %s", __func__);
+	elog(DEBUG2, "entering function %s", __func__);
 
-    /* If remote table name defined in the 'table' option provided, use this
-     * instead of the PostgreSQL name
-     */
+	/* If remote table name defined in the 'table' option provided, use this
+	 * instead of the PostgreSQL name
+	 */
 
-    table = GetForeignTable(RelationGetRelid(rel));
+	table = GetForeignTable(RelationGetRelid(rel));
 
-    foreach(lc, table->options)
-    {
-        DefElem    *def = (DefElem *) lfirst(lc);
-        if (strcmp(def->defname, "table_name") == 0)
-            relname = defGetString(def);
-    }
+	foreach (lc, table->options)
+	{
+		DefElem	   *def = (DefElem *) lfirst(lc);
+		if (strcmp(def->defname, "table_name") == 0)
+			relname = defGetString(def);
+	}
 
-    if (relname == NULL)
-        relname = RelationGetRelationName(rel);
+	if (relname == NULL)
+		relname = RelationGetRelationName(rel);
 
-    appendStringInfo(buf, "%s",
-                     quote_identifier(relname));
+	appendStringInfo(buf, "%s",
+					 quote_identifier(relname));
 }
 
 
@@ -550,18 +550,18 @@ convertRelation(StringInfo buf, Relation rel)
 static void
 convertStringLiteral(StringInfo buf, const char *val)
 {
-    const char *valptr;
+	const char *valptr;
 
-    appendStringInfoChar(buf, '\'');
-    for (valptr = val; *valptr; valptr++)
-    {
-        char ch = *valptr;
+	appendStringInfoChar(buf, '\'');
+	for (valptr = val; *valptr; valptr++)
+	{
+		char ch = *valptr;
 
-        if (SQL_STR_DOUBLE(ch, true))
-            appendStringInfoChar(buf, ch);
-        appendStringInfoChar(buf, ch);
-    }
-    appendStringInfoChar(buf, '\'');
+		if (SQL_STR_DOUBLE(ch, true))
+			appendStringInfoChar(buf, ch);
+		appendStringInfoChar(buf, ch);
+	}
+	appendStringInfoChar(buf, '\'');
 }
 
 
@@ -575,19 +575,19 @@ convertStringLiteral(StringInfo buf, const char *val)
 static void
 convertExpr(Expr *node, convert_expr_cxt *context)
 {
-    char *result = NULL;
-    elog(DEBUG2, "entering function %s", __func__);
+	char *result = NULL;
+	elog(DEBUG2, "entering function %s", __func__);
 
-    if (node == NULL)
-        return;
+	if (node == NULL)
+		return;
 
-    convertExprRecursor(node, context, &result);
+	convertExprRecursor(node, context, &result);
 
-    if(result != NULL)
-    {
-        elog(DEBUG2, "result: %s", result);
-        appendStringInfoString(context->buf, result);
-    }
+	if (result != NULL)
+	{
+		elog(DEBUG2, "result: %s", result);
+		appendStringInfoString(context->buf, result);
+	}
 }
 
 
@@ -601,55 +601,55 @@ convertExpr(Expr *node, convert_expr_cxt *context)
 static void
 convertExprRecursor(Expr *node, convert_expr_cxt *context, char **result)
 {
-    elog(DEBUG2, "entering function %s", __func__);
+	elog(DEBUG2, "entering function %s", __func__);
 
-    if (node == NULL)
-        return;
+	if (node == NULL)
+		return;
 
-    elog(DEBUG2, "Node tag %i", (int) nodeTag(node));
-    switch (nodeTag(node))
-    {
-        case T_Var:
-            convertVar((Var *) node, context, result);
-            break;
+	elog(DEBUG2, "Node tag %i", (int) nodeTag(node));
+	switch (nodeTag(node))
+	{
+		case T_Var:
+			convertVar((Var *) node, context, result);
+			break;
 
-        case T_OpExpr:
-            convertOpExpr((OpExpr *) node, context, result);
-            break;
+		case T_OpExpr:
+			convertOpExpr((OpExpr *) node, context, result);
+			break;
 
-        case T_Const:
-            convertConst((Const *) node, context, result);
-            break;
+		case T_Const:
+			convertConst((Const *) node, context, result);
+			break;
 
-        case T_RelabelType:
-            /* Need cast? */
-            convertRelabelType((RelabelType *) node, context, result);
-            break;
+		case T_RelabelType:
+			/* Need cast? */
+			convertRelabelType((RelabelType *) node, context, result);
+			break;
 
-        case T_BoolExpr:
-            convertBoolExpr((BoolExpr *) node, context, result);
-            break;
+		case T_BoolExpr:
+			convertBoolExpr((BoolExpr *) node, context, result);
+			break;
 
-        case T_NullTest:
-            /* IS [NOT] NULL */
-            convertNullTest((NullTest *) node, context, result);
-            break;
+		case T_NullTest:
+			/* IS [NOT] NULL */
+			convertNullTest((NullTest *) node, context, result);
+			break;
 
-        case T_ScalarArrayOpExpr:
-            /* IS [NOT] IN (1,2,3) */
-            convertScalarArrayOpExpr((ScalarArrayOpExpr *) node, context, result);
-            break;
+		case T_ScalarArrayOpExpr:
+			/* IS [NOT] IN (1,2,3) */
+			convertScalarArrayOpExpr((ScalarArrayOpExpr *) node, context, result);
+			break;
 
-        case T_FuncExpr:
-            /* selected functions which can be passed to Firebird */
-            convertFunction((FuncExpr *)node, context, result);
-            break;
+		case T_FuncExpr:
+			/* selected functions which can be passed to Firebird */
+			convertFunction((FuncExpr *)node, context, result);
+			break;
 
-        default:
-            elog(ERROR, "unsupported expression type for convert: %d",
-                 (int) nodeTag(node));
-            break;
-    }
+		default:
+			elog(ERROR, "unsupported expression type for convert: %d",
+				 (int) nodeTag(node));
+			break;
+	}
 }
 
 
@@ -661,18 +661,18 @@ convertExprRecursor(Expr *node, convert_expr_cxt *context, char **result)
 static void
 convertVar(Var *node, convert_expr_cxt *context, char **result)
 {
-    StringInfoData buf;
-    initStringInfo(&buf);
-    elog(DEBUG2, "entering function %s", __func__);
+	StringInfoData buf;
+	initStringInfo(&buf);
+	elog(DEBUG2, "entering function %s", __func__);
 
-    if (node->varno == context->foreignrel->relid &&
-        node->varlevelsup == 0)
-        /* Var belongs to foreign table */
-        convertColumnRef(&buf, node->varno, node->varattno, context->root);
-    else
-        elog(ERROR, "%s: var does not belong to foreign table", __func__);
+	if (node->varno == context->foreignrel->relid &&
+		node->varlevelsup == 0)
+		/* Var belongs to foreign table */
+		convertColumnRef(&buf, node->varno, node->varattno, context->root);
+	else
+		elog(ERROR, "%s: var does not belong to foreign table", __func__);
 
-    *result = pstrdup(buf.data);
+	*result = pstrdup(buf.data);
 }
 
 
@@ -683,51 +683,51 @@ convertVar(Var *node, convert_expr_cxt *context, char **result)
 static void
 convertConst(Const *node, convert_expr_cxt *context, char **result)
 {
-    Oid         typoutput;
-    bool        typIsVarlena;
-    char       *extval;
-    StringInfoData  buf;
+	Oid			typoutput;
+	bool		typIsVarlena;
+	char	   *extval;
+	StringInfoData	buf;
 
-    initStringInfo(&buf);
+	initStringInfo(&buf);
 
-    elog(DEBUG2, "entering function %s", __func__);
+	elog(DEBUG2, "entering function %s", __func__);
 
-    if (node->constisnull)
-    {
-        appendStringInfoString(&buf, "NULL");
-        *result = pstrdup(buf.data);
-        return;
-    }
+	if (node->constisnull)
+	{
+		appendStringInfoString(&buf, "NULL");
+		*result = pstrdup(buf.data);
+		return;
+	}
 
    getTypeOutputInfo(node->consttype,
-                     &typoutput, &typIsVarlena);
+					 &typoutput, &typIsVarlena);
    extval = OidOutputFunctionCall(typoutput, node->constvalue);
 
    switch (node->consttype)
-    {
-        case INT2OID:
-        case INT4OID:
-        case INT8OID:
-        case FLOAT4OID:
-        case FLOAT8OID:
-        case NUMERICOID:
-            appendStringInfoString(&buf, extval);
-            break;
+	{
+		case INT2OID:
+		case INT4OID:
+		case INT8OID:
+		case FLOAT4OID:
+		case FLOAT8OID:
+		case NUMERICOID:
+			appendStringInfoString(&buf, extval);
+			break;
 
-        /* Firebird does not support these types */
-        case OIDOID:
-        case BITOID:
-        case VARBITOID:
-        /* BOOL will be supported from Firebird 3.0 */
-        case BOOLOID:
-            ereport(ERROR,
-                    (errmsg("Unsupported data type %i", node->consttype))
-                );
-            break;
-        default:
-            convertStringLiteral(&buf, extval);
-            break;
-    }
+		/* Firebird does not support these types */
+		case OIDOID:
+		case BITOID:
+		case VARBITOID:
+		/* BOOL will be supported from Firebird 3.0 */
+		case BOOLOID:
+			ereport(ERROR,
+					(errmsg("Unsupported data type %i", node->consttype))
+				);
+			break;
+		default:
+			convertStringLiteral(&buf, extval);
+			break;
+	}
 
    *result = pstrdup(buf.data);
 }
@@ -744,45 +744,45 @@ convertConst(Const *node, convert_expr_cxt *context, char **result)
 static void
 convertBoolExpr(BoolExpr *node, convert_expr_cxt *context, char **result)
 {
-    const char *op = NULL;      /* keep compiler quiet */
-    bool        first = true;
-    ListCell   *lc;
+	const char *op = NULL;		/* keep compiler quiet */
+	bool		first = true;
+	ListCell   *lc;
 
-    StringInfoData  buf;
-    char *local_result;
+	StringInfoData	buf;
+	char *local_result;
 
-    elog(DEBUG2, "entering function %s", __func__);
+	elog(DEBUG2, "entering function %s", __func__);
 
-    initStringInfo(&buf);
+	initStringInfo(&buf);
 
-    switch (node->boolop)
-    {
-        case AND_EXPR:
-            op = "AND";
-            break;
-        case OR_EXPR:
-            op = "OR";
-            break;
-        case NOT_EXPR:
-            convertExprRecursor(linitial(node->args), context, &local_result);
-            appendStringInfo(&buf, "(NOT %s )", local_result);
-            return;
-    }
+	switch (node->boolop)
+	{
+		case AND_EXPR:
+			op = "AND";
+			break;
+		case OR_EXPR:
+			op = "OR";
+			break;
+		case NOT_EXPR:
+			convertExprRecursor(linitial(node->args), context, &local_result);
+			appendStringInfo(&buf, "(NOT %s )", local_result);
+			return;
+	}
 
-    appendStringInfoChar(&buf, '(');
+	appendStringInfoChar(&buf, '(');
 
-    foreach(lc, node->args)
-    {
-        if (!first)
-            appendStringInfo(&buf, " %s ", op);
-        else
-            first = false;
+	foreach (lc, node->args)
+	{
+		if (!first)
+			appendStringInfo(&buf, " %s ", op);
+		else
+			first = false;
 
-        convertExprRecursor((Expr *) lfirst(lc), context, &local_result);
-        appendStringInfoString(&buf, local_result);
-    }
-    appendStringInfoChar(&buf, ')');
-    *result = pstrdup(buf.data);
+		convertExprRecursor((Expr *) lfirst(lc), context, &local_result);
+		appendStringInfoString(&buf, local_result);
+	}
+	appendStringInfoChar(&buf, ')');
+	*result = pstrdup(buf.data);
 }
 
 
@@ -794,22 +794,22 @@ convertBoolExpr(BoolExpr *node, convert_expr_cxt *context, char **result)
 static void
 convertNullTest(NullTest *node, convert_expr_cxt *context, char **result)
 {
-    StringInfoData  buf;
-    char *local_result;
+	StringInfoData	buf;
+	char *local_result;
 
-    elog(DEBUG2, "entering function %s", __func__);
+	elog(DEBUG2, "entering function %s", __func__);
 
-    initStringInfo(&buf);
+	initStringInfo(&buf);
 
-    appendStringInfoChar(&buf, '(');
-    convertExprRecursor(node->arg, context, &local_result);
-    appendStringInfoString(&buf, local_result);
-    if (node->nulltesttype == IS_NULL)
-        appendStringInfoString(&buf, " IS NULL)");
-    else
-        appendStringInfoString(&buf, " IS NOT NULL)");
+	appendStringInfoChar(&buf, '(');
+	convertExprRecursor(node->arg, context, &local_result);
+	appendStringInfoString(&buf, local_result);
+	if (node->nulltesttype == IS_NULL)
+		appendStringInfoString(&buf, " IS NULL)");
+	else
+		appendStringInfoString(&buf, " IS NOT NULL)");
 
-    *result = pstrdup(buf.data);
+	*result = pstrdup(buf.data);
 }
 
 
@@ -826,55 +826,55 @@ convertNullTest(NullTest *node, convert_expr_cxt *context, char **result)
 static void
 convertOpExpr(OpExpr *node, convert_expr_cxt *context, char **result)
 {
-    HeapTuple   tuple;
-    Form_pg_operator form;
-    char        oprkind;
-    ListCell   *arg;
-    char *left = NULL;
-    char *right = NULL;
-    StringInfoData  buf;
-    initStringInfo(&buf);
+	HeapTuple	tuple;
+	Form_pg_operator form;
+	char		oprkind;
+	ListCell   *arg;
+	char *left = NULL;
+	char *right = NULL;
+	StringInfoData	buf;
+	initStringInfo(&buf);
 
-    elog(DEBUG2, "entering function %s", __func__);
+	elog(DEBUG2, "entering function %s", __func__);
 
-    /* Retrieve information about the operator from system catalog. */
-    tuple = SearchSysCache1(OPEROID, ObjectIdGetDatum(node->opno));
-    if (!HeapTupleIsValid(tuple))
-        elog(ERROR, "cache lookup failed for operator %u", node->opno);
-    form = (Form_pg_operator) GETSTRUCT(tuple);
-    oprkind = form->oprkind;
+	/* Retrieve information about the operator from system catalog. */
+	tuple = SearchSysCache1(OPEROID, ObjectIdGetDatum(node->opno));
+	if (!HeapTupleIsValid(tuple))
+		elog(ERROR, "cache lookup failed for operator %u", node->opno);
+	form = (Form_pg_operator) GETSTRUCT(tuple);
+	oprkind = form->oprkind;
 
-    elog(DEBUG2, "oprname: %s; oprkind: %c", form->oprname.data, oprkind);
+	elog(DEBUG2, "oprname: %s; oprkind: %c", form->oprname.data, oprkind);
 
-    /* Sanity check. */
-    Assert((oprkind == 'r' && list_length(node->args) == 1) ||
-           (oprkind == 'l' && list_length(node->args) == 1) ||
-           (oprkind == 'b' && list_length(node->args) == 2));
+	/* Sanity check. */
+	Assert((oprkind == 'r' && list_length(node->args) == 1) ||
+		   (oprkind == 'l' && list_length(node->args) == 1) ||
+		   (oprkind == 'b' && list_length(node->args) == 2));
 
-    /* Convert left operand. */
-    if (oprkind == 'r' || oprkind == 'b')
-    {
-        arg = list_head(node->args);
-        convertExprRecursor(lfirst(arg), context, &left);
-    }
+	/* Convert left operand. */
+	if (oprkind == 'r' || oprkind == 'b')
+	{
+		arg = list_head(node->args);
+		convertExprRecursor(lfirst(arg), context, &left);
+	}
 
-    /* Convert right operand. */
-    if (oprkind == 'l' || oprkind == 'b')
-    {
-        arg = list_tail(node->args);
-        convertExprRecursor(lfirst(arg), context, &right);
-    }
+	/* Convert right operand. */
+	if (oprkind == 'l' || oprkind == 'b')
+	{
+		arg = list_tail(node->args);
+		convertExprRecursor(lfirst(arg), context, &right);
+	}
 
-    /* Always parenthesize the expression. */
-    appendStringInfoChar(&buf, '(');
+	/* Always parenthesize the expression. */
+	appendStringInfoChar(&buf, '(');
 
-    convertOperatorName(&buf, form, left, right);
+	convertOperatorName(&buf, form, left, right);
 
-    appendStringInfoChar(&buf, ')');
+	appendStringInfoChar(&buf, ')');
 
-    ReleaseSysCache(tuple);
+	ReleaseSysCache(tuple);
 
-    *result = pstrdup(buf.data);
+	*result = pstrdup(buf.data);
 }
 
 
@@ -888,72 +888,72 @@ convertOpExpr(OpExpr *node, convert_expr_cxt *context, char **result)
 static void
 convertOperatorName(StringInfo buf, Form_pg_operator opform, char *left, char *right)
 {
-    char       *oprname;
-    elog(DEBUG2, "entering function %s", __func__);
+	char	   *oprname;
+	elog(DEBUG2, "entering function %s", __func__);
 
-    /* oprname is not a SQL identifier, so we should not quote it. */
-    oprname = NameStr(opform->oprname);
+	/* oprname is not a SQL identifier, so we should not quote it. */
+	oprname = NameStr(opform->oprname);
 
-    /* Raise an error if trying to convert a custom operator.
-     * This should have been caught by canConvertOp() and should therefore
-     * never happen.
-     */
-    if (opform->oprnamespace != PG_CATALOG_NAMESPACE)
-    {
-        const char *opnspname;
+	/* Raise an error if trying to convert a custom operator.
+	 * This should have been caught by canConvertOp() and should therefore
+	 * never happen.
+	 */
+	if (opform->oprnamespace != PG_CATALOG_NAMESPACE)
+	{
+		const char *opnspname;
 
-        opnspname = get_namespace_name(opform->oprnamespace);
-        elog(ERROR, "Operator '%s.%s' not in pg_catalog!", opnspname, oprname);
-        return;
-    }
+		opnspname = get_namespace_name(opform->oprnamespace);
+		elog(ERROR, "Operator '%s.%s' not in pg_catalog!", opnspname, oprname);
+		return;
+	}
 
-    /* These operators can be passed through as-is */
-    /* ------------------------------------------- */
-    if(   strcmp(oprname, "=")  == 0
-       || strcmp(oprname, "<>") == 0
-       || strcmp(oprname, ">")  == 0
-       || strcmp(oprname, "<")  == 0
-       || strcmp(oprname, ">=") == 0
-       || strcmp(oprname, "<=") == 0
-        )
-    {
-        appendStringInfo(buf, "%s %s %s", left, oprname, right);
-    }
-    /* These operators require some conversion */
-    /* --------------------------------------- */
-    else if(strcmp(oprname, "~~") == 0)
-    {
-        /* LIKE */
-        appendStringInfo(buf, "%s LIKE %s", left, right);
-    }
-    else if(strcmp(oprname, "!~~") == 0)
-    {
-        /* NOT LIKE */
-        appendStringInfo(buf, "%s NOT LIKE %s", left, right);
-    }
-    else if(strcmp(oprname, "~~*") == 0)
-    {
-        /* ILIKE */
-        appendStringInfo(buf, "LOWER(%s) LIKE LOWER(%s)", left, right);
-    }
-    else if(strcmp(oprname, "!~~*") == 0)
-    {
-        /* NOT ILIKE */
-        appendStringInfo(buf, "LOWER(%s) NOT LIKE LOWER(%s)", left, right);
-    }
-    else if(strcmp(oprname, "<<") == 0)
-    {
-        appendStringInfo(buf, "BIN_SHL(%s, %s)", left, right);
-    }
-    else if(strcmp(oprname, ">>") == 0)
-    {
-        appendStringInfo(buf, "BIN_SHR(%s, %s)", left, right);
-    }
-    else
-    {
-        /* Should never happen, if it does blame canConvertOp() */
-        elog(ERROR, "Unable to handle operator %s", oprname);
-    }
+	/* These operators can be passed through as-is */
+	/* ------------------------------------------- */
+	if (  strcmp(oprname, "=")	== 0
+	   || strcmp(oprname, "<>") == 0
+	   || strcmp(oprname, ">")	== 0
+	   || strcmp(oprname, "<")	== 0
+	   || strcmp(oprname, ">=") == 0
+	   || strcmp(oprname, "<=") == 0
+		)
+	{
+		appendStringInfo(buf, "%s %s %s", left, oprname, right);
+	}
+	/* These operators require some conversion */
+	/* --------------------------------------- */
+	else if (strcmp(oprname, "~~") == 0)
+	{
+		/* LIKE */
+		appendStringInfo(buf, "%s LIKE %s", left, right);
+	}
+	else if (strcmp(oprname, "!~~") == 0)
+	{
+		/* NOT LIKE */
+		appendStringInfo(buf, "%s NOT LIKE %s", left, right);
+	}
+	else if (strcmp(oprname, "~~*") == 0)
+	{
+		/* ILIKE */
+		appendStringInfo(buf, "LOWER(%s) LIKE LOWER(%s)", left, right);
+	}
+	else if (strcmp(oprname, "!~~*") == 0)
+	{
+		/* NOT ILIKE */
+		appendStringInfo(buf, "LOWER(%s) NOT LIKE LOWER(%s)", left, right);
+	}
+	else if (strcmp(oprname, "<<") == 0)
+	{
+		appendStringInfo(buf, "BIN_SHL(%s, %s)", left, right);
+	}
+	else if (strcmp(oprname, ">>") == 0)
+	{
+		appendStringInfo(buf, "BIN_SHR(%s, %s)", left, right);
+	}
+	else
+	{
+		/* Should never happen, if it does blame canConvertOp() */
+		elog(ERROR, "Unable to handle operator %s", oprname);
+	}
 }
 
 
@@ -968,16 +968,16 @@ convertOperatorName(StringInfo buf, Form_pg_operator opform, char *left, char *r
 static void
 convertRelabelType(RelabelType *node, convert_expr_cxt *context, char **result)
 {
-    elog(DEBUG2, "entering function %s", __func__);
-    convertExprRecursor(node->arg, context, result);
-    if (node->relabelformat != COERCE_IMPLICIT_CAST)
-    {
-        /* Fail with error for now */
-        elog(ERROR, "convertRelabelType(): attempting to create cast");
-/*      appendStringInfo(&buf, "::%s",
-                         format_type_with_typemod(node->resulttype,
-                         node->resulttypmod));*/
-    }
+	elog(DEBUG2, "entering function %s", __func__);
+	convertExprRecursor(node->arg, context, result);
+	if (node->relabelformat != COERCE_IMPLICIT_CAST)
+	{
+		/* Fail with error for now */
+		elog(ERROR, "convertRelabelType(): attempting to create cast");
+/*		appendStringInfo(&buf, "::%s",
+						 format_type_with_typemod(node->resulttype,
+						 node->resulttypmod));*/
+	}
 }
 
 
@@ -989,72 +989,72 @@ convertRelabelType(RelabelType *node, convert_expr_cxt *context, char **result)
 static void
 convertScalarArrayOpExpr(ScalarArrayOpExpr *node, convert_expr_cxt *context, char **result)
 {
-    HeapTuple   tuple;
-    Datum datum;
-    Const *constant;
-    char *left = NULL;
-    Expr       *arg1;
+	HeapTuple	tuple;
+	Datum datum;
+	Const *constant;
+	char *left = NULL;
+	Expr	   *arg1;
 
-    StringInfoData  buf;
-    ArrayIterator iterator;
-    bool first_arg, isNull;
-    Oid leftargtype;
-    /* Sanity check. */
-    Assert(list_length(node->args) == 2);
+	StringInfoData	buf;
+	ArrayIterator iterator;
+	bool first_arg, isNull;
+	Oid leftargtype;
+	/* Sanity check. */
+	Assert(list_length(node->args) == 2);
 
-    elog(DEBUG2, "entering function %s", __func__);
+	elog(DEBUG2, "entering function %s", __func__);
 
-    initStringInfo(&buf);
-    arg1 = linitial(node->args);
-    convertExprRecursor(arg1, context, &left);
+	initStringInfo(&buf);
+	arg1 = linitial(node->args);
+	convertExprRecursor(arg1, context, &left);
 
-    appendStringInfo(&buf, "(%s %s (", left, node->useOr ? "IN" : "NOT IN");
+	appendStringInfo(&buf, "(%s %s (", left, node->useOr ? "IN" : "NOT IN");
 
-    /* the second (=last) argument must be a Const of ArrayType */
-    constant = (Const *)llast(node->args);
+	/* the second (=last) argument must be a Const of ArrayType */
+	constant = (Const *)llast(node->args);
 
-    /* get operator name, left argument type and schema */
-    tuple = SearchSysCache1(OPEROID, ObjectIdGetDatum(node->opno));
-    if (! HeapTupleIsValid(tuple))
-        elog(ERROR, "cache lookup failed for operator %u", node->opno);
+	/* get operator name, left argument type and schema */
+	tuple = SearchSysCache1(OPEROID, ObjectIdGetDatum(node->opno));
+	if (! HeapTupleIsValid(tuple))
+		elog(ERROR, "cache lookup failed for operator %u", node->opno);
 
-    leftargtype = ((Form_pg_operator)GETSTRUCT(tuple))->oprleft;
-    ReleaseSysCache(tuple);
-    /* loop through the array elements */
+	leftargtype = ((Form_pg_operator)GETSTRUCT(tuple))->oprleft;
+	ReleaseSysCache(tuple);
+	/* loop through the array elements */
 #if (PG_VERSION_NUM >= 90500)
-    iterator = array_create_iterator(DatumGetArrayTypeP(constant->constvalue), 0, NULL);
+	iterator = array_create_iterator(DatumGetArrayTypeP(constant->constvalue), 0, NULL);
 #else
-    iterator = array_create_iterator(DatumGetArrayTypeP(constant->constvalue), 0);
+	iterator = array_create_iterator(DatumGetArrayTypeP(constant->constvalue), 0);
 #endif
-    first_arg = true;
-    while (array_iterate(iterator, &datum, &isNull))
-    {
-        char *c;
+	first_arg = true;
+	while (array_iterate(iterator, &datum, &isNull))
+	{
+		char *c;
 
-        if (isNull)
-            c = "NULL";
-        else
-        {
-            c = convertDatum(datum, leftargtype);
-            if (c == NULL)
-            {
-                array_free_iterator(iterator);
-                return;
-            }
-        }
+		if (isNull)
+			c = "NULL";
+		else
+		{
+			c = convertDatum(datum, leftargtype);
+			if (c == NULL)
+			{
+				array_free_iterator(iterator);
+				return;
+			}
+		}
 
-        /* append the argument */
-        appendStringInfo(&buf, "%s%s", first_arg ? "" : ", ", c);
-        first_arg = false;
-    }
-    array_free_iterator(iterator);
+		/* append the argument */
+		appendStringInfo(&buf, "%s%s", first_arg ? "" : ", ", c);
+		first_arg = false;
+	}
+	array_free_iterator(iterator);
 
-    /* don't allow empty arrays */
-    if (first_arg)
-        return;
+	/* don't allow empty arrays */
+	if (first_arg)
+		return;
 
-    appendStringInfoString(&buf, "))");
-    *result = pstrdup(buf.data);
+	appendStringInfoString(&buf, "))");
+	*result = pstrdup(buf.data);
 }
 
 
@@ -1069,118 +1069,118 @@ convertScalarArrayOpExpr(ScalarArrayOpExpr *node, convert_expr_cxt *context, cha
 static void
 convertFunction(FuncExpr *node, convert_expr_cxt *context, char **result)
 {
-    HeapTuple tuple;
-    char *oprname;
+	HeapTuple tuple;
+	char *oprname;
 
-    StringInfoData  buf;
-    bool first_arg = true;
-    ListCell *lc;
-    char *local_result;
+	StringInfoData	buf;
+	bool first_arg = true;
+	ListCell *lc;
+	char *local_result;
 
-    elog(DEBUG2, "entering function %s", __func__);
-    /* get function name */
-    tuple = SearchSysCache1(PROCOID, ObjectIdGetDatum(node->funcid));
-    if (!HeapTupleIsValid(tuple))
-        elog(ERROR, "cache lookup failed for function %u", node->funcid);
-    oprname = pstrdup(((Form_pg_proc)GETSTRUCT(tuple))->proname.data);
-    ReleaseSysCache(tuple);
+	elog(DEBUG2, "entering function %s", __func__);
+	/* get function name */
+	tuple = SearchSysCache1(PROCOID, ObjectIdGetDatum(node->funcid));
+	if (!HeapTupleIsValid(tuple))
+		elog(ERROR, "cache lookup failed for function %u", node->funcid);
+	oprname = pstrdup(((Form_pg_proc)GETSTRUCT(tuple))->proname.data);
+	ReleaseSysCache(tuple);
 
-    elog(DEBUG2, " func name: %s; %i", oprname, node->funcid);
+	elog(DEBUG2, " func name: %s; %i", oprname, node->funcid);
 
-    /* Any implicit casts must be handled by Firebird */
-    if (node->funcformat == COERCE_IMPLICIT_CAST)
-    {
-        lc = list_head(node->args);
-        convertExprRecursor(lfirst(lc), context, &local_result);
+	/* Any implicit casts must be handled by Firebird */
+	if (node->funcformat == COERCE_IMPLICIT_CAST)
+	{
+		lc = list_head(node->args);
+		convertExprRecursor(lfirst(lc), context, &local_result);
 
-        *result = pstrdup(local_result);
-        return;
-    }
+		*result = pstrdup(local_result);
+		return;
+	}
 
-    /* Special conversion needed for some functions */
+	/* Special conversion needed for some functions */
 
-    if(strcmp(oprname, "concat") == 0)
-    {
-        *result = convertFunctionConcat(node, context);
-        return;
-    }
+	if (strcmp(oprname, "concat") == 0)
+	{
+		*result = convertFunctionConcat(node, context);
+		return;
+	}
 
-    if(strcmp(oprname, "position") == 0
-    || strcmp(oprname, "strpos") == 0)
-    {
-        *result = convertFunctionPosition(node, context);
-        return;
-    }
+	if (strcmp(oprname, "position") == 0
+	|| strcmp(oprname, "strpos") == 0)
+	{
+		*result = convertFunctionPosition(node, context);
+		return;
+	}
 
-    if(strcmp(oprname, "substring") == 0)
-    {
-        *result = convertFunctionSubstring(node, context);
-        return;
-    }
+	if (strcmp(oprname, "substring") == 0)
+	{
+		*result = convertFunctionSubstring(node, context);
+		return;
+	}
 
-    if(strcmp(oprname, "ltrim") == 0)
-    {
-        *result = convertFunctionTrim(node, context, "LEADING");
-        return;
-    }
+	if (strcmp(oprname, "ltrim") == 0)
+	{
+		*result = convertFunctionTrim(node, context, "LEADING");
+		return;
+	}
 
-    if(strcmp(oprname, "rtrim") == 0)
-    {
-        *result = convertFunctionTrim(node, context, "TRAILING");
-        return;
-    }
+	if (strcmp(oprname, "rtrim") == 0)
+	{
+		*result = convertFunctionTrim(node, context, "TRAILING");
+		return;
+	}
 
-    initStringInfo(&buf);
+	initStringInfo(&buf);
 
-    /* Name conversion needed for some functions */
+	/* Name conversion needed for some functions */
 
-    if(strcmp(oprname, "length") == 0)
-    {
-        appendStringInfoString(&buf, "CHAR_LENGTH");
-    }
-    /* FB's LOG() returns DOUBLE PRECISION
-     * and has bugs; see: http://www.firebirdsql.org/refdocs/langrefupd21-intfunc-log.html
-     * also LOG10(numeric) = LOG(dp or numeric)
-     */
-    else if(strcmp(oprname, "log") == 0)
-    {
-        if(list_length(node->args) == 1)
-            appendStringInfoString(&buf, "LOG10");
-        else
-            appendStringInfoString(&buf, "LOG");
-    }
-    /* FB's POWER() returns DOUBLE PRECISION
-     * http://www.firebirdsql.org/refdocs/langrefupd21-intfunc-power.html
-     *
-     * seems to handle implicit conversion OK
-     *  SELECT power(doubleval,decval) from datatypes
-     */
-    else if(strcmp(oprname, "pow") == 0)
-    {
-        appendStringInfoString(&buf, "POWER");
-    }
-    else
-    {
-        appendStringInfoString(&buf, oprname);
-    }
+	if (strcmp(oprname, "length") == 0)
+	{
+		appendStringInfoString(&buf, "CHAR_LENGTH");
+	}
+	/* FB's LOG() returns DOUBLE PRECISION
+	 * and has bugs; see: http://www.firebirdsql.org/refdocs/langrefupd21-intfunc-log.html
+	 * also LOG10(numeric) = LOG(dp or numeric)
+	 */
+	else if (strcmp(oprname, "log") == 0)
+	{
+		if (list_length(node->args) == 1)
+			appendStringInfoString(&buf, "LOG10");
+		else
+			appendStringInfoString(&buf, "LOG");
+	}
+	/* FB's POWER() returns DOUBLE PRECISION
+	 * http://www.firebirdsql.org/refdocs/langrefupd21-intfunc-power.html
+	 *
+	 * seems to handle implicit conversion OK
+	 *	SELECT power(doubleval,decval) from datatypes
+	 */
+	else if (strcmp(oprname, "pow") == 0)
+	{
+		appendStringInfoString(&buf, "POWER");
+	}
+	else
+	{
+		appendStringInfoString(&buf, oprname);
+	}
 
-    appendStringInfoChar(&buf, '(');
+	appendStringInfoChar(&buf, '(');
 
-    foreach(lc, node->args)
-    {
-        convertExprRecursor(lfirst(lc), context, &local_result);
+	foreach (lc, node->args)
+	{
+		convertExprRecursor(lfirst(lc), context, &local_result);
 
-        if (first_arg)
-            first_arg = false;
-        else
-            appendStringInfoChar(&buf, ',');
+		if (first_arg)
+			first_arg = false;
+		else
+			appendStringInfoChar(&buf, ',');
 
-        appendStringInfoString(&buf, local_result);
-    }
+		appendStringInfoString(&buf, local_result);
+	}
 
-    appendStringInfoChar(&buf, ')');
+	appendStringInfoChar(&buf, ')');
 
-    *result = pstrdup(buf.data);
+	*result = pstrdup(buf.data);
 }
 
 
@@ -1193,33 +1193,33 @@ convertFunction(FuncExpr *node, convert_expr_cxt *context, char **result)
 static char *
 convertFunctionConcat(FuncExpr *node, convert_expr_cxt *context)
 {
-    StringInfoData  buf;
-    ListCell *lc;
-    char *local_result;
-    bool first = true;
+	StringInfoData	buf;
+	ListCell *lc;
+	char *local_result;
+	bool first = true;
 
-    elog(DEBUG2, "entering function %s", __func__);
-    elog(DEBUG2, "arg length: %i", list_length(node->args));
+	elog(DEBUG2, "entering function %s", __func__);
+	elog(DEBUG2, "arg length: %i", list_length(node->args));
 
-    initStringInfo(&buf);
-    appendStringInfoChar(&buf, '(');
+	initStringInfo(&buf);
+	appendStringInfoChar(&buf, '(');
 
-    foreach(lc, node->args)
-    {
-        if(first == true)
-            first = false;
-        else
-        {
-            appendStringInfoString(&buf, " || ");
-        }
+	foreach (lc, node->args)
+	{
+		if (first == true)
+			first = false;
+		else
+		{
+			appendStringInfoString(&buf, " || ");
+		}
 
-        convertExprRecursor((Expr *) lfirst(lc), context, &local_result);
-        appendStringInfoString(&buf, local_result);
-    }
+		convertExprRecursor((Expr *) lfirst(lc), context, &local_result);
+		appendStringInfoString(&buf, local_result);
+	}
 
-    appendStringInfoChar(&buf, ')');
+	appendStringInfoChar(&buf, ')');
 
-    return buf.data;
+	return buf.data;
 }
 
 
@@ -1234,21 +1234,21 @@ convertFunctionConcat(FuncExpr *node, convert_expr_cxt *context)
 static char *
 convertFunctionPosition(FuncExpr *node, convert_expr_cxt *context)
 {
-    StringInfoData  buf;
-    ListCell *lc;
-    char *string;
-    char *substring;
+	StringInfoData	buf;
+	ListCell *lc;
+	char *string;
+	char *substring;
 
-    lc = list_head(node->args);
-    convertExprRecursor(lfirst(lc), context, &string);
+	lc = list_head(node->args);
+	convertExprRecursor(lfirst(lc), context, &string);
 
-    lc = lnext(lc);
-    convertExprRecursor(lfirst(lc), context, &substring);
+	lc = lnext(lc);
+	convertExprRecursor(lfirst(lc), context, &substring);
 
-    initStringInfo(&buf);
-    appendStringInfo(&buf, "POSITION(%s IN %s)", substring, string);
+	initStringInfo(&buf);
+	appendStringInfo(&buf, "POSITION(%s IN %s)", substring, string);
 
-    return buf.data;
+	return buf.data;
 }
 
 
@@ -1260,33 +1260,33 @@ convertFunctionPosition(FuncExpr *node, convert_expr_cxt *context)
 static char *
 convertFunctionSubstring(FuncExpr *node, convert_expr_cxt *context)
 {
-    StringInfoData  buf;
-    ListCell *lc;
-    char *local_result;
+	StringInfoData	buf;
+	ListCell *lc;
+	char *local_result;
 
-    elog(DEBUG2, "entering function %s", __func__);
-    elog(DEBUG2, "arg length: %i", list_length(node->args));
+	elog(DEBUG2, "entering function %s", __func__);
+	elog(DEBUG2, "arg length: %i", list_length(node->args));
 
-    initStringInfo(&buf);
-    appendStringInfoString(&buf, "SUBSTRING(");
+	initStringInfo(&buf);
+	appendStringInfoString(&buf, "SUBSTRING(");
 
-    lc = list_head(node->args);
-    convertExprRecursor(lfirst(lc), context, &local_result);
-    appendStringInfoString(&buf, local_result);
+	lc = list_head(node->args);
+	convertExprRecursor(lfirst(lc), context, &local_result);
+	appendStringInfoString(&buf, local_result);
 
-    lc = lnext(lc);
-    convertExprRecursor(lfirst(lc), context, &local_result);
-    appendStringInfo(&buf, " FROM %s", local_result);
+	lc = lnext(lc);
+	convertExprRecursor(lfirst(lc), context, &local_result);
+	appendStringInfo(&buf, " FROM %s", local_result);
 
-    if(list_length(node->args) == 3)
-    {
-        lc = lnext(lc);
-        convertExprRecursor(lfirst(lc), context, &local_result);
-        appendStringInfo(&buf, " FOR %s", local_result);
-    }
-    appendStringInfoChar(&buf, ')');
+	if (list_length(node->args) == 3)
+	{
+		lc = lnext(lc);
+		convertExprRecursor(lfirst(lc), context, &local_result);
+		appendStringInfo(&buf, " FOR %s", local_result);
+	}
+	appendStringInfoChar(&buf, ')');
 
-    return buf.data;
+	return buf.data;
 }
 
 
@@ -1301,29 +1301,29 @@ convertFunctionSubstring(FuncExpr *node, convert_expr_cxt *context)
 static char *
 convertFunctionTrim(FuncExpr *node, convert_expr_cxt *context, char *where)
 {
-    StringInfoData  buf;
-    ListCell *lc;
-    char *from = NULL;
-    char *what = NULL;
+	StringInfoData	buf;
+	ListCell *lc;
+	char *from = NULL;
+	char *what = NULL;
 
-    initStringInfo(&buf);
-    appendStringInfoString(&buf, "TRIM(");
+	initStringInfo(&buf);
+	appendStringInfoString(&buf, "TRIM(");
 
-    appendStringInfoString(&buf, where);
+	appendStringInfoString(&buf, where);
 
-    lc = list_head(node->args);
-    convertExprRecursor(lfirst(lc), context, &from);
+	lc = list_head(node->args);
+	convertExprRecursor(lfirst(lc), context, &from);
 
-    if(list_length(node->args) == 2)
-    {
-        lc = lnext(lc);
-        convertExprRecursor(lfirst(lc), context, &what);
-        appendStringInfo(&buf, " %s", what);
-    }
+	if (list_length(node->args) == 2)
+	{
+		lc = lnext(lc);
+		convertExprRecursor(lfirst(lc), context, &what);
+		appendStringInfo(&buf, " %s", what);
+	}
 
-    appendStringInfo(&buf, " FROM %s)", from);
+	appendStringInfo(&buf, " FROM %s)", from);
 
-    return buf.data;
+	return buf.data;
 }
 
 
@@ -1335,21 +1335,21 @@ convertFunctionTrim(FuncExpr *node, convert_expr_cxt *context, char *where)
  */
 static void
 convertReturningList(StringInfo buf, PlannerInfo *root,
-                     Index rtindex, Relation rel,
-                     List *returningList,
-                     List **retrieved_attrs)
+					 Index rtindex, Relation rel,
+					 List *returningList,
+					 List **retrieved_attrs)
 {
-    Bitmapset  *attrs_used;
-    bool db_key_used;
+	Bitmapset  *attrs_used;
+	bool db_key_used;
 
-    /* Insert column names into the query's RETURNING list */
-    attrs_used = NULL;
-    pull_varattnos((Node *) returningList, rtindex,
-                   &attrs_used);
+	/* Insert column names into the query's RETURNING list */
+	attrs_used = NULL;
+	pull_varattnos((Node *) returningList, rtindex,
+				   &attrs_used);
 
-    appendStringInfoString(buf, " RETURNING ");
-    convertTargetList(buf, root, rtindex, rel, attrs_used,
-                      retrieved_attrs, &db_key_used);
+	appendStringInfoString(buf, " RETURNING ");
+	convertTargetList(buf, root, rtindex, rel, attrs_used,
+					  retrieved_attrs, &db_key_used);
 }
 
 
@@ -1364,67 +1364,67 @@ convertReturningList(StringInfo buf, PlannerInfo *root,
  */
 static void
 convertTargetList(StringInfo buf,
-                  PlannerInfo *root,
-                  Index rtindex,
-                  Relation rel,
-                  Bitmapset *attrs_used,
-                  List **retrieved_attrs,
-                  bool *db_key_used)
+				  PlannerInfo *root,
+				  Index rtindex,
+				  Relation rel,
+				  Bitmapset *attrs_used,
+				  List **retrieved_attrs,
+				  bool *db_key_used)
 {
-    TupleDesc   tupdesc = RelationGetDescr(rel);
-    bool        have_wholerow;
-    bool        first;
-    int         i;
+	TupleDesc	tupdesc = RelationGetDescr(rel);
+	bool		have_wholerow;
+	bool		first;
+	int			i;
 
-    *retrieved_attrs = NIL;
+	*retrieved_attrs = NIL;
 
-    /* If there's a whole-row reference, we'll need all the columns. */
-    have_wholerow = bms_is_member(0 - FirstLowInvalidHeapAttributeNumber,
-                                  attrs_used);
+	/* If there's a whole-row reference, we'll need all the columns. */
+	have_wholerow = bms_is_member(0 - FirstLowInvalidHeapAttributeNumber,
+								  attrs_used);
 
-    first = true;
-    for (i = 1; i <= tupdesc->natts; i++)
-    {
-        Form_pg_attribute attr = tupdesc->attrs[i - 1];
+	first = true;
+	for (i = 1; i <= tupdesc->natts; i++)
+	{
+		Form_pg_attribute attr = tupdesc->attrs[i - 1];
 
-        /* Ignore dropped attributes. */
-        if (attr->attisdropped)
-            continue;
+		/* Ignore dropped attributes. */
+		if (attr->attisdropped)
+			continue;
 
-        if (have_wholerow ||
-            bms_is_member(i - FirstLowInvalidHeapAttributeNumber,
-                          attrs_used))
-        {
-            if (!first)
-                appendStringInfoString(buf, ", ");
-            first = false;
+		if (have_wholerow ||
+			bms_is_member(i - FirstLowInvalidHeapAttributeNumber,
+						  attrs_used))
+		{
+			if (!first)
+				appendStringInfoString(buf, ", ");
+			first = false;
 
-            convertColumnRef(buf, rtindex, i, root);
+			convertColumnRef(buf, rtindex, i, root);
 
-            *retrieved_attrs = lappend_int(*retrieved_attrs, i);
-        }
-    }
+			*retrieved_attrs = lappend_int(*retrieved_attrs, i);
+		}
+	}
 
-    /* Add rdb$db_key, if required */
-    if (bms_is_member(SelfItemPointerAttributeNumber - FirstLowInvalidHeapAttributeNumber,
-    attrs_used))
-    {
-        if (!first)
-            appendStringInfoString(buf, ", ");
-        first = false;
+	/* Add rdb$db_key, if required */
+	if (bms_is_member(SelfItemPointerAttributeNumber - FirstLowInvalidHeapAttributeNumber,
+	attrs_used))
+	{
+		if (!first)
+			appendStringInfoString(buf, ", ");
+		first = false;
 
-        appendStringInfoString(buf, "rdb$db_key");
+		appendStringInfoString(buf, "rdb$db_key");
 
-        *retrieved_attrs = lappend_int(*retrieved_attrs,
-                                       SelfItemPointerAttributeNumber);
-        *db_key_used = true;
-    }
-    else
-        *db_key_used = false;
+		*retrieved_attrs = lappend_int(*retrieved_attrs,
+									   SelfItemPointerAttributeNumber);
+		*db_key_used = true;
+	}
+	else
+		*db_key_used = false;
 
-    /* Avoid generating invalid syntax if no undropped columns exist */
-    if (first)
-        appendStringInfoString(buf, "NULL");
+	/* Avoid generating invalid syntax if no undropped columns exist */
+	if (first)
+		appendStringInfoString(buf, "NULL");
 }
 
 
@@ -1440,32 +1440,32 @@ convertTargetList(StringInfo buf,
  */
 void
 identifyRemoteConditions(PlannerInfo *root,
-                         RelOptInfo *baserel,
-                         List **remote_conds,
-                         List **local_conds,
-                         bool disable_pushdowns,
-                         int firebird_version)
+						 RelOptInfo *baserel,
+						 List **remote_conds,
+						 List **local_conds,
+						 bool disable_pushdowns,
+						 int firebird_version)
 {
-    ListCell   *lc;
-    elog(DEBUG2, "entering function %s", __func__);
+	ListCell   *lc;
+	elog(DEBUG2, "entering function %s", __func__);
 
-    *remote_conds = NIL;
-    *local_conds = NIL;
+	*remote_conds = NIL;
+	*local_conds = NIL;
 
-    foreach(lc, baserel->baserestrictinfo)
-    {
-        RestrictInfo *ri = (RestrictInfo *) lfirst(lc);
-        if (!disable_pushdowns && isFirebirdExpr(root, baserel, ri->clause, firebird_version))
-        {
-            *remote_conds = lappend(*remote_conds, ri);
-            elog(DEBUG2, " -> pushing down to remote");
-        }
-        else
-        {
-            *local_conds = lappend(*local_conds, ri);
-            elog(DEBUG2, " -> keeping local");
-        }
-    }
+	foreach (lc, baserel->baserestrictinfo)
+	{
+		RestrictInfo *ri = (RestrictInfo *) lfirst(lc);
+		if (!disable_pushdowns && isFirebirdExpr(root, baserel, ri->clause, firebird_version))
+		{
+			*remote_conds = lappend(*remote_conds, ri);
+			elog(DEBUG2, " -> pushing down to remote");
+		}
+		else
+		{
+			*local_conds = lappend(*local_conds, ri);
+			elog(DEBUG2, " -> keeping local");
+		}
+	}
 }
 
 
@@ -1476,30 +1476,30 @@ identifyRemoteConditions(PlannerInfo *root,
  */
 bool
 isFirebirdExpr(PlannerInfo *root,
-               RelOptInfo *baserel,
-               Expr *expr,
-               int firebird_version)
+			   RelOptInfo *baserel,
+			   Expr *expr,
+			   int firebird_version)
 {
-    foreign_glob_cxt glob_cxt;
+	foreign_glob_cxt glob_cxt;
 
-    elog(DEBUG2, "entering function %s", __func__);
+	elog(DEBUG2, "entering function %s", __func__);
 
-    /*
-     * Check that the expression consists of nodes that are safe to execute
-     * remotely.
-     */
-    glob_cxt.root = root;
-    glob_cxt.foreignrel = baserel;
-    glob_cxt.firebird_version = firebird_version;
+	/*
+	 * Check that the expression consists of nodes that are safe to execute
+	 * remotely.
+	 */
+	glob_cxt.root = root;
+	glob_cxt.foreignrel = baserel;
+	glob_cxt.firebird_version = firebird_version;
 
-    if (!foreign_expr_walker((Node *) expr, &glob_cxt))
-    {
-        elog(DEBUG2, "%s: not FB expression", __func__);
-        return false;
-    }
+	if (!foreign_expr_walker((Node *) expr, &glob_cxt))
+	{
+		elog(DEBUG2, "%s: not FB expression", __func__);
+		return false;
+	}
 
-    /* OK to evaluate on the remote server */
-    return true;
+	/* OK to evaluate on the remote server */
+	return true;
 }
 
 
@@ -1521,342 +1521,342 @@ static bool
 foreign_expr_walker(Node *node,
                     foreign_glob_cxt *glob_cxt)
 {
-    /* Need do nothing for empty subexpressions */
-    if (node == NULL)
-        return true;
+	/* Need do nothing for empty subexpressions */
+	if (node == NULL)
+		return true;
 
-    elog(DEBUG2, "entering function %s", __func__);
+	elog(DEBUG2, "entering function %s", __func__);
 
-    elog(DEBUG2, "Node is: %i", nodeTag(node));
+	elog(DEBUG2, "Node is: %i", nodeTag(node));
 
-    /* TODO: handle collation */
+	/* TODO: handle collation */
 
-    switch (nodeTag(node))
-    {
-        case T_Var:
-        {
-            Var        *var = (Var *) node;
-            elog(DEBUG2, "%s: Node is var", __func__);
-            /* Var belongs to foreign table */
-            if (var->varno == glob_cxt->foreignrel->relid &&
-                var->varlevelsup == 0)
-            {
-                elog(DEBUG2, "%s: Var is foreign", __func__);
+	switch (nodeTag(node))
+	{
+		case T_Var:
+		{
+			Var		   *var = (Var *) node;
+			elog(DEBUG2, "%s: Node is var", __func__);
+			/* Var belongs to foreign table */
+			if (var->varno == glob_cxt->foreignrel->relid &&
+				var->varlevelsup == 0)
+			{
+				elog(DEBUG2, "%s: Var is foreign", __func__);
 
-                /* don't handle system columns */
-                if (var->varattno < 1)
-                    return false;
+				/* don't handle system columns */
+				if (var->varattno < 1)
+					return false;
 
-                return true;
-            }
+				return true;
+			}
 
-            return false;
-        }
-        case T_Const:
-            return true;
+			return false;
+		}
+		case T_Const:
+			return true;
 
-        case T_OpExpr:
-        case T_DistinctExpr:    /* struct-equivalent to OpExpr */
-        {
-            OpExpr     *oe = (OpExpr *) node;
-            elog(DEBUG2, "%s: Node is Op/Distinct", __func__);
-            if (!is_builtin(oe->opno))
-            {
-                elog(DEBUG2, "%s: not builtin", __func__);
-                return false;
-            }
+		case T_OpExpr:
+		case T_DistinctExpr:	/* struct-equivalent to OpExpr */
+		{
+			OpExpr	   *oe = (OpExpr *) node;
+			elog(DEBUG2, "%s: Node is Op/Distinct", __func__);
+			if (!is_builtin(oe->opno))
+			{
+				elog(DEBUG2, "%s: not builtin", __func__);
+				return false;
+			}
 
-            if(!canConvertOp(oe, glob_cxt->firebird_version))
-            {
-                elog(DEBUG2, "%s: cannot translate op", __func__);
-                return false;
-            }
+			if (!canConvertOp(oe, glob_cxt->firebird_version))
+			{
+				elog(DEBUG2, "%s: cannot translate op", __func__);
+				return false;
+			}
 
-            /* Recurse to input subexpressions */
-            if (!foreign_expr_walker((Node *) oe->args,
-                                     glob_cxt))
-            {
-                elog(DEBUG2, "%s: recurse to false", __func__);
-                return false;
-            }
+			/* Recurse to input subexpressions */
+			if (!foreign_expr_walker((Node *) oe->args,
+									 glob_cxt))
+			{
+				elog(DEBUG2, "%s: recurse to false", __func__);
+				return false;
+			}
 
-            elog(DEBUG2, "%s: true", __func__);
-            return true;
-        }
-        case T_BoolExpr:
-        {
-            BoolExpr   *b = (BoolExpr *) node;
+			elog(DEBUG2, "%s: true", __func__);
+			return true;
+		}
+		case T_BoolExpr:
+		{
+			BoolExpr   *b = (BoolExpr *) node;
 
-            /* Recurse to input subexpressions */
-            if (!foreign_expr_walker((Node *) b->args,
-                                     glob_cxt))
-                return false;
+			/* Recurse to input subexpressions */
+			if (!foreign_expr_walker((Node *) b->args,
+									 glob_cxt))
+				return false;
 
-            return true;
-        }
+			return true;
+		}
 
-        case T_NullTest:
-        {
-            NullTest   *nt = (NullTest *) node;
+		case T_NullTest:
+		{
+			NullTest   *nt = (NullTest *) node;
 
-            /* Recurse to input subexpressions  */
-            if (!foreign_expr_walker((Node *) nt->arg,
-                                     glob_cxt))
-                return false;
+			/* Recurse to input subexpressions	*/
+			if (!foreign_expr_walker((Node *) nt->arg,
+									 glob_cxt))
+				return false;
 
-            return true;
-        }
+			return true;
+		}
 
-        case T_ScalarArrayOpExpr:
-            /*  WHERE v1 NOT IN(1,2) */
-            /* Note: FB can only handle up to 1,500 members; see FB book p396*/
-        {
-            HeapTuple tuple;
-            char *oprname;
-            Oid leftargtype;
+		case T_ScalarArrayOpExpr:
+			/*	WHERE v1 NOT IN(1,2) */
+			/* Note: FB can only handle up to 1,500 members; see FB book p396*/
+		{
+			HeapTuple tuple;
+			char *oprname;
+			Oid leftargtype;
 
-            ScalarArrayOpExpr *oe = (ScalarArrayOpExpr *) node;
-            elog(DEBUG2, "ScalarArrayOpExpr");
+			ScalarArrayOpExpr *oe = (ScalarArrayOpExpr *) node;
+			elog(DEBUG2, "ScalarArrayOpExpr");
 
-            /* We only have a chance of converting builtins */
-            if (!is_builtin(oe->opno))
-                return false;
-
-
-            /* get operator name, left argument type and schema */
-            tuple = SearchSysCache1(OPEROID, ObjectIdGetDatum(oe->opno));
-            if (!HeapTupleIsValid(tuple))
-                elog(ERROR, "cache lookup failed for operator %u", oe->opno);
-
-            oprname = pstrdup(((Form_pg_operator)GETSTRUCT(tuple))->oprname.data);
-
-            leftargtype = ((Form_pg_operator)GETSTRUCT(tuple))->oprleft;
+			/* We only have a chance of converting builtins */
+			if (!is_builtin(oe->opno))
+				return false;
 
 
-            ReleaseSysCache(tuple);
+			/* get operator name, left argument type and schema */
+			tuple = SearchSysCache1(OPEROID, ObjectIdGetDatum(oe->opno));
+			if (!HeapTupleIsValid(tuple))
+				elog(ERROR, "cache lookup failed for operator %u", oe->opno);
 
-            /* get the type's output function */
-            tuple = SearchSysCache1(TYPEOID, ObjectIdGetDatum(leftargtype));
-            if(!HeapTupleIsValid(tuple))
-            {
-                elog(ERROR, "cache lookup failed for type %u", leftargtype);
-                return false;
-            }
+			oprname = pstrdup(((Form_pg_operator)GETSTRUCT(tuple))->oprname.data);
 
-            ReleaseSysCache(tuple);
-            /* Only permit IN and NOT IN expressions for pushdown */
-            if((strcmp(oprname, "=") != 0 || ! oe->useOr)
-                && (strcmp(oprname, "<>") != 0 || oe->useOr))
-                return false;
+			leftargtype = ((Form_pg_operator)GETSTRUCT(tuple))->oprleft;
 
-            elog(DEBUG2, "ScalarArrayOpExpr: leftargtype is %i", leftargtype);
 
-            if(!canConvertPgType(leftargtype))
-                return false;
+			ReleaseSysCache(tuple);
 
-            /* Recurse to input subexpressions */
-            if(!foreign_expr_walker((Node *) oe->args,
-                                    glob_cxt))
-                return false;
+			/* get the type's output function */
+			tuple = SearchSysCache1(TYPEOID, ObjectIdGetDatum(leftargtype));
+			if (!HeapTupleIsValid(tuple))
+			{
+				elog(ERROR, "cache lookup failed for type %u", leftargtype);
+				return false;
+			}
 
-            return true;
-        }
-        case T_FuncExpr:
-        {
-            FuncExpr *func = (FuncExpr *)node;
-            HeapTuple tuple;
-            char *oprname;
-            Oid schema;
+			ReleaseSysCache(tuple);
+			/* Only permit IN and NOT IN expressions for pushdown */
+			if ((strcmp(oprname, "=") != 0 || ! oe->useOr)
+				&& (strcmp(oprname, "<>") != 0 || oe->useOr))
+				return false;
 
-            elog(DEBUG2, "Func expr ------");
-            if(!canConvertPgType(func->funcresulttype))
-            {
-                elog(DEBUG2, "Cannot convert return type");
-                return false;
-            }
+			elog(DEBUG2, "ScalarArrayOpExpr: leftargtype is %i", leftargtype);
 
-            if (func->funcformat == COERCE_IMPLICIT_CAST)
-            {
-                if(!foreign_expr_walker((Node *) func->args,
-                                        glob_cxt))
-                    return false;
-                return true;
-            }
+			if (!canConvertPgType(leftargtype))
+				return false;
 
-            /* Recurse to input subexpressions */
-            if(!foreign_expr_walker((Node *) func->args,
-                                    glob_cxt))
-                return false;
+			/* Recurse to input subexpressions */
+			if (!foreign_expr_walker((Node *) oe->args,
+									glob_cxt))
+				return false;
 
-            /* get function name and schema */
-            tuple = SearchSysCache1(PROCOID, ObjectIdGetDatum(func->funcid));
-            if (!HeapTupleIsValid(tuple))
-                elog(ERROR, "cache lookup failed for function %u", func->funcid);
-            oprname = pstrdup(((Form_pg_proc)GETSTRUCT(tuple))->proname.data);
-            schema = ((Form_pg_proc)GETSTRUCT(tuple))->pronamespace;
-            ReleaseSysCache(tuple);
+			return true;
+		}
+		case T_FuncExpr:
+		{
+			FuncExpr *func = (FuncExpr *)node;
+			HeapTuple tuple;
+			char *oprname;
+			Oid schema;
 
-            /* ignore functions not in pg_catalog */
-            if (schema != PG_CATALOG_NAMESPACE)
-                return false;
+			elog(DEBUG2, "Func expr ------");
+			if (!canConvertPgType(func->funcresulttype))
+			{
+				elog(DEBUG2, "Cannot convert return type");
+				return false;
+			}
 
-            /*
-             * Only permit certain functions (and depending on the function
-             * certain combination of parameters) to be passed
-             *
-             * NOTE: most of these functions were introduced in FB 2.1; some
-             *   can be used to convert operators
-             *
-             * Not currently sending:
-             * BIN_AND()
-             * BIN_OR()
-             * BIN_XOR()
-             * EXTRACT()
-             * INITCAP()
-             * TO_CHAR()
-             * TO_DATE()
-             * TO_NUMBER()
-             * TO_TIMESTAMP()
-             * TRANSLATE()
-             *
-             * Not practical to push down these:
-             * IIF() - no equivalent in Pg, shorthand for a CASE construct
-             * LEFT() -> FB does not accept negative length
-             * RIGHT() -> FB does not accept negative length
-             *   -> to handle these we'll need to examine the length value,
-             *      which is tricky
-             */
-            elog(DEBUG2, "Func name is %s", oprname);
+			if (func->funcformat == COERCE_IMPLICIT_CAST)
+			{
+				if (!foreign_expr_walker((Node *) func->args,
+										glob_cxt))
+					return false;
+				return true;
+			}
 
-            /* Firebird 1.5 or later */
-            if(glob_cxt->firebird_version >= 10500)
-            {
-                if (strcmp(oprname, "concat") == 0)
-                    return true;
+			/* Recurse to input subexpressions */
+			if (!foreign_expr_walker((Node *) func->args,
+									glob_cxt))
+				return false;
 
-                /* Firebird's COALESCE() requires at least two arguments */
-                if ((strcmp(oprname, "coalesce") == 0 && list_length(func->args) >= 2))
-                    return true;
-            }
+			/* get function name and schema */
+			tuple = SearchSysCache1(PROCOID, ObjectIdGetDatum(func->funcid));
+			if (!HeapTupleIsValid(tuple))
+				elog(ERROR, "cache lookup failed for function %u", func->funcid);
+			oprname = pstrdup(((Form_pg_proc)GETSTRUCT(tuple))->proname.data);
+			schema = ((Form_pg_proc)GETSTRUCT(tuple))->pronamespace;
+			ReleaseSysCache(tuple);
 
-            /* Firebird 2.0 or later */
-            if(glob_cxt->firebird_version >= 20000)
-            {
-                if (strcmp(oprname, "bit_length") == 0
-                 || strcmp(oprname, "char_length") == 0
-                 || strcmp(oprname, "character_length") == 0
-                 || strcmp(oprname, "lower") == 0
-                 || strcmp(oprname, "octet_length") == 0
-                 || strcmp(oprname, "upper") == 0)
-                {
-                    return true;
-                }
+			/* ignore functions not in pg_catalog */
+			if (schema != PG_CATALOG_NAMESPACE)
+				return false;
 
-                /* SUBSTRING() is a special case: Firebird only accepts integers as the
-                   2nd and 3rd params, Pg variants such as SUBSTRING(string FROM pattern FOR escape)
-                   must not be pushed down.
-                */
-                if(strcmp(oprname, "substring") == 0 && (list_length(func->args) == 2 || list_length(func->args) == 3))
-                {
-                    ListCell *lc;
-                    Const *arg;
-                    bool can_handle = false;
+			/*
+			 * Only permit certain functions (and depending on the function
+			 * certain combination of parameters) to be passed
+			 *
+			 * NOTE: most of these functions were introduced in FB 2.1; some
+			 *	 can be used to convert operators
+			 *
+			 * Not currently sending:
+			 * BIN_AND()
+			 * BIN_OR()
+			 * BIN_XOR()
+			 * EXTRACT()
+			 * INITCAP()
+			 * TO_CHAR()
+			 * TO_DATE()
+			 * TO_NUMBER()
+			 * TO_TIMESTAMP()
+			 * TRANSLATE()
+			 *
+			 * Not practical to push down these:
+			 * IIF () - no equivalent in Pg, shorthand for a CASE construct
+			 * LEFT() -> FB does not accept negative length
+			 * RIGHT() -> FB does not accept negative length
+			 *	 -> to handle these we'll need to examine the length value,
+			 *		which is tricky
+			 */
+			elog(DEBUG2, "Func name is %s", oprname);
 
-                    lc = list_head(func->args);
-                    lc = lnext(lc);
-                    arg = lfirst(lc);
-                    if(arg->consttype == INT4OID)
-                        can_handle = true;
+			/* Firebird 1.5 or later */
+			if (glob_cxt->firebird_version >= 10500)
+			{
+				if (strcmp(oprname, "concat") == 0)
+					return true;
 
-                    if(list_length(func->args) == 3)
-                    {
-                        lc = lnext(lc);
-                        arg = lfirst(lc);
-                        if(arg->consttype == INT4OID)
-                            can_handle = true;
-                    }
+				/* Firebird's COALESCE() requires at least two arguments */
+				if ((strcmp(oprname, "coalesce") == 0 && list_length(func->args) >= 2))
+					return true;
+			}
 
-                    return can_handle;
-                }
+			/* Firebird 2.0 or later */
+			if (glob_cxt->firebird_version >= 20000)
+			{
+				if (strcmp(oprname, "bit_length") == 0
+				 || strcmp(oprname, "char_length") == 0
+				 || strcmp(oprname, "character_length") == 0
+				 || strcmp(oprname, "lower") == 0
+				 || strcmp(oprname, "octet_length") == 0
+				 || strcmp(oprname, "upper") == 0)
+				{
+					return true;
+				}
 
-            }
+				/* SUBSTRING() is a special case: Firebird only accepts integers as the
+				   2nd and 3rd params, Pg variants such as SUBSTRING(string FROM pattern FOR escape)
+				   must not be pushed down.
+				*/
+				if (strcmp(oprname, "substring") == 0 && (list_length(func->args) == 2 || list_length(func->args) == 3))
+				{
+					ListCell *lc;
+					Const *arg;
+					bool can_handle = false;
 
-            /* Firebird 2.1 or later */
-            if(glob_cxt->firebird_version >= 20100)
-            {
-                if (strcmp(oprname, "abs") == 0
-                 || strcmp(oprname, "acos") == 0
-                 || strcmp(oprname, "asin") == 0
-                 || strcmp(oprname, "atan") == 0
-                 || strcmp(oprname, "atan2") == 0
-                 || strcmp(oprname, "ceil") == 0
-                 || strcmp(oprname, "ceiling") == 0
-                 || strcmp(oprname, "cos") == 0
-                 || strcmp(oprname, "cot") == 0
-                 || strcmp(oprname, "exp") == 0
-                 || strcmp(oprname, "floor") == 0
-                 || strcmp(oprname, "ltrim") == 0
-                 || strcmp(oprname, "length") == 0
-                 || strcmp(oprname, "log") == 0
-                    /* XXX: LPAD() behaviour is slightly different between 2.1 and 2.5 */
-                 || strcmp(oprname, "lpad") == 0
-                 || strcmp(oprname, "mod") == 0
-                 || strcmp(oprname, "nullif") == 0
-                 || strcmp(oprname, "overlay") == 0
-                 || strcmp(oprname, "position") == 0
-                 || strcmp(oprname, "pow") == 0
-                 || strcmp(oprname, "power") == 0
-                 || strcmp(oprname, "reverse") == 0
-                    /* XXX: RPAD() behaviour is slightly different between 2.1 and 2.5 */
-                 || strcmp(oprname, "rpad") == 0
-                 || strcmp(oprname, "rtrim") == 0
-                 || strcmp(oprname, "sign") == 0
-                 || strcmp(oprname, "sin") == 0
-                 || strcmp(oprname, "sqrt") == 0
-                 || strcmp(oprname, "strpos") == 0
-                 || strcmp(oprname, "tan") == 0
-                 || strcmp(oprname, "trunc") == 0)
-                {
-                    return true;
-                }
-            }
+					lc = list_head(func->args);
+					lc = lnext(lc);
+					arg = lfirst(lc);
+					if (arg->consttype == INT4OID)
+						can_handle = true;
 
-            return false;
-        }
-        case T_List:
-        {
-            List       *l = (List *) node;
-            ListCell   *lc;
-            foreach(lc, l)
-            {
-                if (!foreign_expr_walker((Node *) lfirst(lc),
-                                         glob_cxt))
-                    return false;
-            }
-            return true;
-        }
+					if (list_length(func->args) == 3)
+					{
+						lc = lnext(lc);
+						arg = lfirst(lc);
+						if (arg->consttype == INT4OID)
+							can_handle = true;
+					}
 
-        case T_RelabelType:
-        {
-            RelabelType *r = (RelabelType *) node;
-            if (!foreign_expr_walker((Node *) r->arg,
-                                     glob_cxt))
-                return false;
-            return true;
-        }
+					return can_handle;
+				}
 
-        /* Firebird 3 will support booleans; we may need to add an
-           exception here */
+			}
 
-        default:
+			/* Firebird 2.1 or later */
+			if (glob_cxt->firebird_version >= 20100)
+			{
+				if (strcmp(oprname, "abs") == 0
+				 || strcmp(oprname, "acos") == 0
+				 || strcmp(oprname, "asin") == 0
+				 || strcmp(oprname, "atan") == 0
+				 || strcmp(oprname, "atan2") == 0
+				 || strcmp(oprname, "ceil") == 0
+				 || strcmp(oprname, "ceiling") == 0
+				 || strcmp(oprname, "cos") == 0
+				 || strcmp(oprname, "cot") == 0
+				 || strcmp(oprname, "exp") == 0
+				 || strcmp(oprname, "floor") == 0
+				 || strcmp(oprname, "ltrim") == 0
+				 || strcmp(oprname, "length") == 0
+				 || strcmp(oprname, "log") == 0
+					/* XXX: LPAD() behaviour is slightly different between 2.1 and 2.5 */
+				 || strcmp(oprname, "lpad") == 0
+				 || strcmp(oprname, "mod") == 0
+				 || strcmp(oprname, "nullif") == 0
+				 || strcmp(oprname, "overlay") == 0
+				 || strcmp(oprname, "position") == 0
+				 || strcmp(oprname, "pow") == 0
+				 || strcmp(oprname, "power") == 0
+				 || strcmp(oprname, "reverse") == 0
+					/* XXX: RPAD() behaviour is slightly different between 2.1 and 2.5 */
+				 || strcmp(oprname, "rpad") == 0
+				 || strcmp(oprname, "rtrim") == 0
+				 || strcmp(oprname, "sign") == 0
+				 || strcmp(oprname, "sin") == 0
+				 || strcmp(oprname, "sqrt") == 0
+				 || strcmp(oprname, "strpos") == 0
+				 || strcmp(oprname, "tan") == 0
+				 || strcmp(oprname, "trunc") == 0)
+				{
+					return true;
+				}
+			}
 
-            /* Assume any other types are unsafe */
-            elog(DEBUG1, "%s(): Unhandled node tag: %i", __func__, nodeTag(node));
-            return false;
-    }
+			return false;
+		}
+		case T_List:
+		{
+			List	   *l = (List *) node;
+			ListCell   *lc;
+			foreach (lc, l)
+			{
+				if (!foreign_expr_walker((Node *) lfirst(lc),
+										 glob_cxt))
+					return false;
+			}
+			return true;
+		}
 
-    /* should never reach here */
-    return false;
+		case T_RelabelType:
+		{
+			RelabelType *r = (RelabelType *) node;
+			if (!foreign_expr_walker((Node *) r->arg,
+									 glob_cxt))
+				return false;
+			return true;
+		}
+
+		/* Firebird 3 will support booleans; we may need to add an
+		   exception here */
+
+		default:
+
+			/* Assume any other types are unsafe */
+			elog(DEBUG1, "%s(): Unhandled node tag: %i", __func__, nodeTag(node));
+			return false;
+	}
+
+	/* should never reach here */
+	return false;
 }
 
 
@@ -1885,7 +1885,7 @@ foreign_expr_walker(Node *node,
 static bool
 is_builtin(Oid oid)
 {
-    return (oid < FirstBootstrapObjectId);
+	return (oid < FirstBootstrapObjectId);
 }
 
 
@@ -1903,57 +1903,57 @@ is_builtin(Oid oid)
 static bool
 canConvertOp(OpExpr *oe, int firebird_version)
 {
-    HeapTuple   tuple;
-    Form_pg_operator form;
-    char *oprname;
-    Oid schema;
+	HeapTuple	tuple;
+	Form_pg_operator form;
+	char *oprname;
+	Oid schema;
 
-    /* Retrieve information the operator tuple */
-    tuple = SearchSysCache1(OPEROID, ObjectIdGetDatum(oe->opno));
-    if (!HeapTupleIsValid(tuple))
-        elog(ERROR, "cache lookup failed for operator %u", oe->opno);
+	/* Retrieve information the operator tuple */
+	tuple = SearchSysCache1(OPEROID, ObjectIdGetDatum(oe->opno));
+	if (!HeapTupleIsValid(tuple))
+		elog(ERROR, "cache lookup failed for operator %u", oe->opno);
 
-    form = (Form_pg_operator) GETSTRUCT(tuple);
-    oprname = pstrdup(form->oprname.data);
-    schema = form->oprnamespace;
-    ReleaseSysCache(tuple);
+	form = (Form_pg_operator) GETSTRUCT(tuple);
+	oprname = pstrdup(form->oprname.data);
+	schema = form->oprnamespace;
+	ReleaseSysCache(tuple);
 
-    /* ignore operators in other than the pg_catalog schema */
-    if (schema != PG_CATALOG_NAMESPACE)
-        return false;
+	/* ignore operators in other than the pg_catalog schema */
+	if (schema != PG_CATALOG_NAMESPACE)
+		return false;
 
-    elog(DEBUG2, "canConvertOp(): oprname is '%s'", oprname);
-    if(   strcmp(oprname, "=") == 0
-       || strcmp(oprname, "<>") == 0
-       || strcmp(oprname, ">") == 0
-       || strcmp(oprname, "<") == 0
-       || strcmp(oprname, ">=") == 0
-       || strcmp(oprname, "<=") == 0
-       || strcmp(oprname, "~~") == 0
-       || strcmp(oprname, "!~~") == 0
-       || strcmp(oprname, "~~*") == 0
-       || strcmp(oprname, "!~~*") == 0
-        )
-    {
-        pfree(oprname);
-        return true;
-    }
+	elog(DEBUG2, "canConvertOp(): oprname is '%s'", oprname);
+	if (  strcmp(oprname, "=") == 0
+	   || strcmp(oprname, "<>") == 0
+	   || strcmp(oprname, ">") == 0
+	   || strcmp(oprname, "<") == 0
+	   || strcmp(oprname, ">=") == 0
+	   || strcmp(oprname, "<=") == 0
+	   || strcmp(oprname, "~~") == 0
+	   || strcmp(oprname, "!~~") == 0
+	   || strcmp(oprname, "~~*") == 0
+	   || strcmp(oprname, "!~~*") == 0
+		)
+	{
+		pfree(oprname);
+		return true;
+	}
 
-    /* Some Pg operators have equivalent functions in Firebird */
-    if(firebird_version >= 20100)
-    {
-        if(strcmp(oprname, "<<") == 0
-        || strcmp(oprname, ">>") == 0)
-        {
-            pfree(oprname);
-            return true;
-        }
-    }
+	/* Some Pg operators have equivalent functions in Firebird */
+	if (firebird_version >= 20100)
+	{
+		if (strcmp(oprname, "<<") == 0
+		|| strcmp(oprname, ">>") == 0)
+		{
+			pfree(oprname);
+			return true;
+		}
+	}
 
 
-    pfree(oprname);
+	pfree(oprname);
 
-    return false;
+	return false;
 }
 
 
@@ -1966,23 +1966,23 @@ canConvertOp(OpExpr *oe, int firebird_version)
 char *
 getFirebirdColumnName(Oid foreigntableid, int varattno)
 {
-    List       *options;
-    ListCell   *lc;
-    char *colname = NULL;
+	List	   *options;
+	ListCell   *lc;
+	char *colname = NULL;
 
-    options = GetForeignColumnOptions(foreigntableid, varattno);
-    foreach(lc, options)
-    {
-        DefElem    *def = (DefElem *) lfirst(lc);
+	options = GetForeignColumnOptions(foreigntableid, varattno);
+	foreach (lc, options)
+	{
+		DefElem	   *def = (DefElem *) lfirst(lc);
 
-        if (strcmp(def->defname, "column_name") == 0)
-        {
-            colname = defGetString(def);
-            break;
-        }
-    }
+		if (strcmp(def->defname, "column_name") == 0)
+		{
+			colname = defGetString(def);
+			break;
+		}
+	}
 
-    return colname;
+	return colname;
 }
 
 #if (PG_VERSION_NUM >= 90500)
@@ -1994,10 +1994,10 @@ getFirebirdColumnName(Oid foreigntableid, int varattno)
 char *
 _dataTypeSQL(char *table_name)
 {
-    StringInfoData data_type_sql;
+	StringInfoData data_type_sql;
 
-    initStringInfo(&data_type_sql);
-    appendStringInfo(&data_type_sql,
+	initStringInfo(&data_type_sql);
+	appendStringInfo(&data_type_sql,
 "   SELECT TRIM(LOWER(rf.rdb$field_name)) AS column_name,\n"
 "          f.rdb$field_type, \n"
 "          CASE f.rdb$field_type\n"
@@ -2046,9 +2046,9 @@ _dataTypeSQL(char *table_name)
 "        ON rf.rdb$field_source = f.rdb$field_name\n"
 "     WHERE TRIM(LOWER(rf.rdb$relation_name)) = LOWER('%s')\n"
 "  ORDER BY rf.rdb$field_position\n",
-                     table_name
-        );
+					 table_name
+		);
 
-    return data_type_sql.data;
+	return data_type_sql.data;
 }
 #endif

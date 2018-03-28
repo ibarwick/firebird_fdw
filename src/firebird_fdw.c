@@ -65,23 +65,23 @@ PG_MODULE_MAGIC;
  * Indexes of FDW-private information stored in fdw_private lists.
  *
  * We store various information in ForeignScan.fdw_private to pass it from
- * planner to executor.  Currently we store:
+ * planner to executor.	 Currently we store:
  *
  * 1) SELECT statement text to be sent to the remote server
  * 2) Integer list of attribute numbers retrieved by the SELECT
  *
  * These items are indexed with the enum FdwScanPrivateIndex, so an item
- * can be fetched with list_nth().  For example, to get the SELECT statement:
- *      sql = strVal(list_nth(fdw_private, FdwScanPrivateSelectSql));
+ * can be fetched with list_nth().	For example, to get the SELECT statement:
+ *		sql = strVal(list_nth(fdw_private, FdwScanPrivateSelectSql));
  */
 enum FdwScanPrivateIndex
 {
-    /* SQL statement to execute remotely (as a String node) */
-    FdwScanPrivateSelectSql,
-    /* Integer list of attribute numbers retrieved by the remote SELECT */
-    FdwScanPrivateRetrievedAttrs,
-    /* Indicates whether RDB$DB_KEY retrieved by the remote SELECT */
-    FdwScanDbKeyUsed
+	/* SQL statement to execute remotely (as a String node) */
+	FdwScanPrivateSelectSql,
+	/* Integer list of attribute numbers retrieved by the remote SELECT */
+	FdwScanPrivateRetrievedAttrs,
+	/* Indicates whether RDB$DB_KEY retrieved by the remote SELECT */
+	FdwScanDbKeyUsed
 };
 
 
@@ -92,14 +92,14 @@ enum FdwScanPrivateIndex
  */
 enum FdwModifyPrivateIndex
 {
-    /* SQL statement to execute remotely (as a String node) */
-    FdwModifyPrivateUpdateSql,
-    /* Integer list of target attribute numbers for INSERT/UPDATE (NIL for a DELETE) */
-    FdwModifyPrivateTargetAttnums,
-    /* Indicate if there's a RETURNING clause */
-    FdwModifyPrivateHasReturning,
-    /* Integer list of attribute numbers retrieved by RETURNING */
-    FdwModifyPrivateRetrievedAttrs
+	/* SQL statement to execute remotely (as a String node) */
+	FdwModifyPrivateUpdateSql,
+	/* Integer list of target attribute numbers for INSERT/UPDATE (NIL for a DELETE) */
+	FdwModifyPrivateTargetAttnums,
+	/* Indicate if there's a RETURNING clause */
+	FdwModifyPrivateHasReturning,
+	/* Integer list of attribute numbers retrieved by RETURNING */
+	FdwModifyPrivateRetrievedAttrs
 };
 #endif
 
@@ -114,35 +114,35 @@ extern void _PG_init(void);
 
 /* Callback functions */
 static void firebirdGetForeignRelSize(PlannerInfo *root,
-                           RelOptInfo *baserel,
-                           Oid foreigntableid);
+						   RelOptInfo *baserel,
+						   Oid foreigntableid);
 
 static void firebirdGetForeignPaths(PlannerInfo *root,
-                         RelOptInfo *baserel,
-                         Oid foreigntableid);
+						 RelOptInfo *baserel,
+						 Oid foreigntableid);
 
 #if (PG_VERSION_NUM >= 90500)
 static ForeignScan *firebirdGetForeignPlan(PlannerInfo *root,
-                        RelOptInfo *baserel,
-                        Oid foreigntableid,
-                        ForeignPath *best_path,
-                        List *tlist,
-                        List *scan_clauses,
-                        Plan *outer_plan);
+						RelOptInfo *baserel,
+						Oid foreigntableid,
+						ForeignPath *best_path,
+						List *tlist,
+						List *scan_clauses,
+						Plan *outer_plan);
 #else
 static ForeignScan *firebirdGetForeignPlan(PlannerInfo *root,
-                        RelOptInfo *baserel,
-                        Oid foreigntableid,
-                        ForeignPath *best_path,
-                        List *tlist,
-                        List *scan_clauses);
+						RelOptInfo *baserel,
+						Oid foreigntableid,
+						ForeignPath *best_path,
+						List *tlist,
+						List *scan_clauses);
 #endif
 
 static void firebirdExplainForeignScan(ForeignScanState *node,
-                            struct ExplainState *es);
+							struct ExplainState *es);
 
 static void firebirdBeginForeignScan(ForeignScanState *node,
-                          int eflags);
+						  int eflags);
 
 static TupleTableSlot *firebirdIterateForeignScan(ForeignScanState *node);
 
@@ -150,57 +150,57 @@ static void firebirdReScanForeignScan(ForeignScanState *node);
 
 static void firebirdEndForeignScan(ForeignScanState *node);
 
-static int  firebirdIsForeignRelUpdatable(Relation rel);
+static int	firebirdIsForeignRelUpdatable(Relation rel);
 
 
 static bool firebirdAnalyzeForeignTable(Relation relation,
-                             AcquireSampleRowsFunc *func,
-                             BlockNumber *totalpages);
+							 AcquireSampleRowsFunc *func,
+							 BlockNumber *totalpages);
 
 #if (PG_VERSION_NUM >= 90300)
 static void firebirdAddForeignUpdateTargets(Query *parsetree,
-                                 RangeTblEntry *target_rte,
-                                 Relation target_relation);
+								 RangeTblEntry *target_rte,
+								 Relation target_relation);
 
 static List *firebirdPlanForeignModify(PlannerInfo *root,
-                           ModifyTable *plan,
-                           Index resultRelation,
-                           int subplan_index);
+						   ModifyTable *plan,
+						   Index resultRelation,
+						   int subplan_index);
 
 static void firebirdBeginForeignModify(ModifyTableState *mtstate,
-                            ResultRelInfo *rinfo,
-                            List *fdw_private,
-                            int subplan_index,
-                            int eflags);
+							ResultRelInfo *rinfo,
+							List *fdw_private,
+							int subplan_index,
+							int eflags);
 
 static TupleTableSlot *firebirdExecForeignInsert(EState *estate,
-                           ResultRelInfo *rinfo,
-                           TupleTableSlot *slot,
-                           TupleTableSlot *planSlot);
+						   ResultRelInfo *rinfo,
+						   TupleTableSlot *slot,
+						   TupleTableSlot *planSlot);
 
 static TupleTableSlot *firebirdExecForeignUpdate(EState *estate,
-                           ResultRelInfo *rinfo,
-                           TupleTableSlot *slot,
-                           TupleTableSlot *planSlot);
+						   ResultRelInfo *rinfo,
+						   TupleTableSlot *slot,
+						   TupleTableSlot *planSlot);
 
 static TupleTableSlot *firebirdExecForeignDelete(EState *estate,
-                           ResultRelInfo *rinfo,
-                           TupleTableSlot *slot,
-                           TupleTableSlot *planSlot);
+						   ResultRelInfo *rinfo,
+						   TupleTableSlot *slot,
+						   TupleTableSlot *planSlot);
 
 static void firebirdEndForeignModify(EState *estate,
-                          ResultRelInfo *rinfo);
+						  ResultRelInfo *rinfo);
 
 static void firebirdExplainForeignModify(ModifyTableState *mtstate,
-                              ResultRelInfo *rinfo,
-                              List *fdw_private,
-                              int subplan_index,
-                              struct ExplainState *es);
+							  ResultRelInfo *rinfo,
+							  List *fdw_private,
+							  int subplan_index,
+							  struct ExplainState *es);
 #endif
 
 #if (PG_VERSION_NUM >= 90500)
 static List *firebirdImportForeignSchema(ImportForeignSchemaStmt *stmt,
-                                         Oid serverOid);
+										 Oid serverOid);
 #endif
 
 /* Internal functions */
@@ -211,30 +211,30 @@ static FirebirdFdwState *getFdwState(Oid foreigntableid);
 static void firebirdEstimateCosts(PlannerInfo *root, RelOptInfo *baserel,  Oid foreigntableid);
 
 static const char **convert_prep_stmt_params(FirebirdFdwModifyState *fmstate,
-                                             ItemPointer tupleid,
-                                             ItemPointer tupleid2,
-                                             TupleTableSlot *slot);
+											 ItemPointer tupleid,
+											 ItemPointer tupleid2,
+											 TupleTableSlot *slot);
 static const int *get_stmt_param_formats(FirebirdFdwModifyState *fmstate,
-                         ItemPointer tupleid,
-                         TupleTableSlot *slot);
+						 ItemPointer tupleid,
+						 TupleTableSlot *slot);
 
 static HeapTuple
 create_tuple_from_result(FQresult *res,
-                           int row,
-                           Relation rel,
-                           AttInMetadata *attinmeta,
-                           List *retrieved_attrs,
-                           MemoryContext temp_context);
+						   int row,
+						   Relation rel,
+						   AttInMetadata *attinmeta,
+						   List *retrieved_attrs,
+						   MemoryContext temp_context);
 
 static void
 store_returning_result(FirebirdFdwModifyState *fmstate,
-                       TupleTableSlot *slot, FQresult *res);
+					   TupleTableSlot *slot, FQresult *res);
 
 static int
 fbAcquireSampleRowsFunc(Relation relation, int elevel,
-                        HeapTuple *rows, int targrows,
-                        double *totalrows,
-                        double *totaldeadrows);
+						HeapTuple *rows, int targrows,
+						double *totalrows,
+						double *totaldeadrows);
 static void
 convertResToArray(FQresult *res, int row, char **values);
 
@@ -244,9 +244,9 @@ convertDbKeyValue(char *p, uint32_t *key_ctid_part, uint32_t *key_oid_part);
 
 static void
 extractDbKeyParts(TupleTableSlot *planSlot,
-                  FirebirdFdwModifyState *fmstate,
-                  Datum *datum_ctid,
-                  Datum *datum_oid);
+				  FirebirdFdwModifyState *fmstate,
+				  Datum *datum_ctid,
+				  Datum *datum_oid);
 
 
 
@@ -266,44 +266,44 @@ fbFormatErrDetail(FQresult *res);
 Datum
 firebird_fdw_handler(PG_FUNCTION_ARGS)
 {
-    FdwRoutine *fdwroutine = makeNode(FdwRoutine);
+	FdwRoutine *fdwroutine = makeNode(FdwRoutine);
 
-    elog(DEBUG2, "entering function %s", __func__);
+	elog(DEBUG2, "entering function %s", __func__);
 
-    /* scanning functions  */
-    fdwroutine->GetForeignRelSize = firebirdGetForeignRelSize;
-    fdwroutine->GetForeignPaths = firebirdGetForeignPaths;
-    fdwroutine->GetForeignPlan = firebirdGetForeignPlan;
-    fdwroutine->ExplainForeignScan = firebirdExplainForeignScan;
-    fdwroutine->BeginForeignScan = firebirdBeginForeignScan;
-    fdwroutine->IterateForeignScan = firebirdIterateForeignScan;
-    fdwroutine->ReScanForeignScan = firebirdReScanForeignScan;
-    fdwroutine->EndForeignScan = firebirdEndForeignScan;
+	/* scanning functions  */
+	fdwroutine->GetForeignRelSize = firebirdGetForeignRelSize;
+	fdwroutine->GetForeignPaths = firebirdGetForeignPaths;
+	fdwroutine->GetForeignPlan = firebirdGetForeignPlan;
+	fdwroutine->ExplainForeignScan = firebirdExplainForeignScan;
+	fdwroutine->BeginForeignScan = firebirdBeginForeignScan;
+	fdwroutine->IterateForeignScan = firebirdIterateForeignScan;
+	fdwroutine->ReScanForeignScan = firebirdReScanForeignScan;
+	fdwroutine->EndForeignScan = firebirdEndForeignScan;
 
 #if (PG_VERSION_NUM >= 90200)
-    /* support for ANALYZE */
-    fdwroutine->AnalyzeForeignTable = firebirdAnalyzeForeignTable;
+	/* support for ANALYZE */
+	fdwroutine->AnalyzeForeignTable = firebirdAnalyzeForeignTable;
 #endif
 
 #if (PG_VERSION_NUM >= 90300)
-    /* support for insert / update / delete */
-    fdwroutine->IsForeignRelUpdatable = firebirdIsForeignRelUpdatable;
-    fdwroutine->AddForeignUpdateTargets = firebirdAddForeignUpdateTargets;
-    fdwroutine->PlanForeignModify = firebirdPlanForeignModify;
-    fdwroutine->BeginForeignModify = firebirdBeginForeignModify;
-    fdwroutine->ExecForeignInsert = firebirdExecForeignInsert;
-    fdwroutine->ExecForeignUpdate = firebirdExecForeignUpdate;
-    fdwroutine->ExecForeignDelete = firebirdExecForeignDelete;
-    fdwroutine->EndForeignModify = firebirdEndForeignModify;
-    fdwroutine->ExplainForeignModify = firebirdExplainForeignModify;
+	/* support for insert / update / delete */
+	fdwroutine->IsForeignRelUpdatable = firebirdIsForeignRelUpdatable;
+	fdwroutine->AddForeignUpdateTargets = firebirdAddForeignUpdateTargets;
+	fdwroutine->PlanForeignModify = firebirdPlanForeignModify;
+	fdwroutine->BeginForeignModify = firebirdBeginForeignModify;
+	fdwroutine->ExecForeignInsert = firebirdExecForeignInsert;
+	fdwroutine->ExecForeignUpdate = firebirdExecForeignUpdate;
+	fdwroutine->ExecForeignDelete = firebirdExecForeignDelete;
+	fdwroutine->EndForeignModify = firebirdEndForeignModify;
+	fdwroutine->ExplainForeignModify = firebirdExplainForeignModify;
 #endif
 
 #if (PG_VERSION_NUM >= 90500)
-    /* support for IMPORT FOREIGN SCHEMA */
-    fdwroutine->ImportForeignSchema = firebirdImportForeignSchema;
+	/* support for IMPORT FOREIGN SCHEMA */
+	fdwroutine->ImportForeignSchema = firebirdImportForeignSchema;
 #endif
 
-    PG_RETURN_POINTER(fdwroutine);
+	PG_RETURN_POINTER(fdwroutine);
 }
 
 
@@ -317,7 +317,7 @@ firebird_fdw_handler(PG_FUNCTION_ARGS)
 void
 _PG_init(void)
 {
-    on_proc_exit(&exitHook, PointerGetDatum(NULL));
+	on_proc_exit(&exitHook, PointerGetDatum(NULL));
 }
 
 
@@ -329,8 +329,8 @@ _PG_init(void)
 void
 exitHook(int code, Datum arg)
 {
-    elog(DEBUG2, "entering function %s", __func__);
-    firebirdCloseConnections();
+	elog(DEBUG2, "entering function %s", __func__);
+	firebirdCloseConnections();
 }
 
 
@@ -342,23 +342,23 @@ exitHook(int code, Datum arg)
 FirebirdFdwState *
 getFdwState(Oid foreigntableid)
 {
-    FirebirdFdwState *fdw_state = palloc0(sizeof(FirebirdFdwState));
+	FirebirdFdwState *fdw_state = palloc0(sizeof(FirebirdFdwState));
 
-    elog(DEBUG2, "OID: %u", foreigntableid);
+	elog(DEBUG2, "OID: %u", foreigntableid);
 
-    /* Initialise */
-    fdw_state->svr_query = NULL;
-    fdw_state->svr_table = NULL;
-    fdw_state->disable_pushdowns = false;
+	/* Initialise */
+	fdw_state->svr_query = NULL;
+	fdw_state->svr_table = NULL;
+	fdw_state->disable_pushdowns = false;
 
-    firebirdGetOptions(
-        foreigntableid,
-        &fdw_state->svr_query,
-        &fdw_state->svr_table,
-        &fdw_state->disable_pushdowns
-        );
+	firebirdGetOptions(
+		foreigntableid,
+		&fdw_state->svr_query,
+		&fdw_state->svr_table,
+		&fdw_state->disable_pushdowns
+		);
 
-    return fdw_state;
+	return fdw_state;
 }
 
 
@@ -373,35 +373,35 @@ getFdwState(Oid foreigntableid)
 static void
 firebirdEstimateCosts(PlannerInfo *root, RelOptInfo *baserel, Oid foreigntableid)
 {
-    FirebirdFdwState *fdw_state = (FirebirdFdwState *)baserel->fdw_private;
-    ForeignServer *server;
-    ForeignTable *table;
-    char *svr_address  = NULL;
-    ListCell   *lc;
-    elog(DEBUG2, "entering function %s", __func__);
+	FirebirdFdwState *fdw_state = (FirebirdFdwState *)baserel->fdw_private;
+	ForeignServer *server;
+	ForeignTable *table;
+	char *svr_address  = NULL;
+	ListCell   *lc;
+	elog(DEBUG2, "entering function %s", __func__);
 
-    table = GetForeignTable(foreigntableid);
-    server = GetForeignServer(table->serverid);
+	table = GetForeignTable(foreigntableid);
+	server = GetForeignServer(table->serverid);
 
-    foreach(lc, server->options)
-    {
-        DefElem    *def = (DefElem *) lfirst(lc);
+	foreach (lc, server->options)
+	{
+		DefElem	   *def = (DefElem *) lfirst(lc);
 
-        if (strcmp(def->defname, "address") == 0)
-            svr_address = defGetString(def);
-    }
+		if (strcmp(def->defname, "address") == 0)
+			svr_address = defGetString(def);
+	}
 
-    /* Set startup cost based on the localness of the database */
-    /* XXX TODO:
-        - is there an equivalent of socket connections?
-        - other way of detecting local-hostedness, incluing IPv6
-    */
-    if (strcmp(svr_address, "127.0.0.1") == 0 || strcmp(svr_address, "localhost") == 0)
-        fdw_state->startup_cost = 10;
-    else
-        fdw_state->startup_cost = 25;
+	/* Set startup cost based on the localness of the database */
+	/* XXX TODO:
+		- is there an equivalent of socket connections?
+		- other way of detecting local-hostedness, incluing IPv6
+	*/
+	if (strcmp(svr_address, "127.0.0.1") == 0 || strcmp(svr_address, "localhost") == 0)
+		fdw_state->startup_cost = 10;
+	else
+		fdw_state->startup_cost = 25;
 
-    fdw_state->total_cost = baserel->rows + fdw_state->startup_cost;
+	fdw_state->total_cost = baserel->rows + fdw_state->startup_cost;
 }
 
 
@@ -433,116 +433,116 @@ firebirdEstimateCosts(PlannerInfo *root, RelOptInfo *baserel, Oid foreigntableid
  */
 static void
 firebirdGetForeignRelSize(PlannerInfo *root,
-                          RelOptInfo *baserel,
-                          Oid foreigntableid)
+						  RelOptInfo *baserel,
+						  Oid foreigntableid)
 {
-    FirebirdFdwState *fdw_state;
-    FQresult *res;
-    StringInfoData query;
-    ListCell *lc;
+	FirebirdFdwState *fdw_state;
+	FQresult *res;
+	StringInfoData query;
+	ListCell *lc;
 
-    RangeTblEntry *rte;
-    Oid         userid;
-    ForeignTable *table;
-    ForeignServer *server;
-    UserMapping *user;
+	RangeTblEntry *rte;
+	Oid			userid;
+	ForeignTable *table;
+	ForeignServer *server;
+	UserMapping *user;
 
-    elog(DEBUG2, "entering function %s", __func__);
+	elog(DEBUG2, "entering function %s", __func__);
 
-    rte = planner_rt_fetch(baserel->relid, root);
-    userid = rte->checkAsUser ? rte->checkAsUser : GetUserId();
+	rte = planner_rt_fetch(baserel->relid, root);
+	userid = rte->checkAsUser ? rte->checkAsUser : GetUserId();
 
-    table = GetForeignTable(foreigntableid);
-    server = GetForeignServer(table->serverid);
-    user = GetUserMapping(userid, server->serverid);
+	table = GetForeignTable(foreigntableid);
+	server = GetForeignServer(table->serverid);
+	user = GetUserMapping(userid, server->serverid);
 
-    fdw_state = getFdwState(foreigntableid);
-    baserel->fdw_private = (void *) fdw_state;
+	fdw_state = getFdwState(foreigntableid);
+	baserel->fdw_private = (void *) fdw_state;
 
-    /* get connection options, connect and get the remote table description */
+	/* get connection options, connect and get the remote table description */
 
-    fdw_state->conn = firebirdInstantiateConnection(server, user);
-    /*
-     * Identify which baserestrictinfo clauses can be sent to the remote
-     * server and which can't.
-     */
-    identifyRemoteConditions(root,
-                             baserel,
-                             &fdw_state->remote_conds,
-                             &fdw_state->local_conds,
-                             fdw_state->disable_pushdowns,
-                             FQserverVersion(fdw_state->conn)
-        );
+	fdw_state->conn = firebirdInstantiateConnection(server, user);
+	/*
+	 * Identify which baserestrictinfo clauses can be sent to the remote
+	 * server and which can't.
+	 */
+	identifyRemoteConditions(root,
+							 baserel,
+							 &fdw_state->remote_conds,
+							 &fdw_state->local_conds,
+							 fdw_state->disable_pushdowns,
+							 FQserverVersion(fdw_state->conn)
+		);
 
 
-    /*
-     * Identify which attributes will need to be retrieved from the remote
-     * server.  These include all attrs needed for joins or final output, plus
-     * all attrs used in the local_conds.  (Note: if we end up using a
-     * parameterized scan, it's possible that some of the join clauses will be
-     * sent to the remote and thus we wouldn't really need to retrieve the
-     * columns used in them.  Doesn't seem worth detecting that case though.)
-     */
-    fdw_state->attrs_used = NULL;
+	/*
+	 * Identify which attributes will need to be retrieved from the remote
+	 * server.	These include all attrs needed for joins or final output, plus
+	 * all attrs used in the local_conds.  (Note: if we end up using a
+	 * parameterized scan, it's possible that some of the join clauses will be
+	 * sent to the remote and thus we wouldn't really need to retrieve the
+	 * columns used in them.  Doesn't seem worth detecting that case though.)
+	 */
+	fdw_state->attrs_used = NULL;
 
 #if (PG_VERSION_NUM >= 90600)
-    pull_varattnos((Node *) baserel->reltarget->exprs, baserel->relid,
-                   &fdw_state->attrs_used);
+	pull_varattnos((Node *) baserel->reltarget->exprs, baserel->relid,
+				   &fdw_state->attrs_used);
 #else
-    pull_varattnos((Node *) baserel->reltargetlist, baserel->relid,
-                   &fdw_state->attrs_used);
+	pull_varattnos((Node *) baserel->reltargetlist, baserel->relid,
+				   &fdw_state->attrs_used);
 #endif
 
-    foreach(lc, fdw_state->local_conds)
-    {
-        RestrictInfo *rinfo = (RestrictInfo *) lfirst(lc);
-        elog(DEBUG1, "local conds");
-        pull_varattnos((Node *) rinfo->clause, baserel->relid,
-                       &fdw_state->attrs_used);
-    }
+	foreach (lc, fdw_state->local_conds)
+	{
+		RestrictInfo *rinfo = (RestrictInfo *) lfirst(lc);
+		elog(DEBUG1, "local conds");
+		pull_varattnos((Node *) rinfo->clause, baserel->relid,
+					   &fdw_state->attrs_used);
+	}
 
-    initStringInfo(&query);
-    if (fdw_state->svr_query)
-    {
-        appendStringInfo(&query, "SELECT COUNT(*) FROM (%s)", fdw_state->svr_query);
-    }
-    else
-    {
-        appendStringInfo(&query, "SELECT COUNT(*) FROM %s", quote_identifier(fdw_state->svr_table));
-    }
+	initStringInfo(&query);
+	if (fdw_state->svr_query)
+	{
+		appendStringInfo(&query, "SELECT COUNT(*) FROM (%s)", fdw_state->svr_query);
+	}
+	else
+	{
+		appendStringInfo(&query, "SELECT COUNT(*) FROM %s", quote_identifier(fdw_state->svr_table));
+	}
 
-    fdw_state->query = pstrdup(query.data);
-    pfree(query.data);
-    elog(DEBUG1, "%s", fdw_state->query);
+	fdw_state->query = pstrdup(query.data);
+	pfree(query.data);
+	elog(DEBUG1, "%s", fdw_state->query);
 
 
-    res = FQexec(fdw_state->conn, fdw_state->query);
+	res = FQexec(fdw_state->conn, fdw_state->query);
 
-    if(FQresultStatus(res) != FBRES_TUPLES_OK)
-    {
-        FQclear(res);
-        ereport(ERROR,
-                (errcode(ERRCODE_FDW_TABLE_NOT_FOUND),
-                 errmsg("%s", fbFormatMsg("Unable to establish size of foreign table %s", fdw_state->svr_table))
-                    ));
-        return;
-    }
+	if (FQresultStatus(res) != FBRES_TUPLES_OK)
+	{
+		FQclear(res);
+		ereport(ERROR,
+				(errcode(ERRCODE_FDW_TABLE_NOT_FOUND),
+				 errmsg("%s", fbFormatMsg("Unable to establish size of foreign table %s", fdw_state->svr_table))
+					));
+		return;
+	}
 
-    if(FQntuples(res) != 1)
-    {
-        FQclear(res);
-        ereport(ERROR,
-                (errcode(ERRCODE_FDW_TABLE_NOT_FOUND),
-                 errmsg("%s", fbFormatMsg("Query returned unexpected number of rows"))
-                    ));
-        return;
-    }
+	if (FQntuples(res) != 1)
+	{
+		FQclear(res);
+		ereport(ERROR,
+				(errcode(ERRCODE_FDW_TABLE_NOT_FOUND),
+				 errmsg("%s", fbFormatMsg("Query returned unexpected number of rows"))
+					));
+		return;
+	}
 
-    baserel->rows = atof(FQgetvalue(res, 0, 0));
-    baserel->tuples = baserel->rows;
-    FQclear(res);
+	baserel->rows = atof(FQgetvalue(res, 0, 0));
+	baserel->tuples = baserel->rows;
+	FQclear(res);
 
-    elog(DEBUG1, "%s: rows estimated at %f", __func__, baserel->rows);
+	elog(DEBUG1, "%s: rows estimated at %f", __func__, baserel->rows);
 }
 
 
@@ -581,47 +581,47 @@ firebirdGetForeignRelSize(PlannerInfo *root,
 
 static void
 firebirdGetForeignPaths(PlannerInfo *root,
-                        RelOptInfo *baserel,
-                        Oid foreigntableid)
+						RelOptInfo *baserel,
+						Oid foreigntableid)
 {
-    FirebirdFdwState *fdw_state = (FirebirdFdwState *)baserel->fdw_private;
+	FirebirdFdwState *fdw_state = (FirebirdFdwState *)baserel->fdw_private;
 
-    elog(DEBUG2, "entering function %s", __func__);
+	elog(DEBUG2, "entering function %s", __func__);
 
-    /* Estimate costs */
-    firebirdEstimateCosts(root, baserel, foreigntableid);
+	/* Estimate costs */
+	firebirdEstimateCosts(root, baserel, foreigntableid);
 
-    /* Create a ForeignPath node and add it as only possible path */
+	/* Create a ForeignPath node and add it as only possible path */
 #if (PG_VERSION_NUM >= 90600)
-    add_path(baserel, (Path *)
-             create_foreignscan_path(root, baserel,
-                                     NULL,      /* default pathtarget */
-                                     baserel->rows,
-                                     fdw_state->startup_cost,
-                                     fdw_state->total_cost,
-                                     NIL,       /* no pathkeys */
-                                     NULL,      /* no outer rel either */
-                                     NULL,      /* no extra plan */
-                                     NIL));     /* no fdw_private data */
+	add_path(baserel, (Path *)
+			 create_foreignscan_path(root, baserel,
+									 NULL,		/* default pathtarget */
+									 baserel->rows,
+									 fdw_state->startup_cost,
+									 fdw_state->total_cost,
+									 NIL,		/* no pathkeys */
+									 NULL,		/* no outer rel either */
+									 NULL,		/* no extra plan */
+									 NIL));		/* no fdw_private data */
 #elif (PG_VERSION_NUM >= 90500)
-    add_path(baserel, (Path *)
-             create_foreignscan_path(root, baserel,
-                                     baserel->rows,
-                                     fdw_state->startup_cost,
-                                     fdw_state->total_cost,
-                                     NIL,       /* no pathkeys */
-                                     NULL,      /* no outer rel either */
-                                     NULL,		/* no extra plan */
-                                     NIL));     /* no fdw_private data */
+	add_path(baserel, (Path *)
+			 create_foreignscan_path(root, baserel,
+									 baserel->rows,
+									 fdw_state->startup_cost,
+									 fdw_state->total_cost,
+									 NIL,		/* no pathkeys */
+									 NULL,		/* no outer rel either */
+									 NULL,		/* no extra plan */
+									 NIL));		/* no fdw_private data */
 #else
-    add_path(baserel, (Path *)
-             create_foreignscan_path(root, baserel,
-                                     baserel->rows,
-                                     fdw_state->startup_cost,
-                                     fdw_state->total_cost,
-                                     NIL,       /* no pathkeys */
-                                     NULL,      /* no outer rel either */
-                                     NULL));	/* no extra plan */
+	add_path(baserel, (Path *)
+			 create_foreignscan_path(root, baserel,
+									 baserel->rows,
+									 fdw_state->startup_cost,
+									 fdw_state->total_cost,
+									 NIL,		/* no pathkeys */
+									 NULL,		/* no outer rel either */
+									 NULL));	/* no extra plan */
 #endif
 }
 
@@ -659,100 +659,100 @@ firebirdGetForeignPaths(PlannerInfo *root,
 static ForeignScan *
 #if (PG_VERSION_NUM >= 90500)
 firebirdGetForeignPlan(PlannerInfo *root,
-                       RelOptInfo *baserel,
-                       Oid foreigntableid,
-                       ForeignPath *best_path,
-                       List *tlist,
-                       List *scan_clauses,
-                       Plan *outer_plan)
+					   RelOptInfo *baserel,
+					   Oid foreigntableid,
+					   ForeignPath *best_path,
+					   List *tlist,
+					   List *scan_clauses,
+					   Plan *outer_plan)
 #else
 firebirdGetForeignPlan(PlannerInfo *root,
-                       RelOptInfo *baserel,
-                       Oid foreigntableid,
-                       ForeignPath *best_path,
-                       List *tlist,
-                       List *scan_clauses)
+					   RelOptInfo *baserel,
+					   Oid foreigntableid,
+					   ForeignPath *best_path,
+					   List *tlist,
+					   List *scan_clauses)
 #endif
 {
-    Index       scan_relid = baserel->relid;
-    FirebirdFdwState *fdw_state = (FirebirdFdwState *)baserel->fdw_private;
+	Index		scan_relid = baserel->relid;
+	FirebirdFdwState *fdw_state = (FirebirdFdwState *)baserel->fdw_private;
 
-    StringInfoData sql;
-    List       *fdw_private;
-    List       *local_exprs = NIL;
-    List       *remote_conds = NIL;
-    List       *params_list = NIL;
-    List       *retrieved_attrs;
+	StringInfoData sql;
+	List	   *fdw_private;
+	List	   *local_exprs = NIL;
+	List	   *remote_conds = NIL;
+	List	   *params_list = NIL;
+	List	   *retrieved_attrs;
 
-    bool db_key_used;
+	bool db_key_used;
 
-    ListCell   *lc;
-    elog(DEBUG2, "entering function %s", __func__);
-    foreach(lc, scan_clauses)
-    {
-        RestrictInfo *rinfo = (RestrictInfo *) lfirst(lc);
-        elog(DEBUG1, "Processing a scan clause");
-        Assert(IsA(rinfo, RestrictInfo));
-        /* Ignore any pseudoconstants, they're dealt with elsewhere */
-        if (rinfo->pseudoconstant)
-        {
-            elog(DEBUG1, " - 'Tis a pseudoconstant, to be dealt with elsewhere");
-            continue;
-        }
+	ListCell   *lc;
+	elog(DEBUG2, "entering function %s", __func__);
+	foreach (lc, scan_clauses)
+	{
+		RestrictInfo *rinfo = (RestrictInfo *) lfirst(lc);
+		elog(DEBUG1, "Processing a scan clause");
+		Assert(IsA(rinfo, RestrictInfo));
+		/* Ignore any pseudoconstants, they're dealt with elsewhere */
+		if (rinfo->pseudoconstant)
+		{
+			elog(DEBUG1, " - 'Tis a pseudoconstant, to be dealt with elsewhere");
+			continue;
+		}
 
-        if (list_member_ptr(fdw_state->remote_conds, rinfo))
-        {
-            elog(DEBUG1, " - remote");
-            remote_conds = lappend(remote_conds, rinfo);
-        }
-        else if (list_member_ptr(fdw_state->local_conds, rinfo))
-        {
-            elog(DEBUG1, " - local");
-            local_exprs = lappend(local_exprs, rinfo->clause);
-        }
-                else
-        {
-            Assert(isFirebirdExpr(root, baserel, rinfo->clause, FQserverVersion(fdw_state->conn)));
-            elog(DEBUG1, " - remote, but not a member of fdw_state->remote_conds");
-            remote_conds = lappend(remote_conds, rinfo);
-        }
-    }
+		if (list_member_ptr(fdw_state->remote_conds, rinfo))
+		{
+			elog(DEBUG1, " - remote");
+			remote_conds = lappend(remote_conds, rinfo);
+		}
+		else if (list_member_ptr(fdw_state->local_conds, rinfo))
+		{
+			elog(DEBUG1, " - local");
+			local_exprs = lappend(local_exprs, rinfo->clause);
+		}
+				else
+		{
+			Assert(isFirebirdExpr(root, baserel, rinfo->clause, FQserverVersion(fdw_state->conn)));
+			elog(DEBUG1, " - remote, but not a member of fdw_state->remote_conds");
+			remote_conds = lappend(remote_conds, rinfo);
+		}
+	}
 
-    /* Build query */
-    initStringInfo(&sql);
-    buildSelectSql(&sql, root, baserel, fdw_state->attrs_used,
-                   &retrieved_attrs, &db_key_used);
+	/* Build query */
+	initStringInfo(&sql);
+	buildSelectSql(&sql, root, baserel, fdw_state->attrs_used,
+				   &retrieved_attrs, &db_key_used);
 
-    if (remote_conds)
-        buildWhereClause(&sql, root, baserel, remote_conds, true, &params_list);
+	if (remote_conds)
+		buildWhereClause(&sql, root, baserel, remote_conds, true, &params_list);
 
-    elog(DEBUG2, "db_key_used? %c", db_key_used == true ? 'Y' : 'N');
+	elog(DEBUG2, "db_key_used? %c", db_key_used == true ? 'Y' : 'N');
 
-    /*
-     * Build the fdw_private list which will be available to the executor.
-     * Items in the list must match enum FdwScanPrivateIndex, above.
-     */
-    fdw_private = list_make3(makeString(sql.data),
-                             retrieved_attrs,
-                             makeInteger(db_key_used)
-        );
+	/*
+	 * Build the fdw_private list which will be available to the executor.
+	 * Items in the list must match enum FdwScanPrivateIndex, above.
+	 */
+	fdw_private = list_make3(makeString(sql.data),
+							 retrieved_attrs,
+							 makeInteger(db_key_used)
+		);
 
-    /* Create the ForeignScan node */
+	/* Create the ForeignScan node */
 #if (PG_VERSION_NUM >= 90500)
-    return make_foreignscan(tlist,
-                            local_exprs,
-                            scan_relid,
-                            NIL,    /* no expressions to evaluate */
-                            fdw_private,
+	return make_foreignscan(tlist,
+							local_exprs,
+							scan_relid,
+							NIL,	/* no expressions to evaluate */
+							fdw_private,
 							NIL,	/* no custom tlist */
 							NIL,	/* no remote quals */
-                            outer_plan);
+							outer_plan);
 #else
-    return make_foreignscan(tlist,
-                            local_exprs,
-                            scan_relid,
-                            NIL,    /* no expressions to evaluate */
-                            fdw_private);
+	return make_foreignscan(tlist,
+							local_exprs,
+							scan_relid,
+							NIL,	/* no expressions to evaluate */
+							fdw_private);
 #endif
 }
 
@@ -770,31 +770,31 @@ firebirdGetForeignPlan(PlannerInfo *root,
  */
 static void
 firebirdExplainForeignScan(ForeignScanState *node,
-                           ExplainState *es)
+						   ExplainState *es)
 {
-    FirebirdFdwScanState *fdw_state = (FirebirdFdwScanState *) node->fdw_state;
+	FirebirdFdwScanState *fdw_state = (FirebirdFdwScanState *) node->fdw_state;
 
-    elog(DEBUG2, "entering function %s", __func__);
+	elog(DEBUG2, "entering function %s", __func__);
 
-    ExplainPropertyText("Firebird query", fdw_state->query, es);
+	ExplainPropertyText("Firebird query", fdw_state->query, es);
 
-    /* Show Firebird's "PLAN" information" in verbose mode */
-    if (es->verbose)
-    {
-        char *plan = NULL;
+	/* Show Firebird's "PLAN" information" in verbose mode */
+	if (es->verbose)
+	{
+		char *plan = NULL;
 
-        FQstartTransaction(fdw_state->conn);
-        plan = FQexplainStatement(fdw_state->conn, fdw_state->query);
-        FQrollbackTransaction(fdw_state->conn);
+		FQstartTransaction(fdw_state->conn);
+		plan = FQexplainStatement(fdw_state->conn, fdw_state->query);
+		FQrollbackTransaction(fdw_state->conn);
 
-        if(plan != NULL)
-        {
-            ExplainPropertyText("Firebird plan", plan, es);
-            free(plan);
-        }
-        else
-            ExplainPropertyText("Firebird plan", "no plan available", es);
-    }
+		if (plan != NULL)
+		{
+			ExplainPropertyText("Firebird plan", plan, es);
+			free(plan);
+		}
+		else
+			ExplainPropertyText("Firebird plan", "no plan available", es);
+	}
 }
 
 
@@ -825,141 +825,141 @@ firebirdExplainForeignScan(ForeignScanState *node,
  */
 static void
 firebirdBeginForeignScan(ForeignScanState *node,
-                         int eflags)
+						 int eflags)
 {
-    char    *svr_query = NULL;
-    char    *svr_table = NULL;
-    bool     disable_pushdowns = false;
+	char	*svr_query = NULL;
+	char	*svr_table = NULL;
+	bool	 disable_pushdowns = false;
 
-    ForeignScan *fsplan = (ForeignScan *) node->ss.ps.plan;
-    FirebirdFdwScanState *fdw_state;
-    Oid      foreigntableid = RelationGetRelid(node->ss.ss_currentRelation);
+	ForeignScan *fsplan = (ForeignScan *) node->ss.ps.plan;
+	FirebirdFdwScanState *fdw_state;
+	Oid		 foreigntableid = RelationGetRelid(node->ss.ss_currentRelation);
 
-    Relation rel;
-    TupleDesc tupdesc;
-    int i;
+	Relation rel;
+	TupleDesc tupdesc;
+	int i;
 
-    EState     *estate = node->ss.ps.state;
-    RangeTblEntry *rte;
-    Oid         userid;
-    ForeignTable *table;
-    ForeignServer *server;
-    UserMapping *user;
+	EState	   *estate = node->ss.ps.state;
+	RangeTblEntry *rte;
+	Oid			userid;
+	ForeignTable *table;
+	ForeignServer *server;
+	UserMapping *user;
 
-    ListCell *lc;
+	ListCell *lc;
 
-    elog(DEBUG2, "entering function %s", __func__);
+	elog(DEBUG2, "entering function %s", __func__);
 
-    rte = rt_fetch(fsplan->scan.scanrelid, estate->es_range_table);
-    userid = rte->checkAsUser ? rte->checkAsUser : GetUserId();
-    table = GetForeignTable(RelationGetRelid(node->ss.ss_currentRelation));
-    server = GetForeignServer(table->serverid);
-    user = GetUserMapping(userid, server->serverid);
+	rte = rt_fetch(fsplan->scan.scanrelid, estate->es_range_table);
+	userid = rte->checkAsUser ? rte->checkAsUser : GetUserId();
+	table = GetForeignTable(RelationGetRelid(node->ss.ss_currentRelation));
+	server = GetForeignServer(table->serverid);
+	user = GetUserMapping(userid, server->serverid);
 
-    /* needed for svr_query */
-    firebirdGetOptions(foreigntableid,
-                       &svr_query,
-                       &svr_table,
-                       &disable_pushdowns
-        );
+	/* needed for svr_query */
+	firebirdGetOptions(foreigntableid,
+					   &svr_query,
+					   &svr_table,
+					   &disable_pushdowns
+		);
 
-    /* Initialise FDW state */
-    fdw_state = (FirebirdFdwScanState *) palloc0(sizeof(FirebirdFdwScanState));
-    node->fdw_state = (void *) fdw_state;
+	/* Initialise FDW state */
+	fdw_state = (FirebirdFdwScanState *) palloc0(sizeof(FirebirdFdwScanState));
+	node->fdw_state = (void *) fdw_state;
 
-    fdw_state->conn = firebirdInstantiateConnection(server, user);
+	fdw_state->conn = firebirdInstantiateConnection(server, user);
 
-    fdw_state->row = 0;
-    fdw_state->result = NULL;
+	fdw_state->row = 0;
+	fdw_state->result = NULL;
 
-    /* Get information about table */
+	/* Get information about table */
 
-    fdw_state->table = (fbTable *) palloc0(sizeof(fbTable));
+	fdw_state->table = (fbTable *) palloc0(sizeof(fbTable));
 
-    fdw_state->table->foreigntableid = foreigntableid;
+	fdw_state->table->foreigntableid = foreigntableid;
 
-    fdw_state->table->pg_table_name = get_rel_name(foreigntableid);
-    elog(DEBUG2, "Pg tablename: %s", fdw_state->table->pg_table_name);
+	fdw_state->table->pg_table_name = get_rel_name(foreigntableid);
+	elog(DEBUG2, "Pg tablename: %s", fdw_state->table->pg_table_name);
 
-    /* Get column information */
+	/* Get column information */
 
-    rel = heap_open(foreigntableid, NoLock);
+	rel = heap_open(foreigntableid, NoLock);
 
-    tupdesc = rel->rd_att;
-    fdw_state->table->pg_column_total = 0;
-    fdw_state->table->columns = (fbTableColumn **)palloc0(sizeof(fbTableColumn *) * tupdesc->natts);
+	tupdesc = rel->rd_att;
+	fdw_state->table->pg_column_total = 0;
+	fdw_state->table->columns = (fbTableColumn **)palloc0(sizeof(fbTableColumn *) * tupdesc->natts);
 
-    for (i = 0; i < tupdesc->natts; i++)
-    {
-        Form_pg_attribute att_tuple = tupdesc->attrs[i];
-        char     *pg_colname = NULL;
-        char     *fb_colname = NULL;
+	for (i = 0; i < tupdesc->natts; i++)
+	{
+		Form_pg_attribute att_tuple = tupdesc->attrs[i];
+		char	 *pg_colname = NULL;
+		char	 *fb_colname = NULL;
 
-        fdw_state->table->columns[fdw_state->table->pg_column_total] = (fbTableColumn *)palloc0(sizeof(fbTableColumn));
+		fdw_state->table->columns[fdw_state->table->pg_column_total] = (fbTableColumn *)palloc0(sizeof(fbTableColumn));
 
-        pg_colname = NameStr(att_tuple->attname);
-        elog(DEBUG2, "PG column: %s", pg_colname);
+		pg_colname = NameStr(att_tuple->attname);
+		elog(DEBUG2, "PG column: %s", pg_colname);
 
-        fb_colname = getFirebirdColumnName(foreigntableid, i + 1);
+		fb_colname = getFirebirdColumnName(foreigntableid, i + 1);
 
-        if(fb_colname == NULL)
-            fb_colname = pg_colname;
+		if (fb_colname == NULL)
+			fb_colname = pg_colname;
 
-        elog(DEBUG2, "FB column: %s", fb_colname);
-        fdw_state->table->columns[fdw_state->table->pg_column_total]->fbname   = fb_colname;
-        fdw_state->table->columns[fdw_state->table->pg_column_total]->pgname   = pg_colname;
-        fdw_state->table->columns[fdw_state->table->pg_column_total]->pgtype   = att_tuple->atttypid;
-        fdw_state->table->columns[fdw_state->table->pg_column_total]->pgtypmod = att_tuple->atttypmod;
-        fdw_state->table->columns[fdw_state->table->pg_column_total]->pgattnum = att_tuple->attnum;
+		elog(DEBUG2, "FB column: %s", fb_colname);
+		fdw_state->table->columns[fdw_state->table->pg_column_total]->fbname   = fb_colname;
+		fdw_state->table->columns[fdw_state->table->pg_column_total]->pgname   = pg_colname;
+		fdw_state->table->columns[fdw_state->table->pg_column_total]->pgtype   = att_tuple->atttypid;
+		fdw_state->table->columns[fdw_state->table->pg_column_total]->pgtypmod = att_tuple->atttypmod;
+		fdw_state->table->columns[fdw_state->table->pg_column_total]->pgattnum = att_tuple->attnum;
 
-        fdw_state->table->columns[fdw_state->table->pg_column_total]->isdropped = att_tuple->attisdropped
-            ? true
-            : false;
-        fdw_state->table->columns[fdw_state->table->pg_column_total]->used = false;
-        fdw_state->table->pg_column_total++;
-    }
+		fdw_state->table->columns[fdw_state->table->pg_column_total]->isdropped = att_tuple->attisdropped
+			? true
+			: false;
+		fdw_state->table->columns[fdw_state->table->pg_column_total]->used = false;
+		fdw_state->table->pg_column_total++;
+	}
 
-    heap_close(rel, NoLock);
+	heap_close(rel, NoLock);
 
-    /* Check if table definition contains at least one column */
-    if(!fdw_state->table->pg_column_total)
-    {
-        ereport(ERROR,
-                (errmsg("No column definitions provided for foreign table %s", fdw_state->table->pg_table_name))
-            );
-        return;
-    }
+	/* Check if table definition contains at least one column */
+	if (!fdw_state->table->pg_column_total)
+	{
+		ereport(ERROR,
+				(errmsg("No column definitions provided for foreign table %s", fdw_state->table->pg_table_name))
+			);
+		return;
+	}
 
-    /* Construct query */
+	/* Construct query */
 
-    if (svr_query)
-    {
-        fdw_state->query = svr_query;
-        fdw_state->db_key_used = false;
-    }
-    else {
-        fdw_state->query = strVal(list_nth(fsplan->fdw_private,
-                                           FdwScanPrivateSelectSql));
+	if (svr_query)
+	{
+		fdw_state->query = svr_query;
+		fdw_state->db_key_used = false;
+	}
+	else {
+		fdw_state->query = strVal(list_nth(fsplan->fdw_private,
+										   FdwScanPrivateSelectSql));
 
-        fdw_state->db_key_used = (bool)intVal(list_nth(fsplan->fdw_private,
-                                                       FdwScanDbKeyUsed));
-    }
+		fdw_state->db_key_used = (bool)intVal(list_nth(fsplan->fdw_private,
+													   FdwScanDbKeyUsed));
+	}
 
-    fdw_state->retrieved_attrs = (List *) list_nth(fsplan->fdw_private,
-                                                   FdwScanPrivateRetrievedAttrs);
+	fdw_state->retrieved_attrs = (List *) list_nth(fsplan->fdw_private,
+												   FdwScanPrivateRetrievedAttrs);
 
-    /* Mark columns used in the query */
-    foreach(lc, fdw_state->retrieved_attrs)
-    {
-        int attnum = lfirst_int(lc);
+	/* Mark columns used in the query */
+	foreach (lc, fdw_state->retrieved_attrs)
+	{
+		int attnum = lfirst_int(lc);
 
-        if(attnum < 0)
-            continue;
-        elog(DEBUG2, "attnum %i used", attnum);
-        fdw_state->table->columns[attnum - 1]->used = true;
-    }
+		if (attnum < 0)
+			continue;
+		elog(DEBUG2, "attnum %i used", attnum);
+		fdw_state->table->columns[attnum - 1]->used = true;
+	}
 
-    elog(DEBUG2, "leaving function %s", __func__);
+	elog(DEBUG2, "leaving function %s", __func__);
 }
 
 
@@ -992,167 +992,167 @@ firebirdBeginForeignScan(ForeignScanState *node,
 static TupleTableSlot *
 firebirdIterateForeignScan(ForeignScanState *node)
 {
-    FirebirdFdwScanState *fdw_state = (FirebirdFdwScanState *) node->fdw_state;
-    TupleTableSlot   *slot = node->ss.ss_ScanTupleSlot;
+	FirebirdFdwScanState *fdw_state = (FirebirdFdwScanState *) node->fdw_state;
+	TupleTableSlot	 *slot = node->ss.ss_ScanTupleSlot;
 
-    char            **values;
-    HeapTuple         tuple;
-    AttInMetadata    *attinmeta;
-    TupleDesc         tupledesc;
+	char			**values;
+	HeapTuple		  tuple;
+	AttInMetadata	 *attinmeta;
+	TupleDesc		  tupledesc;
 
-    int row_total   = 0;
-    int field_nr    = 0;
-    int pg_field_nr = 0;
-    int pg_column_total = 0;
-    int field_total = 0;
-    int last_field = 0;
+	int row_total	= 0;
+	int field_nr	= 0;
+	int pg_field_nr = 0;
+	int pg_column_total = 0;
+	int field_total = 0;
+	int last_field = 0;
 
-    uint32_t key_ctid_part = 0;
-    uint32_t key_oid_part  = 0;
+	uint32_t key_ctid_part = 0;
+	uint32_t key_oid_part  = 0;
 
-    elog(DEBUG2, "entering function %s", __func__);
+	elog(DEBUG2, "entering function %s", __func__);
 
-    ExecClearTuple(slot);
+	ExecClearTuple(slot);
 
-    /* execute query, if this is the first run */
-    if (!fdw_state->result)
-    {
-        elog(DEBUG1, "remote query:\n%s", fdw_state->query);
+	/* execute query, if this is the first run */
+	if (!fdw_state->result)
+	{
+		elog(DEBUG1, "remote query:\n%s", fdw_state->query);
 
-        fdw_state->result = FQexec(fdw_state->conn, fdw_state->query);
+		fdw_state->result = FQexec(fdw_state->conn, fdw_state->query);
 
-        elog(DEBUG1, "query result: %s", FQresStatus(FQresultStatus(fdw_state->result)));
+		elog(DEBUG1, "query result: %s", FQresStatus(FQresultStatus(fdw_state->result)));
 
-        if(FQresultStatus(fdw_state->result) != FBRES_TUPLES_OK)
-        {
-            ereport(ERROR, (errmsg("Unable to execute remote query")));
-            return slot;
-        }
-    }
+		if (FQresultStatus(fdw_state->result) != FBRES_TUPLES_OK)
+		{
+			ereport(ERROR, (errmsg("Unable to execute remote query")));
+			return slot;
+		}
+	}
 
-    row_total = FQntuples(fdw_state->result);
+	row_total = FQntuples(fdw_state->result);
 
-    ExecClearTuple(slot);
+	ExecClearTuple(slot);
 
-    /* The FDW API requires that we return NULL if no more rows are available */
-    if(fdw_state->row == row_total)
-    {
-        elog(DEBUG2, "%s: no more rows available (%i fetched)", __func__, row_total);
-        return NULL;
-    }
+	/* The FDW API requires that we return NULL if no more rows are available */
+	if (fdw_state->row == row_total)
+	{
+		elog(DEBUG2, "%s: no more rows available (%i fetched)", __func__, row_total);
+		return NULL;
+	}
 
-    tupledesc = node->ss.ss_currentRelation->rd_att;
-    elog(DEBUG2, "Tuple has %i atts", tupledesc->natts);
+	tupledesc = node->ss.ss_currentRelation->rd_att;
+	elog(DEBUG2, "Tuple has %i atts", tupledesc->natts);
 
-    /* include/funcapi.h */
-    attinmeta = TupleDescGetAttInMetadata(tupledesc);
+	/* include/funcapi.h */
+	attinmeta = TupleDescGetAttInMetadata(tupledesc);
 
-    last_field = field_total = FQnfields(fdw_state->result);
+	last_field = field_total = FQnfields(fdw_state->result);
 
-    if(fdw_state->db_key_used == true)
-        field_total--;
+	if (fdw_state->db_key_used == true)
+		field_total--;
 
-    pg_column_total = fdw_state->table->pg_column_total;
+	pg_column_total = fdw_state->table->pg_column_total;
 
-    /* Build the tuple */
-    values = (char **) palloc0(sizeof(char *) * pg_column_total);
-    elog(DEBUG2, " pg_column_total %i", pg_column_total);
+	/* Build the tuple */
+	values = (char **) palloc0(sizeof(char *) * pg_column_total);
+	elog(DEBUG2, " pg_column_total %i", pg_column_total);
 
-    for (pg_field_nr = field_nr = 0; pg_field_nr < pg_column_total; pg_field_nr++)
-    {
-        /* Ignore dropped columns */
-        if(fdw_state->table->columns[pg_field_nr]->isdropped == true)
-        {
-            values[pg_field_nr] = NULL;
-            continue;
-        }
+	for (pg_field_nr = field_nr = 0; pg_field_nr < pg_column_total; pg_field_nr++)
+	{
+		/* Ignore dropped columns */
+		if (fdw_state->table->columns[pg_field_nr]->isdropped == true)
+		{
+			values[pg_field_nr] = NULL;
+			continue;
+		}
 
-        /* Ignore columns not used in the query */
-        if(fdw_state->table->columns[pg_field_nr]->used == false)
-        {
-            elog(DEBUG2, " pg_column %i not used", pg_field_nr);
-            values[pg_field_nr] = NULL;
-            continue;
-        }
+		/* Ignore columns not used in the query */
+		if (fdw_state->table->columns[pg_field_nr]->used == false)
+		{
+			elog(DEBUG2, " pg_column %i not used", pg_field_nr);
+			values[pg_field_nr] = NULL;
+			continue;
+		}
 
-        /* All result columns retrieved */
-        if(field_nr >= field_total)
-        {
-            values[pg_field_nr] = NULL;
-            continue;
-        }
+		/* All result columns retrieved */
+		if (field_nr >= field_total)
+		{
+			values[pg_field_nr] = NULL;
+			continue;
+		}
 
-        if(FQgetisnull(fdw_state->result, fdw_state->row, field_nr))
-        {
-            elog(DEBUG2, " retrieved value (%i): NULL", pg_field_nr);
-            values[pg_field_nr] = NULL;
-        }
-        else
-        {
-            values[pg_field_nr] = FQgetvalue(fdw_state->result, fdw_state->row, field_nr);
-            elog(DEBUG2, " retrieved value (%i): %s", pg_field_nr, values[pg_field_nr]);
-        }
+		if (FQgetisnull(fdw_state->result, fdw_state->row, field_nr))
+		{
+			elog(DEBUG2, " retrieved value (%i): NULL", pg_field_nr);
+			values[pg_field_nr] = NULL;
+		}
+		else
+		{
+			values[pg_field_nr] = FQgetvalue(fdw_state->result, fdw_state->row, field_nr);
+			elog(DEBUG2, " retrieved value (%i): %s", pg_field_nr, values[pg_field_nr]);
+		}
 
-        field_nr++;
-    }
+		field_nr++;
+	}
 
-    if(fdw_state->db_key_used)
-    {
-        /* Final field contains the RDB$DB_KEY value - split into two
-         * uint64 values
-         */
-        convertDbKeyValue(
-            FQgetvalue(fdw_state->result, fdw_state->row, last_field - 1),
-            &key_ctid_part,
-            &key_oid_part
-            );
+	if (fdw_state->db_key_used)
+	{
+		/* Final field contains the RDB$DB_KEY value - split into two
+		 * uint64 values
+		 */
+		convertDbKeyValue(
+			FQgetvalue(fdw_state->result, fdw_state->row, last_field - 1),
+			&key_ctid_part,
+			&key_oid_part
+			);
 
-        /* Ensure this tuple has an OID, which we will use in conjunction with
-         * the CTID to smuggle through Firebird's RDB$DB_KEY value
-         *
-         * Trivial note: from a Firebird point of view it would be more logical
-         * to pass the first four bytes of the RDB$DB_KEY value as the OID, and
-         * the last four bytes as the CTID, as RDB$DB_KEY appears to be
-         * formatted as a table / row identifier, but that's a purely academic
-         * point.
-         */
-        attinmeta->tupdesc->tdhasoid = true;
-    }
+		/* Ensure this tuple has an OID, which we will use in conjunction with
+		 * the CTID to smuggle through Firebird's RDB$DB_KEY value
+		 *
+		 * Trivial note: from a Firebird point of view it would be more logical
+		 * to pass the first four bytes of the RDB$DB_KEY value as the OID, and
+		 * the last four bytes as the CTID, as RDB$DB_KEY appears to be
+		 * formatted as a table / row identifier, but that's a purely academic
+		 * point.
+		 */
+		attinmeta->tupdesc->tdhasoid = true;
+	}
 
-    tuple = BuildTupleFromCStrings(
-        attinmeta,
-        values
-        );
+	tuple = BuildTupleFromCStrings(
+		attinmeta,
+		values
+		);
 
-    pfree(values);
+	pfree(values);
 
-    if(fdw_state->db_key_used)
-    {
-        /* include/storage/itemptr.h */
+	if (fdw_state->db_key_used)
+	{
+		/* include/storage/itemptr.h */
 
 #if (PG_VERSION_NUM >= 10000)
-        ItemPointer ctid_dummy = palloc0(sizeof(ItemPointerData));
+		ItemPointer ctid_dummy = palloc0(sizeof(ItemPointerData));
 #else
-        ItemPointer ctid_dummy = palloc0(SizeOfIptrData);
+		ItemPointer ctid_dummy = palloc0(SizeOfIptrData);
 #endif
 
-        /* Set CTID and OID with values extrapolated from RDB$DB_KEY */
-        ctid_dummy->ip_blkid.bi_hi = (uint16) (key_ctid_part >> 16);
-        ctid_dummy->ip_blkid.bi_lo = (uint16) key_ctid_part;
-        ctid_dummy->ip_posid = 0;
+		/* Set CTID and OID with values extrapolated from RDB$DB_KEY */
+		ctid_dummy->ip_blkid.bi_hi = (uint16) (key_ctid_part >> 16);
+		ctid_dummy->ip_blkid.bi_lo = (uint16) key_ctid_part;
+		ctid_dummy->ip_posid = 0;
 
-        tuple->t_self = *ctid_dummy;
+		tuple->t_self = *ctid_dummy;
 
-        HeapTupleSetOid(tuple, (Oid)key_oid_part);
-    }
+		HeapTupleSetOid(tuple, (Oid)key_oid_part);
+	}
 
-    ExecStoreTuple(tuple, slot, InvalidBuffer, false);
+	ExecStoreTuple(tuple, slot, InvalidBuffer, false);
 
-    fdw_state->row++;
+	fdw_state->row++;
 
-    elog(DEBUG2, "leaving function %s", __func__);
+	elog(DEBUG2, "leaving function %s", __func__);
 
-    return slot;
+	return slot;
 }
 
 
@@ -1164,19 +1164,19 @@ firebirdIterateForeignScan(ForeignScanState *node)
 void
 convertDbKeyValue(char *p, uint32_t *key_ctid_part, uint32_t *key_oid_part)
 {
-    unsigned char *t;
-    uint64_t db_key = 0;
+	unsigned char *t;
+	uint64_t db_key = 0;
 
-    for(t = (unsigned char *) p;  t < (unsigned char *) p + 8; t++)
-    {
-        db_key += (uint8_t)*t;
+	for (t = (unsigned char *) p;  t < (unsigned char *) p + 8; t++)
+	{
+		db_key += (uint8_t)*t;
 
-        if(t < (unsigned char *) p + 7)
-            db_key = db_key << 8;
-    }
+		if (t < (unsigned char *) p + 7)
+			db_key = db_key << 8;
+	}
 
-    *key_ctid_part = (uint32_t) (db_key >> 32);
-    *key_oid_part  = (uint32_t) db_key;
+	*key_ctid_part = (uint32_t) (db_key >> 32);
+	*key_oid_part  = (uint32_t) db_key;
 }
 
 
@@ -1213,17 +1213,17 @@ firebirdReScanForeignScan(ForeignScanState *node)
 static void
 firebirdEndForeignScan(ForeignScanState *node)
 {
-    FirebirdFdwScanState *fdw_state = (FirebirdFdwScanState *) node->fdw_state;
+	FirebirdFdwScanState *fdw_state = (FirebirdFdwScanState *) node->fdw_state;
 
-    elog(DEBUG2, "entering function %s", __func__);
+	elog(DEBUG2, "entering function %s", __func__);
 
-    if (fdw_state->result)
-    {
-        FQclear(fdw_state->result);
-        fdw_state->result = NULL;
-    }
+	if (fdw_state->result)
+	{
+		FQclear(fdw_state->result);
+		fdw_state->result = NULL;
+	}
 
-    elog(DEBUG2, "leaving function %s", __func__);
+	elog(DEBUG2, "leaving function %s", __func__);
 }
 
 
@@ -1236,36 +1236,36 @@ firebirdEndForeignScan(ForeignScanState *node)
 static int
 firebirdIsForeignRelUpdatable(Relation rel)
 {
-    bool           updatable = true;
-    ForeignServer *server;
-    ForeignTable  *table;
-    ListCell      *lc;
+	bool		   updatable = true;
+	ForeignServer *server;
+	ForeignTable  *table;
+	ListCell	  *lc;
 
-    table = GetForeignTable(RelationGetRelid(rel));
-    server = GetForeignServer(table->serverid);
-    /* Get server setting, if available */
-    foreach(lc, server->options)
-    {
-        DefElem    *def = (DefElem *) lfirst(lc);
+	table = GetForeignTable(RelationGetRelid(rel));
+	server = GetForeignServer(table->serverid);
+	/* Get server setting, if available */
+	foreach (lc, server->options)
+	{
+		DefElem	   *def = (DefElem *) lfirst(lc);
 
-        if (strcmp(def->defname, "updatable") == 0)
-            updatable = defGetBoolean(def);
-    }
+		if (strcmp(def->defname, "updatable") == 0)
+			updatable = defGetBoolean(def);
+	}
 
-    /* Table setting overrides server setting */
+	/* Table setting overrides server setting */
 
-    foreach(lc, table->options)
-    {
-        DefElem    *def = (DefElem *) lfirst(lc);
+	foreach (lc, table->options)
+	{
+		DefElem	   *def = (DefElem *) lfirst(lc);
 
-        if (strcmp(def->defname, "updatable") == 0)
-            updatable = defGetBoolean(def);
-    }
+		if (strcmp(def->defname, "updatable") == 0)
+			updatable = defGetBoolean(def);
+	}
 
-    elog(DEBUG2, "entering function %s", __func__);
+	elog(DEBUG2, "entering function %s", __func__);
 
-    return updatable ?
-        (1 << CMD_INSERT) | (1 << CMD_UPDATE) | (1 << CMD_DELETE) : 0;
+	return updatable ?
+		(1 << CMD_INSERT) | (1 << CMD_UPDATE) | (1 << CMD_DELETE) : 0;
 }
 
 
@@ -1303,62 +1303,62 @@ firebirdAddForeignUpdateTargets(Query *parsetree,
                                 RangeTblEntry *target_rte,
                                 Relation target_relation)
 {
-    Var        *var_ctidjunk;
-    Var        *var_oidjunk;
-    const char *attrname1;
-    const char *attrname2;
-    TargetEntry *tle;
+	Var		   *var_ctidjunk;
+	Var		   *var_oidjunk;
+	const char *attrname1;
+	const char *attrname2;
+	TargetEntry *tle;
 
-    elog(DEBUG2, "entering function %s", __func__);
+	elog(DEBUG2, "entering function %s", __func__);
 
-    /*
-     * In Firebird, transactionally unique row values are returned
-     * by the RDB$DB_KEY pseudo-column. This is actually a string of
-     * unsigned byte values which we coerce into two uint32 variables
-     */
+	/*
+	 * In Firebird, transactionally unique row values are returned
+	 * by the RDB$DB_KEY pseudo-column. This is actually a string of
+	 * unsigned byte values which we coerce into two uint32 variables
+	 */
 
-    /* Make a Var representing the desired value */
-    var_ctidjunk = makeVar(parsetree->resultRelation,
-                   /* This is the CTID attribute, which we are abusing to pass half the RDB$DB_KEY value */
-                   SelfItemPointerAttributeNumber,
-                   TIDOID,
-                   -1,
-                   InvalidOid,
-                   0);
+	/* Make a Var representing the desired value */
+	var_ctidjunk = makeVar(parsetree->resultRelation,
+				   /* This is the CTID attribute, which we are abusing to pass half the RDB$DB_KEY value */
+				   SelfItemPointerAttributeNumber,
+				   TIDOID,
+				   -1,
+				   InvalidOid,
+				   0);
 
-    /* Wrap it in a resjunk TLE with the right name ... */
-    attrname1 = "db_key_ctidpart";
-    elog(DEBUG2, "list_length(parsetree->targetList) %i", list_length(parsetree->targetList));
+	/* Wrap it in a resjunk TLE with the right name ... */
+	attrname1 = "db_key_ctidpart";
+	elog(DEBUG2, "list_length(parsetree->targetList) %i", list_length(parsetree->targetList));
 
-    /* backend/nodes/makefuncs.c */
-    tle = makeTargetEntry((Expr *) var_ctidjunk,
-                          list_length(parsetree->targetList) + 1,
-                          pstrdup(attrname1),
-                          true);
+	/* backend/nodes/makefuncs.c */
+	tle = makeTargetEntry((Expr *) var_ctidjunk,
+						  list_length(parsetree->targetList) + 1,
+						  pstrdup(attrname1),
+						  true);
 
-    /* ... and add it to the query's targetlist */
-    parsetree->targetList = lappend(parsetree->targetList, tle);
+	/* ... and add it to the query's targetlist */
+	parsetree->targetList = lappend(parsetree->targetList, tle);
 
 
-    /* And this is the OID attribute, which we abusing
-     * to pass the other half the RDB$DB_KEY value */
-    var_oidjunk = makeVar(parsetree->resultRelation,
-                   ObjectIdAttributeNumber,
-                   OIDOID,
-                  -1,
-                   InvalidOid,
-                   0);
+	/* And this is the OID attribute, which we abusing
+	 * to pass the other half the RDB$DB_KEY value */
+	var_oidjunk = makeVar(parsetree->resultRelation,
+				   ObjectIdAttributeNumber,
+				   OIDOID,
+				  -1,
+				   InvalidOid,
+				   0);
 
-    attrname2 = "db_key_oidpart";
+	attrname2 = "db_key_oidpart";
 
-    /* backend/nodes/makefuncs.c */
-    tle = makeTargetEntry((Expr *) var_oidjunk,
-                          list_length(parsetree->targetList) + 1,
-                          pstrdup(attrname2),
-                          true);
+	/* backend/nodes/makefuncs.c */
+	tle = makeTargetEntry((Expr *) var_oidjunk,
+						  list_length(parsetree->targetList) + 1,
+						  pstrdup(attrname2),
+						  true);
 
-    /* ... and add it to the query's targetlist */
-    parsetree->targetList = lappend(parsetree->targetList, tle);
+	/* ... and add it to the query's targetlist */
+	parsetree->targetList = lappend(parsetree->targetList, tle);
 }
 
 
@@ -1390,143 +1390,143 @@ firebirdAddForeignUpdateTargets(Query *parsetree,
  */
 static List *
 firebirdPlanForeignModify(PlannerInfo *root,
-                          ModifyTable *plan,
-                          Index resultRelation,
-                          int subplan_index)
+						  ModifyTable *plan,
+						  Index resultRelation,
+						  int subplan_index)
 {
-    /* include/nodes/nodes.h */
-    CmdType     operation = plan->operation;
+	/* include/nodes/nodes.h */
+	CmdType		operation = plan->operation;
 
-    /* include/nodes/parsenodes.h */
-    /* "A range table is a List of RangeTblEntry nodes.*/
+	/* include/nodes/parsenodes.h */
+	/* "A range table is a List of RangeTblEntry nodes.*/
 
-    /* planner_rt_fetch(): include/nodes/relation.h
-       -> macro include/parser/parsetree.h
-     */
+	/* planner_rt_fetch(): include/nodes/relation.h
+	   -> macro include/parser/parsetree.h
+	 */
 
-    RangeTblEntry *rte = planner_rt_fetch(resultRelation, root);
-    Relation    rel;
-    StringInfoData sql;
+	RangeTblEntry *rte = planner_rt_fetch(resultRelation, root);
+	Relation	rel;
+	StringInfoData sql;
 
-    List       *targetAttrs = NIL;
-    List       *returningList = NIL;
-    List       *retrieved_attrs = NIL;
+	List	   *targetAttrs = NIL;
+	List	   *returningList = NIL;
+	List	   *retrieved_attrs = NIL;
 
-    elog(DEBUG2, "entering function %s", __func__);
-    elog(DEBUG2, "RTE rtekind: %i; operation %i", rte->rtekind, operation);
+	elog(DEBUG2, "entering function %s", __func__);
+	elog(DEBUG2, "RTE rtekind: %i; operation %i", rte->rtekind, operation);
 
-    initStringInfo(&sql);
+	initStringInfo(&sql);
 
-    /*
-     * Core code already has some lock on each rel being planned, so we can
-     * use NoLock here.
-     */
-    /* access/heapam.h
-       backend/access/heapam.c
-       heap_open        - open a heap relation by relation OID
+	/*
+	 * Core code already has some lock on each rel being planned, so we can
+	 * use NoLock here.
+	 */
+	/* access/heapam.h
+	   backend/access/heapam.c
+	   heap_open		- open a heap relation by relation OID
 
-       *        heap_open - open a heap relation by relation OID
-       *
-       *        This is essentially relation_open plus check that the relation
-       *        is not an index nor a composite type.  (The caller should also
-       *        check that it's not a view or foreign table before assuming it has
-       *        storage.)
-     */
+	   *		heap_open - open a heap relation by relation OID
+	   *
+	   *		This is essentially relation_open plus check that the relation
+	   *		is not an index nor a composite type.  (The caller should also
+	   *		check that it's not a view or foreign table before assuming it has
+	   *		storage.)
+	 */
 
-    rel = heap_open(rte->relid, NoLock);
+	rel = heap_open(rte->relid, NoLock);
 
-    /*
-     * In an INSERT, we transmit all columns that are defined in the foreign
-     * table.  In an UPDATE, we transmit only columns that were explicitly
-     * targets of the UPDATE, so as to avoid unnecessary data transmission.
-     * (We can't do that for INSERT since we would miss sending default values
-     * for columns not listed in the source statement.)
-     */
-    if (operation == CMD_INSERT)
-    {
-        TupleDesc   tupdesc = RelationGetDescr(rel);
-        int         attnum;
+	/*
+	 * In an INSERT, we transmit all columns that are defined in the foreign
+	 * table.  In an UPDATE, we transmit only columns that were explicitly
+	 * targets of the UPDATE, so as to avoid unnecessary data transmission.
+	 * (We can't do that for INSERT since we would miss sending default values
+	 * for columns not listed in the source statement.)
+	 */
+	if (operation == CMD_INSERT)
+	{
+		TupleDesc	tupdesc = RelationGetDescr(rel);
+		int			attnum;
 
-        elog(DEBUG2, " * operation is INSERT");
+		elog(DEBUG2, " * operation is INSERT");
 
-        for (attnum = 1; attnum <= tupdesc->natts; attnum++)
-        {
-            Form_pg_attribute attr = tupdesc->attrs[attnum - 1];
+		for (attnum = 1; attnum <= tupdesc->natts; attnum++)
+		{
+			Form_pg_attribute attr = tupdesc->attrs[attnum - 1];
 
-            if (!attr->attisdropped)
-                targetAttrs = lappend_int(targetAttrs, attnum);
-        }
-    }
-    else if (operation == CMD_UPDATE)
+			if (!attr->attisdropped)
+				targetAttrs = lappend_int(targetAttrs, attnum);
+		}
+	}
+	else if (operation == CMD_UPDATE)
 
-    {
+	{
 #if (PG_VERSION_NUM >= 90500)
-        Bitmapset  *tmpset = bms_copy(rte->updatedCols);
+		Bitmapset  *tmpset = bms_copy(rte->updatedCols);
 #else
-        Bitmapset  *tmpset = bms_copy(rte->modifiedCols);
+		Bitmapset  *tmpset = bms_copy(rte->modifiedCols);
 #endif
-        AttrNumber  col;
+		AttrNumber	col;
 
-        elog(DEBUG2, " * operation is UPDATE");
+		elog(DEBUG2, " * operation is UPDATE");
 
-        while ((col = bms_first_member(tmpset)) >= 0)
-        {
-            /* include/access/sysattr.h:#define FirstLowInvalidHeapAttributeNumber (-8) */
+		while ((col = bms_first_member(tmpset)) >= 0)
+		{
+			/* include/access/sysattr.h:#define FirstLowInvalidHeapAttributeNumber (-8) */
 
-            col += FirstLowInvalidHeapAttributeNumber;
-            /* include/access/attnum.h:#define InvalidAttrNumber   0 */
+			col += FirstLowInvalidHeapAttributeNumber;
+			/* include/access/attnum.h:#define InvalidAttrNumber   0 */
 
-            if (col <= InvalidAttrNumber)       /* shouldn't happen */
-                elog(ERROR, "system-column update is not supported");
-            targetAttrs = lappend_int(targetAttrs, col);
-        }
-    }
-
-
-    /* Extract the relevant RETURNING list, if any */
-    if (plan->returningLists)
-        returningList = (List *) list_nth(plan->returningLists, subplan_index);
+			if (col <= InvalidAttrNumber)		/* shouldn't happen */
+				elog(ERROR, "system-column update is not supported");
+			targetAttrs = lappend_int(targetAttrs, col);
+		}
+	}
 
 
-    elog(INFO, "Construct the SQL command string ");
-    /* Construct the SQL command string */
-    switch (operation)
-    {
-        case CMD_INSERT:
-            buildInsertSql(&sql, root, resultRelation, rel,
-                           targetAttrs, returningList,
-                           &retrieved_attrs);
-            break;
+	/* Extract the relevant RETURNING list, if any */
+	if (plan->returningLists)
+		returningList = (List *) list_nth(plan->returningLists, subplan_index);
 
-        case CMD_UPDATE:
-            buildUpdateSql(&sql, root, resultRelation, rel,
-                           targetAttrs, returningList,
-                           &retrieved_attrs);
-            break;
 
-        case CMD_DELETE:
-            buildDeleteSql(&sql, root, resultRelation, rel,
-                           returningList,
-                           &retrieved_attrs);
-            break;
+	elog(INFO, "Construct the SQL command string ");
+	/* Construct the SQL command string */
+	switch (operation)
+	{
+		case CMD_INSERT:
+			buildInsertSql(&sql, root, resultRelation, rel,
+						   targetAttrs, returningList,
+						   &retrieved_attrs);
+			break;
 
-        default:
-            elog(ERROR, "unexpected operation: %d", (int) operation);
-            break;
-    }
+		case CMD_UPDATE:
+			buildUpdateSql(&sql, root, resultRelation, rel,
+						   targetAttrs, returningList,
+						   &retrieved_attrs);
+			break;
 
-    heap_close(rel, NoLock);
-    elog(INFO, "Constructed the SQL command string ");
+		case CMD_DELETE:
+			buildDeleteSql(&sql, root, resultRelation, rel,
+						   returningList,
+						   &retrieved_attrs);
+			break;
 
-    /*
-     * Build the fdw_private list that will be available to the executor.
-     * Items in the list must match enum FdwModifyPrivateIndex, above.
-     */
+		default:
+			elog(ERROR, "unexpected operation: %d", (int) operation);
+			break;
+	}
 
-    return list_make4(makeString(sql.data),
-                      targetAttrs,
-                      makeInteger((returningList != NIL)),
-                      retrieved_attrs);
+	heap_close(rel, NoLock);
+	elog(INFO, "Constructed the SQL command string ");
+
+	/*
+	 * Build the fdw_private list that will be available to the executor.
+	 * Items in the list must match enum FdwModifyPrivateIndex, above.
+	 */
+
+	return list_make4(makeString(sql.data),
+					  targetAttrs,
+					  makeInteger((returningList != NIL)),
+					  retrieved_attrs);
 }
 
 
@@ -1565,155 +1565,155 @@ firebirdPlanForeignModify(PlannerInfo *root,
 
 static void
 firebirdBeginForeignModify(ModifyTableState *mtstate,
-                           ResultRelInfo *resultRelInfo,
-                           List *fdw_private,
-                           int subplan_index,
-                           int eflags)
+						   ResultRelInfo *resultRelInfo,
+						   List *fdw_private,
+						   int subplan_index,
+						   int eflags)
 {
-    FirebirdFdwModifyState *fmstate;
-    EState     *estate = mtstate->ps.state;
+	FirebirdFdwModifyState *fmstate;
+	EState	   *estate = mtstate->ps.state;
 
-    Relation    rel = resultRelInfo->ri_RelationDesc;
-    CmdType     operation = mtstate->operation;
-    RangeTblEntry *rte;
-    Oid         userid;
+	Relation	rel = resultRelInfo->ri_RelationDesc;
+	CmdType		operation = mtstate->operation;
+	RangeTblEntry *rte;
+	Oid			userid;
 
-    ForeignTable *table;
-    ForeignServer *server;
+	ForeignTable *table;
+	ForeignServer *server;
 
-    UserMapping *user;
+	UserMapping *user;
 
-    AttrNumber  n_params;
+	AttrNumber	n_params;
 
-    Oid         typefnoid;
-    bool        isvarlena;
+	Oid			typefnoid;
+	bool		isvarlena;
 
-    ListCell   *lc;
+	ListCell   *lc;
 
-    elog(DEBUG2, "entering function %s", __func__);
+	elog(DEBUG2, "entering function %s", __func__);
 
-    /*
-     * Do nothing in EXPLAIN (no ANALYZE) case.
-     * resultRelInfo->ri_FdwState stays NULL.
-     */
-    if (eflags & EXEC_FLAG_EXPLAIN_ONLY)
-        return;
+	/*
+	 * Do nothing in EXPLAIN (no ANALYZE) case.
+	 * resultRelInfo->ri_FdwState stays NULL.
+	 */
+	if (eflags & EXEC_FLAG_EXPLAIN_ONLY)
+		return;
 
-    /* Begin constructing FirebirdFdwModifyState. */
-    fmstate = (FirebirdFdwModifyState *) palloc0(sizeof(FirebirdFdwModifyState));
-    fmstate->rel = rel;
+	/* Begin constructing FirebirdFdwModifyState. */
+	fmstate = (FirebirdFdwModifyState *) palloc0(sizeof(FirebirdFdwModifyState));
+	fmstate->rel = rel;
 
-    rte = rt_fetch(resultRelInfo->ri_RangeTableIndex, estate->es_range_table);
-    userid = rte->checkAsUser ? rte->checkAsUser : GetUserId();
+	rte = rt_fetch(resultRelInfo->ri_RangeTableIndex, estate->es_range_table);
+	userid = rte->checkAsUser ? rte->checkAsUser : GetUserId();
 
-    elog(DEBUG2, "userid resolved to: %i", (int)userid);
+	elog(DEBUG2, "userid resolved to: %i", (int)userid);
 
-    table = GetForeignTable(RelationGetRelid(rel));
-    server = GetForeignServer(table->serverid);
-    user = GetUserMapping(userid, server->serverid);
+	table = GetForeignTable(RelationGetRelid(rel));
+	server = GetForeignServer(table->serverid);
+	user = GetUserMapping(userid, server->serverid);
 
-    fmstate->conn = firebirdInstantiateConnection(server, user);
+	fmstate->conn = firebirdInstantiateConnection(server, user);
 
-    if(FQstatus(fmstate->conn) != CONNECTION_OK)
-        ereport(ERROR,
-            (errcode(ERRCODE_FDW_UNABLE_TO_ESTABLISH_CONNECTION),
-            errmsg("Unable to connect to foreign server")
-            ));
-
-
-    fmstate->conn->autocommit = true;
-    fmstate->conn->client_min_messages = DEBUG1;
-
-    /* Deconstruct fdw_private data. */
-    /* this is the list returned by firebirdPlanForeignModify() */
-    fmstate->query = strVal(list_nth(fdw_private,
-                                     FdwModifyPrivateUpdateSql));
-
-    fmstate->target_attrs = (List *) list_nth(fdw_private,
-                                              FdwModifyPrivateTargetAttnums);
-    fmstate->has_returning = intVal(list_nth(fdw_private,
-                                             FdwModifyPrivateHasReturning));
-    fmstate->retrieved_attrs = (List *) list_nth(fdw_private,
-                                             FdwModifyPrivateRetrievedAttrs);
+	if (FQstatus(fmstate->conn) != CONNECTION_OK)
+		ereport(ERROR,
+			(errcode(ERRCODE_FDW_UNABLE_TO_ESTABLISH_CONNECTION),
+			errmsg("Unable to connect to foreign server")
+			));
 
 
-    /* Create context for per-tuple temp workspace */
-    fmstate->temp_cxt = AllocSetContextCreate(estate->es_query_cxt,
-                                              "firebird_fdw temporary data",
-                                              ALLOCSET_SMALL_MINSIZE,
-                                              ALLOCSET_SMALL_INITSIZE,
-                                              ALLOCSET_SMALL_MAXSIZE);
+	fmstate->conn->autocommit = true;
+	fmstate->conn->client_min_messages = DEBUG1;
 
-    /* Prepare for input conversion of RETURNING results. */
-    if (fmstate->has_returning)
-        fmstate->attinmeta = TupleDescGetAttInMetadata(RelationGetDescr(rel));
+	/* Deconstruct fdw_private data. */
+	/* this is the list returned by firebirdPlanForeignModify() */
+	fmstate->query = strVal(list_nth(fdw_private,
+									 FdwModifyPrivateUpdateSql));
 
-    /* Prepare for output conversion of parameters used in prepared stmt. */
-    n_params = list_length(fmstate->target_attrs) + 1;
-    elog(DEBUG2,"  n_params is: %i", n_params);
-    fmstate->p_flinfo = (FmgrInfo *) palloc0(sizeof(FmgrInfo) * n_params);
-    fmstate->p_nums = 0;
-
-    if (operation == CMD_INSERT || operation == CMD_UPDATE)
-    {
-        /* Set up for remaining transmittable parameters */
-        foreach(lc, fmstate->target_attrs)
-        {
-            int               attnum = lfirst_int(lc);
-            Form_pg_attribute attr   = RelationGetDescr(rel)->attrs[attnum - 1];
-
-            elog(DEBUG2, "ins/upd: attr %i, p_nums %i", attnum, fmstate->p_nums);
-            Assert(!attr->attisdropped);
-            getTypeOutputInfo(attr->atttypid, &typefnoid, &isvarlena);
-
-            fmgr_info(typefnoid, &fmstate->p_flinfo[fmstate->p_nums]);
-            fmstate->p_nums++;
-        }
-    }
-
-    if (operation == CMD_UPDATE || operation == CMD_DELETE)
-    {
-        /* Here we locate the resjunk columns containing the two
-           halves of the 8-byte RDB$DB_KEY value so update and delete
-           operations can locate the correct row
-         */
-        Plan *subplan = mtstate->mt_plans[subplan_index]->plan;
-
-        fmstate->db_keyAttno_CtidPart = ExecFindJunkAttributeInTlist(
-            subplan->targetlist,
-            "db_key_ctidpart"
-            );
-
-        if (!AttributeNumberIsValid(fmstate->db_keyAttno_CtidPart))
-        {
-            elog(ERROR, "Resjunk column db_key_ctidpart not found");
-            return;
-        }
-
-        elog(DEBUG2, "Found resjunk db_key_ctidpart, attno %i", fmstate->db_keyAttno_CtidPart);
-
-        fmstate->db_keyAttno_OidPart = ExecFindJunkAttributeInTlist(subplan->targetlist,
-                                                                    "db_key_oidpart");
-
-        if (!AttributeNumberIsValid(fmstate->db_keyAttno_OidPart))
-        {
-            elog(ERROR, "Resjunk column db_key_oidpart not found");
-            return;
-        }
-
-        elog(DEBUG2, "Found resjunk db_key_oidpart, attno %i", fmstate->db_keyAttno_OidPart);
-
-        getTypeOutputInfo(OIDOID, &typefnoid, &isvarlena);
-
-        fmgr_info(typefnoid, &fmstate->p_flinfo[fmstate->p_nums]);
-        fmstate->p_nums++;
-    }
+	fmstate->target_attrs = (List *) list_nth(fdw_private,
+											  FdwModifyPrivateTargetAttnums);
+	fmstate->has_returning = intVal(list_nth(fdw_private,
+											 FdwModifyPrivateHasReturning));
+	fmstate->retrieved_attrs = (List *) list_nth(fdw_private,
+											 FdwModifyPrivateRetrievedAttrs);
 
 
-    elog(DEBUG2, "  p_nums %i; n_params: %i", fmstate->p_nums, n_params);
-    Assert(fmstate->p_nums <= n_params);
+	/* Create context for per-tuple temp workspace */
+	fmstate->temp_cxt = AllocSetContextCreate(estate->es_query_cxt,
+											  "firebird_fdw temporary data",
+											  ALLOCSET_SMALL_MINSIZE,
+											  ALLOCSET_SMALL_INITSIZE,
+											  ALLOCSET_SMALL_MAXSIZE);
 
-    resultRelInfo->ri_FdwState = fmstate;
+	/* Prepare for input conversion of RETURNING results. */
+	if (fmstate->has_returning)
+		fmstate->attinmeta = TupleDescGetAttInMetadata(RelationGetDescr(rel));
+
+	/* Prepare for output conversion of parameters used in prepared stmt. */
+	n_params = list_length(fmstate->target_attrs) + 1;
+	elog(DEBUG2,"  n_params is: %i", n_params);
+	fmstate->p_flinfo = (FmgrInfo *) palloc0(sizeof(FmgrInfo) * n_params);
+	fmstate->p_nums = 0;
+
+	if (operation == CMD_INSERT || operation == CMD_UPDATE)
+	{
+		/* Set up for remaining transmittable parameters */
+		foreach (lc, fmstate->target_attrs)
+		{
+			int				  attnum = lfirst_int(lc);
+			Form_pg_attribute attr	 = RelationGetDescr(rel)->attrs[attnum - 1];
+
+			elog(DEBUG2, "ins/upd: attr %i, p_nums %i", attnum, fmstate->p_nums);
+			Assert(!attr->attisdropped);
+			getTypeOutputInfo(attr->atttypid, &typefnoid, &isvarlena);
+
+			fmgr_info(typefnoid, &fmstate->p_flinfo[fmstate->p_nums]);
+			fmstate->p_nums++;
+		}
+	}
+
+	if (operation == CMD_UPDATE || operation == CMD_DELETE)
+	{
+		/* Here we locate the resjunk columns containing the two
+		   halves of the 8-byte RDB$DB_KEY value so update and delete
+		   operations can locate the correct row
+		 */
+		Plan *subplan = mtstate->mt_plans[subplan_index]->plan;
+
+		fmstate->db_keyAttno_CtidPart = ExecFindJunkAttributeInTlist(
+			subplan->targetlist,
+			"db_key_ctidpart"
+			);
+
+		if (!AttributeNumberIsValid(fmstate->db_keyAttno_CtidPart))
+		{
+			elog(ERROR, "Resjunk column db_key_ctidpart not found");
+			return;
+		}
+
+		elog(DEBUG2, "Found resjunk db_key_ctidpart, attno %i", fmstate->db_keyAttno_CtidPart);
+
+		fmstate->db_keyAttno_OidPart = ExecFindJunkAttributeInTlist(subplan->targetlist,
+																	"db_key_oidpart");
+
+		if (!AttributeNumberIsValid(fmstate->db_keyAttno_OidPart))
+		{
+			elog(ERROR, "Resjunk column db_key_oidpart not found");
+			return;
+		}
+
+		elog(DEBUG2, "Found resjunk db_key_oidpart, attno %i", fmstate->db_keyAttno_OidPart);
+
+		getTypeOutputInfo(OIDOID, &typefnoid, &isvarlena);
+
+		fmgr_info(typefnoid, &fmstate->p_flinfo[fmstate->p_nums]);
+		fmstate->p_nums++;
+	}
+
+
+	elog(DEBUG2, "	p_nums %i; n_params: %i", fmstate->p_nums, n_params);
+	Assert(fmstate->p_nums <= n_params);
+
+	resultRelInfo->ri_FdwState = fmstate;
 }
 
 
@@ -1755,71 +1755,71 @@ firebirdBeginForeignModify(ModifyTableState *mtstate,
  */
 static TupleTableSlot *
 firebirdExecForeignInsert(EState *estate,
-                          ResultRelInfo *resultRelInfo,
-                          TupleTableSlot *slot,
-                          TupleTableSlot *planSlot)
+						  ResultRelInfo *resultRelInfo,
+						  TupleTableSlot *slot,
+						  TupleTableSlot *planSlot)
 {
-    FirebirdFdwModifyState *fmstate = (FirebirdFdwModifyState *) resultRelInfo->ri_FdwState;
-    const char * const *p_values;
-    int          i;
-    FQresult     *result;
+	FirebirdFdwModifyState *fmstate = (FirebirdFdwModifyState *) resultRelInfo->ri_FdwState;
+	const char * const *p_values;
+	int			 i;
+	FQresult	 *result;
 
-    elog(DEBUG2, "entering function %s", __func__);
+	elog(DEBUG2, "entering function %s", __func__);
 
-    /* Convert parameters needed by prepared statement to text form */
-    p_values = convert_prep_stmt_params(fmstate,
-                                        NULL,
-                                        NULL,
-                                        slot);
+	/* Convert parameters needed by prepared statement to text form */
+	p_values = convert_prep_stmt_params(fmstate,
+										NULL,
+										NULL,
+										slot);
 
-    elog(DEBUG1, "Executing: %s", fmstate->query);
-    for(i = 0; i < fmstate->p_nums; i++)
-    {
-        if(p_values[i] != NULL)
-            elog(DEBUG2, "Param %i: %s", i, p_values[i]);
-    }
+	elog(DEBUG1, "Executing: %s", fmstate->query);
+	for (i = 0; i < fmstate->p_nums; i++)
+	{
+		if (p_values[i] != NULL)
+			elog(DEBUG2, "Param %i: %s", i, p_values[i]);
+	}
 
-    result = FQexecParams(fmstate->conn,
-                          fmstate->query,
-                          fmstate->p_nums,
-                          NULL,
-                          p_values,
-                          NULL,
-                          NULL,
-                          0);
+	result = FQexecParams(fmstate->conn,
+						  fmstate->query,
+						  fmstate->p_nums,
+						  NULL,
+						  p_values,
+						  NULL,
+						  NULL,
+						  0);
 
-    elog(DEBUG2, " result status: %s", FQresStatus(FQresultStatus(result)));
-    elog(DEBUG1, " returned rows: %i", FQntuples(result));
-    switch(FQresultStatus(result))
-    {
-        case FBRES_EMPTY_QUERY:
-        case FBRES_BAD_RESPONSE:
-        case FBRES_NONFATAL_ERROR:
-        case FBRES_FATAL_ERROR:
-            ereport(ERROR,
-                    (errmsg("%s", fbFormatMsg("%s",FQresultErrorMessage(result))),
-                     errdetail("%s", fbFormatErrDetail(result))
-                        ));
+	elog(DEBUG2, " result status: %s", FQresStatus(FQresultStatus(result)));
+	elog(DEBUG1, " returned rows: %i", FQntuples(result));
+	switch(FQresultStatus(result))
+	{
+		case FBRES_EMPTY_QUERY:
+		case FBRES_BAD_RESPONSE:
+		case FBRES_NONFATAL_ERROR:
+		case FBRES_FATAL_ERROR:
+			ereport(ERROR,
+					(errmsg("%s", fbFormatMsg("%s",FQresultErrorMessage(result))),
+					 errdetail("%s", fbFormatErrDetail(result))
+						));
 
-            FQclear(result);
-            return NULL;
+			FQclear(result);
+			return NULL;
 
-        default:
-            elog(DEBUG1, "Query OK");
-    }
+		default:
+			elog(DEBUG1, "Query OK");
+	}
 
-    if (fmstate->has_returning)
-    {
-        if (FQntuples(result) > 0)
-            store_returning_result(fmstate, slot, result);
-    }
+	if (fmstate->has_returning)
+	{
+		if (FQntuples(result) > 0)
+			store_returning_result(fmstate, slot, result);
+	}
 
-    if(result)
-        FQclear(result);
+	if (result)
+		FQclear(result);
 
-    MemoryContextReset(fmstate->temp_cxt);
+	MemoryContextReset(fmstate->temp_cxt);
 
-    return slot;
+	return slot;
 }
 
 
@@ -1863,74 +1863,74 @@ firebirdExecForeignInsert(EState *estate,
 
 static TupleTableSlot *
 firebirdExecForeignUpdate(EState *estate,
-                          ResultRelInfo *resultRelInfo,
-                          TupleTableSlot *slot,
-                          TupleTableSlot *planSlot)
+						  ResultRelInfo *resultRelInfo,
+						  TupleTableSlot *slot,
+						  TupleTableSlot *planSlot)
 {
 
-    FirebirdFdwModifyState *fmstate = (FirebirdFdwModifyState *) resultRelInfo->ri_FdwState;
-    Datum       datum_ctid;
-    Datum       datum_oid;
-    FQresult    *result;
-    const int   *paramFormats;
-    const char * const *p_values;
+	FirebirdFdwModifyState *fmstate = (FirebirdFdwModifyState *) resultRelInfo->ri_FdwState;
+	Datum		datum_ctid;
+	Datum		datum_oid;
+	FQresult	*result;
+	const int	*paramFormats;
+	const char * const *p_values;
 
-    elog(DEBUG2, "entering function %s", __func__);
+	elog(DEBUG2, "entering function %s", __func__);
 
-    extractDbKeyParts(planSlot, fmstate, &datum_ctid, &datum_oid);
+	extractDbKeyParts(planSlot, fmstate, &datum_ctid, &datum_oid);
 
-    /* Convert parameters needed by prepared statement to text form */
-    p_values = convert_prep_stmt_params(fmstate,
-                                        (ItemPointer) DatumGetPointer(datum_ctid),
-                                        (ItemPointer) DatumGetPointer(datum_oid),
-                                        slot);
+	/* Convert parameters needed by prepared statement to text form */
+	p_values = convert_prep_stmt_params(fmstate,
+										(ItemPointer) DatumGetPointer(datum_ctid),
+										(ItemPointer) DatumGetPointer(datum_oid),
+										slot);
 
-    paramFormats = get_stmt_param_formats(fmstate,
-                                          (ItemPointer) DatumGetPointer(datum_ctid),
-                                          slot);
+	paramFormats = get_stmt_param_formats(fmstate,
+										  (ItemPointer) DatumGetPointer(datum_ctid),
+										  slot);
 
-    elog(DEBUG1, "Executing:\n%s", fmstate->query);
+	elog(DEBUG1, "Executing:\n%s", fmstate->query);
 
-    result = FQexecParams(fmstate->conn,
-                          fmstate->query,
-                          fmstate->p_nums,
-                          NULL,
-                          p_values,
-                          NULL,
-                          paramFormats,
-                          0);
+	result = FQexecParams(fmstate->conn,
+						  fmstate->query,
+						  fmstate->p_nums,
+						  NULL,
+						  p_values,
+						  NULL,
+						  paramFormats,
+						  0);
 
-    elog(DEBUG1, "Result status: %s", FQresStatus(FQresultStatus(result)));
+	elog(DEBUG1, "Result status: %s", FQresStatus(FQresultStatus(result)));
 
-    switch(FQresultStatus(result))
-    {
-        case FBRES_EMPTY_QUERY:
-        case FBRES_BAD_RESPONSE:
-        case FBRES_NONFATAL_ERROR:
-        case FBRES_FATAL_ERROR:
-            ereport(ERROR,
-                    (errmsg("%s", fbFormatMsg("%s",FQresultErrorMessage(result))),
-                     errdetail("%s", fbFormatErrDetail(result))
-                    ));
-            FQclear(result);
-            return NULL;
+	switch(FQresultStatus(result))
+	{
+		case FBRES_EMPTY_QUERY:
+		case FBRES_BAD_RESPONSE:
+		case FBRES_NONFATAL_ERROR:
+		case FBRES_FATAL_ERROR:
+			ereport(ERROR,
+					(errmsg("%s", fbFormatMsg("%s",FQresultErrorMessage(result))),
+					 errdetail("%s", fbFormatErrDetail(result))
+					));
+			FQclear(result);
+			return NULL;
 
-        default:
-            elog(DEBUG1, "Query OK");
-    }
+		default:
+			elog(DEBUG1, "Query OK");
+	}
 
-    if (fmstate->has_returning)
-    {
-        if (FQntuples(result) > 0)
-            store_returning_result(fmstate, slot, result);
-    }
+	if (fmstate->has_returning)
+	{
+		if (FQntuples(result) > 0)
+			store_returning_result(fmstate, slot, result);
+	}
 
-    if(result)
-        FQclear(result);
+	if (result)
+		FQclear(result);
 
-    MemoryContextReset(fmstate->temp_cxt);
+	MemoryContextReset(fmstate->temp_cxt);
 
-    return slot;
+	return slot;
 }
 
 
@@ -1968,79 +1968,79 @@ firebirdExecForeignUpdate(EState *estate,
 
 static TupleTableSlot *
 firebirdExecForeignDelete(EState *estate,
-                          ResultRelInfo *resultRelInfo,
-                          TupleTableSlot *slot,
-                          TupleTableSlot *planSlot)
+						  ResultRelInfo *resultRelInfo,
+						  TupleTableSlot *slot,
+						  TupleTableSlot *planSlot)
 {
-    FirebirdFdwModifyState *fmstate = (FirebirdFdwModifyState *) resultRelInfo->ri_FdwState;
-    const char *const *p_values;
-    const int  *paramFormats;
-    Datum       datum_ctid;
-    Datum       datum_oid;
-    FQresult    *result;
+	FirebirdFdwModifyState *fmstate = (FirebirdFdwModifyState *) resultRelInfo->ri_FdwState;
+	const char *const *p_values;
+	const int  *paramFormats;
+	Datum		datum_ctid;
+	Datum		datum_oid;
+	FQresult	*result;
 
-    elog(DEBUG2, "entering function %s", __func__);
+	elog(DEBUG2, "entering function %s", __func__);
 
-    extractDbKeyParts(planSlot, fmstate, &datum_ctid, &datum_oid);
+	extractDbKeyParts(planSlot, fmstate, &datum_ctid, &datum_oid);
 
-    elog(DEBUG2, "preparing statement...");
+	elog(DEBUG2, "preparing statement...");
 
-    /* Convert parameters needed by prepared statement to text form */
-    p_values = convert_prep_stmt_params(fmstate,
-                                        (ItemPointer) DatumGetPointer(datum_ctid),
-                                        (ItemPointer) DatumGetPointer(datum_oid),
-                                        slot);
+	/* Convert parameters needed by prepared statement to text form */
+	p_values = convert_prep_stmt_params(fmstate,
+										(ItemPointer) DatumGetPointer(datum_ctid),
+										(ItemPointer) DatumGetPointer(datum_oid),
+										slot);
 
-    /* Generate array specifying the format of each parameter
-     * (this is mainly to specify the RDB$DB_KEY paramter)
-     */
-    paramFormats = get_stmt_param_formats(fmstate,
-                                          (ItemPointer) DatumGetPointer(datum_ctid),
-                                          slot);
+	/* Generate array specifying the format of each parameter
+	 * (this is mainly to specify the RDB$DB_KEY paramter)
+	 */
+	paramFormats = get_stmt_param_formats(fmstate,
+										  (ItemPointer) DatumGetPointer(datum_ctid),
+										  slot);
 
-    elog(DEBUG1, "Executing: %s", fmstate->query);
+	elog(DEBUG1, "Executing: %s", fmstate->query);
 
-    result = FQexecParams(fmstate->conn,
-                          fmstate->query,
-                          fmstate->p_nums,
-                          NULL,
-                          p_values,
-                          NULL,
-                          paramFormats,
-                          0);
+	result = FQexecParams(fmstate->conn,
+						  fmstate->query,
+						  fmstate->p_nums,
+						  NULL,
+						  p_values,
+						  NULL,
+						  paramFormats,
+						  0);
 
-    elog(DEBUG2, " result status: %s", FQresStatus(FQresultStatus(result)));
-    elog(DEBUG1, " returned rows: %i", FQntuples(result));
+	elog(DEBUG2, " result status: %s", FQresStatus(FQresultStatus(result)));
+	elog(DEBUG1, " returned rows: %i", FQntuples(result));
 
-    switch(FQresultStatus(result))
-    {
-        case FBRES_EMPTY_QUERY:
-        case FBRES_BAD_RESPONSE:
-        case FBRES_NONFATAL_ERROR:
-        case FBRES_FATAL_ERROR:
-            ereport(ERROR,
-                    (errmsg("%s", fbFormatMsg("%s",FQresultErrorMessage(result))),
-                     errdetail("%s", fbFormatErrDetail(result))
-                        ));
+	switch(FQresultStatus(result))
+	{
+		case FBRES_EMPTY_QUERY:
+		case FBRES_BAD_RESPONSE:
+		case FBRES_NONFATAL_ERROR:
+		case FBRES_FATAL_ERROR:
+			ereport(ERROR,
+					(errmsg("%s", fbFormatMsg("%s",FQresultErrorMessage(result))),
+					 errdetail("%s", fbFormatErrDetail(result))
+						));
 
-            FQclear(result);
+			FQclear(result);
 
-            break;
-        default:
-            elog(DEBUG2, "Query OK");
-            if (fmstate->has_returning)
-            {
-                if (FQntuples(result) > 0)
-                    store_returning_result(fmstate, slot, result);
-            }
-    }
+			break;
+		default:
+			elog(DEBUG2, "Query OK");
+			if (fmstate->has_returning)
+			{
+				if (FQntuples(result) > 0)
+					store_returning_result(fmstate, slot, result);
+			}
+	}
 
-    if(result)
-        FQclear(result);
+	if (result)
+		FQclear(result);
 
-    MemoryContextReset(fmstate->temp_cxt);
+	MemoryContextReset(fmstate->temp_cxt);
 
-    return slot;
+	return slot;
 }
 
 
@@ -2054,14 +2054,14 @@ firebirdExecForeignDelete(EState *estate,
 
 static void
 firebirdEndForeignModify(EState *estate,
-                         ResultRelInfo *resultRelInfo)
+						 ResultRelInfo *resultRelInfo)
 {
-    FirebirdFdwModifyState *fm_state = (FirebirdFdwModifyState *) resultRelInfo->ri_FdwState;
+	FirebirdFdwModifyState *fm_state = (FirebirdFdwModifyState *) resultRelInfo->ri_FdwState;
 
-    elog(DEBUG2, "entering function %s", __func__);
+	elog(DEBUG2, "entering function %s", __func__);
 
-    if(fm_state == NULL)
-        return;
+	if (fm_state == NULL)
+		return;
 }
 
 
@@ -2081,12 +2081,12 @@ firebirdEndForeignModify(EState *estate,
 
 static void
 firebirdExplainForeignModify(ModifyTableState *mtstate,
-                             ResultRelInfo *resultRelInfo,
-                             List *fdw_private,
-                             int subplan_index,
-                             struct ExplainState *es)
+							 ResultRelInfo *resultRelInfo,
+							 List *fdw_private,
+							 int subplan_index,
+							 struct ExplainState *es)
 {
-    elog(DEBUG2, "entering function %s", __func__);
+	elog(DEBUG2, "entering function %s", __func__);
 }
 #endif
 
@@ -2103,25 +2103,25 @@ firebirdExplainForeignModify(ModifyTableState *mtstate,
 
 static bool
 firebirdAnalyzeForeignTable(Relation relation,
-                            AcquireSampleRowsFunc *func,
-                            BlockNumber *totalpages)
+							AcquireSampleRowsFunc *func,
+							BlockNumber *totalpages)
 {
-    Oid relid = RelationGetRelid(relation);
-    FirebirdFdwState *fdw_state = getFdwState(relid);
+	Oid relid = RelationGetRelid(relation);
+	FirebirdFdwState *fdw_state = getFdwState(relid);
 
-    elog(DEBUG2, "entering function %s", __func__);
+	elog(DEBUG2, "entering function %s", __func__);
 
-    /* ensure we are analyzing a table, not a query */
-    if(fdw_state->svr_table == NULL)
-        return false;
+	/* ensure we are analyzing a table, not a query */
+	if (fdw_state->svr_table == NULL)
+		return false;
 
-    *func = fbAcquireSampleRowsFunc;
+	*func = fbAcquireSampleRowsFunc;
 
-    /* need to provide positive page count to indicate that the table has
-     * been ANALYZEd */
-    *totalpages = 1;
+	/* need to provide positive page count to indicate that the table has
+	 * been ANALYZEd */
+	*totalpages = 1;
 
-    return true;
+	return true;
 }
 
 
@@ -2138,114 +2138,114 @@ firebirdAnalyzeForeignTable(Relation relation,
  */
 int
 fbAcquireSampleRowsFunc(Relation relation, int elevel,
-                        HeapTuple *rows, int targrows,
-                        double *totalrows,
-                        double *totaldeadrows)
+						HeapTuple *rows, int targrows,
+						double *totalrows,
+						double *totaldeadrows)
 {
-    FirebirdFdwState *fdw_state;
-    StringInfoData analyze_query;
-    FQresult *res;
-    int collected_rows = 0, result_rows;
-    double rstate, row_sample_interval = -1;
+	FirebirdFdwState *fdw_state;
+	StringInfoData analyze_query;
+	FQresult *res;
+	int collected_rows = 0, result_rows;
+	double rstate, row_sample_interval = -1;
 
-    TupleDesc tupDesc = RelationGetDescr(relation);
-    AttInMetadata    *attinmeta;
-    char **tuple_values;
-    Oid relid = RelationGetRelid(relation);
+	TupleDesc tupDesc = RelationGetDescr(relation);
+	AttInMetadata	 *attinmeta;
+	char **tuple_values;
+	Oid relid = RelationGetRelid(relation);
 
-    ForeignTable *table;
-    ForeignServer *server;
-    UserMapping *user;
+	ForeignTable *table;
+	ForeignServer *server;
+	UserMapping *user;
 
-    fdw_state = getFdwState(relid);
-    fdw_state->row = 0;
+	fdw_state = getFdwState(relid);
+	fdw_state->row = 0;
 
-    table = GetForeignTable(RelationGetRelid(relation));
-    server = GetForeignServer(table->serverid);
-    user = GetUserMapping(relation->rd_rel->relowner, server->serverid);
-    fdw_state->conn = firebirdInstantiateConnection(server, user);
-    elog(DEBUG2, "here");
-    /* Prepare for sampling rows */
-    /* src/backend/commands/analyze.c */
-    rstate = anl_init_selection_state(targrows);
-    *totalrows = 0;
+	table = GetForeignTable(RelationGetRelid(relation));
+	server = GetForeignServer(table->serverid);
+	user = GetUserMapping(relation->rd_rel->relowner, server->serverid);
+	fdw_state->conn = firebirdInstantiateConnection(server, user);
+	elog(DEBUG2, "here");
+	/* Prepare for sampling rows */
+	/* src/backend/commands/analyze.c */
+	rstate = anl_init_selection_state(targrows);
+	*totalrows = 0;
 
-    elog(DEBUG1, "Analyzing foreign table with OID %i (%s)", relid, fdw_state->svr_table);
-    elog(DEBUG2, "%i targrows to collect", targrows);
+	elog(DEBUG1, "Analyzing foreign table with OID %i (%s)", relid, fdw_state->svr_table);
+	elog(DEBUG2, "%i targrows to collect", targrows);
 
-    /* initialize analyze query */
-    initStringInfo(&analyze_query);
+	/* initialize analyze query */
+	initStringInfo(&analyze_query);
 
-    /* XXX explicitly select known columns */
-    appendStringInfo(&analyze_query, "SELECT * FROM %s", quote_identifier(fdw_state->svr_table));
-    fdw_state->query = analyze_query.data;
-    elog(DEBUG1, "Analyze query is: %s", fdw_state->query);
-    elog(DEBUG1, "%s", FQserverVersionString(fdw_state->conn));
-    res = FQexec(fdw_state->conn, fdw_state->query);
+	/* XXX explicitly select known columns */
+	appendStringInfo(&analyze_query, "SELECT * FROM %s", quote_identifier(fdw_state->svr_table));
+	fdw_state->query = analyze_query.data;
+	elog(DEBUG1, "Analyze query is: %s", fdw_state->query);
+	elog(DEBUG1, "%s", FQserverVersionString(fdw_state->conn));
+	res = FQexec(fdw_state->conn, fdw_state->query);
 
-    if(FQresultStatus(res) != FBRES_TUPLES_OK)
-    {
-        FQclear(res);
-        ereport(ERROR,
-                (errcode(ERRCODE_FDW_TABLE_NOT_FOUND),
-                 errmsg("Unable to analyze foreign table %s", fdw_state->svr_table)
-                    ));
-        return 0;
-    }
+	if (FQresultStatus(res) != FBRES_TUPLES_OK)
+	{
+		FQclear(res);
+		ereport(ERROR,
+				(errcode(ERRCODE_FDW_TABLE_NOT_FOUND),
+				 errmsg("Unable to analyze foreign table %s", fdw_state->svr_table)
+					));
+		return 0;
+	}
 
-    result_rows = FQntuples(res);
+	result_rows = FQntuples(res);
 
-    elog(DEBUG1, "%i rows returned", result_rows);
-    attinmeta = TupleDescGetAttInMetadata(tupDesc);
-    tuple_values = (char **) palloc0(sizeof(char *) * FQnfields(res));
+	elog(DEBUG1, "%i rows returned", result_rows);
+	attinmeta = TupleDescGetAttInMetadata(tupDesc);
+	tuple_values = (char **) palloc0(sizeof(char *) * FQnfields(res));
 
-    for(fdw_state->row = 0; fdw_state->row < result_rows; fdw_state->row++)
-    {
-        /* allow user to interrupt ANALYZE */
-        vacuum_delay_point();
+	for (fdw_state->row = 0; fdw_state->row < result_rows; fdw_state->row++)
+	{
+		/* allow user to interrupt ANALYZE */
+		vacuum_delay_point();
 
-        if(fdw_state->row == 0)
-           elog(DEBUG2, "Result has %i cols; tupDesc has %i atts",
-                FQnfields(res),
-                tupDesc->natts
-               );
+		if (fdw_state->row == 0)
+		   elog(DEBUG2, "Result has %i cols; tupDesc has %i atts",
+				FQnfields(res),
+				tupDesc->natts
+			   );
 
-        if (fdw_state->row < targrows)
-        {
-            /* Add first "targrows" tuples as samples */
-            elog(DEBUG1, "Adding sample row %i", fdw_state->row);
-            convertResToArray(res, fdw_state->row, tuple_values);
-            rows[collected_rows++] = BuildTupleFromCStrings(attinmeta, tuple_values);
-        }
-        else
-        {
-            elog(DEBUG2, "Going to add a random sample");
-            /*
-             * Once the initial "targrows" number of rows has been collected,
-             * replace random rows at "row_sample_interval" intervals
-             */
-            if (row_sample_interval < 0)
-                row_sample_interval = anl_get_next_S(*totalrows, targrows, &rstate);
+		if (fdw_state->row < targrows)
+		{
+			/* Add first "targrows" tuples as samples */
+			elog(DEBUG1, "Adding sample row %i", fdw_state->row);
+			convertResToArray(res, fdw_state->row, tuple_values);
+			rows[collected_rows++] = BuildTupleFromCStrings(attinmeta, tuple_values);
+		}
+		else
+		{
+			elog(DEBUG2, "Going to add a random sample");
+			/*
+			 * Once the initial "targrows" number of rows has been collected,
+			 * replace random rows at "row_sample_interval" intervals
+			 */
+			if (row_sample_interval < 0)
+				row_sample_interval = anl_get_next_S(*totalrows, targrows, &rstate);
 
-            if (row_sample_interval < 0)
-            {
-                int k = (int)(targrows * anl_random_fract());
-                heap_freetuple(rows[k]);
-                convertResToArray(res, fdw_state->row, tuple_values);
-                rows[k] = BuildTupleFromCStrings(attinmeta, tuple_values);
-            }
+			if (row_sample_interval < 0)
+			{
+				int k = (int)(targrows * anl_random_fract());
+				heap_freetuple(rows[k]);
+				convertResToArray(res, fdw_state->row, tuple_values);
+				rows[k] = BuildTupleFromCStrings(attinmeta, tuple_values);
+			}
 
-            elog(DEBUG2, "row_sample_interval: %f", row_sample_interval);
-        }
-    }
+			elog(DEBUG2, "row_sample_interval: %f", row_sample_interval);
+		}
+	}
 
-    FQclear(res);
-    elog(DEBUG1, "%i rows collected", collected_rows);
+	FQclear(res);
+	elog(DEBUG1, "%i rows collected", collected_rows);
 
-    *totalrows = (double)result_rows;
-    *totaldeadrows = 0;
+	*totalrows = (double)result_rows;
+	*totaldeadrows = 0;
 
-    return collected_rows;
+	return collected_rows;
 }
 
 
@@ -2264,78 +2264,78 @@ fbAcquireSampleRowsFunc(Relation relation, int elevel,
  *  - move code to convert.c
  */
 List *firebirdImportForeignSchema(ImportForeignSchemaStmt *stmt,
-                                  Oid serverOid)
+								  Oid serverOid)
 {
-    ForeignServer *server;
-    UserMapping *user;
-    FQconn     *conn;
-    FQresult *res;
-    int row;
-    StringInfoData table_query;
+	ForeignServer *server;
+	UserMapping *user;
+	FQconn	   *conn;
+	FQresult *res;
+	int row;
+	StringInfoData table_query;
 
-    List *firebirdTables = NIL;
+	List *firebirdTables = NIL;
 
-    server = GetForeignServer(serverOid);
-    user = GetUserMapping(GetUserId(), server->serverid);
-    conn = firebirdInstantiateConnection(server, user);
+	server = GetForeignServer(serverOid);
+	user = GetUserMapping(GetUserId(), server->serverid);
+	conn = firebirdInstantiateConnection(server, user);
 
-    /* Query to list all non-system tables */
-    initStringInfo(&table_query);
-    appendStringInfo(&table_query,
+	/* Query to list all non-system tables */
+	initStringInfo(&table_query);
+	appendStringInfo(&table_query,
 "   SELECT TRIM(LOWER(rdb$relation_name)) AS table_name \n"
 "     FROM rdb$relations  \n"
 "    WHERE rdb$view_blr IS NULL \n"
 "      AND rdb$system_flag = 0 \n"
 " ORDER BY 1"
-        );
+		);
 
-    /* Loop through tables */
-    res = FQexec(conn, table_query.data);
+	/* Loop through tables */
+	res = FQexec(conn, table_query.data);
 
-    if(FQresultStatus(res) != FBRES_TUPLES_OK)
-    {
-        FQclear(res);
-        ereport(ERROR,
-                (errcode(ERRCODE_FDW_ERROR),
-                 errmsg("Unable to execute metadata query on %s", server->servername)
-                    ));
-        return 0;
-    }
+	if (FQresultStatus(res) != FBRES_TUPLES_OK)
+	{
+		FQclear(res);
+		ereport(ERROR,
+				(errcode(ERRCODE_FDW_ERROR),
+				 errmsg("Unable to execute metadata query on %s", server->servername)
+					));
+		return 0;
+	}
 
-    elog(DEBUG1, "%s: %i", server->servername, FQntuples(res));
+	elog(DEBUG1, "%s: %i", server->servername, FQntuples(res));
 
-    for(row = 0; row < FQntuples(res); row++)
-    {
-        char *table_name;
-        char *column_query;
-        FQresult *colres;
+	for (row = 0; row < FQntuples(res); row++)
+	{
+		char *table_name;
+		char *column_query;
+		FQresult *colres;
 
-        char *foreign_table_definition;
+		char *foreign_table_definition;
 
-        table_name = FQgetvalue(res, row, 0);
+		table_name = FQgetvalue(res, row, 0);
 
-        /* List all columns for the table */
-        column_query = _dataTypeSQL(table_name);
-        colres = FQexec(conn, column_query);
+		/* List all columns for the table */
+		column_query = _dataTypeSQL(table_name);
+		colres = FQexec(conn, column_query);
 
-        if(FQresultStatus(colres) != FBRES_TUPLES_OK)
-        {
-            FQclear(res);
-            FQclear(colres);
-            ereport(ERROR,
-                    (errcode(ERRCODE_FDW_ERROR),
-                     errmsg("Unable to execute metadata query on %s", server->servername)
-                    ));
-            return 0;
-        }
+		if (FQresultStatus(colres) != FBRES_TUPLES_OK)
+		{
+			FQclear(res);
+			FQclear(colres);
+			ereport(ERROR,
+					(errcode(ERRCODE_FDW_ERROR),
+					 errmsg("Unable to execute metadata query on %s", server->servername)
+					));
+			return 0;
+		}
 
-        foreign_table_definition = convertFirebirdTable(server->servername, table_name, colres);
+		foreign_table_definition = convertFirebirdTable(server->servername, table_name, colres);
 
-        firebirdTables = lappend(firebirdTables, foreign_table_definition);
-    }
+		firebirdTables = lappend(firebirdTables, foreign_table_definition);
+	}
 
-    FQclear(res);
-    return firebirdTables;
+	FQclear(res);
+	return firebirdTables;
 }
 #endif
 
@@ -2348,20 +2348,20 @@ List *firebirdImportForeignSchema(ImportForeignSchemaStmt *stmt,
 void
 convertResToArray(FQresult *res, int row, char **values)
 {
-    int field_total, i;
+	int field_total, i;
 
-    field_total = FQnfields(res);
+	field_total = FQnfields(res);
 
-    for(i = 0; i < field_total; i++)
-    {
-        /* Handle NULL values */
-        if(FQgetisnull(res, row, i))
-        {
-            values[i] = NULL;
-            continue;
-        }
-        values[i] = pstrdup(FQgetvalue(res, row, i));
-    }
+	for (i = 0; i < field_total; i++)
+	{
+		/* Handle NULL values */
+		if (FQgetisnull(res, row, i))
+		{
+			values[i] = NULL;
+			continue;
+		}
+		values[i] = pstrdup(FQgetvalue(res, row, i));
+	}
 }
 
 
@@ -2377,69 +2377,69 @@ convertResToArray(FQresult *res, int row, char **values)
  */
 static const char **
 convert_prep_stmt_params(FirebirdFdwModifyState *fmstate,
-                         ItemPointer tupleid,
-                         ItemPointer tupleid2,
-                         TupleTableSlot *slot)
+						 ItemPointer tupleid,
+						 ItemPointer tupleid2,
+						 TupleTableSlot *slot)
 {
-    const char **p_values;
-    int         pindex = 0;
-    MemoryContext oldcontext;
+	const char **p_values;
+	int			pindex = 0;
+	MemoryContext oldcontext;
 
-    elog(DEBUG2, "entering function %s", __func__);
+	elog(DEBUG2, "entering function %s", __func__);
 
-    oldcontext = MemoryContextSwitchTo(fmstate->temp_cxt);
+	oldcontext = MemoryContextSwitchTo(fmstate->temp_cxt);
 
-    p_values = (const char **) palloc0(sizeof(char *) * fmstate->p_nums);
+	p_values = (const char **) palloc0(sizeof(char *) * fmstate->p_nums);
 
-    /* get following parameters from slot */
-    if (slot != NULL && fmstate->target_attrs != NIL)
-    {
-        ListCell   *lc;
-        foreach(lc, fmstate->target_attrs)
-        {
-            int         attnum = lfirst_int(lc);
-            Datum       value;
-            bool        isnull;
+	/* get following parameters from slot */
+	if (slot != NULL && fmstate->target_attrs != NIL)
+	{
+		ListCell   *lc;
+		foreach (lc, fmstate->target_attrs)
+		{
+			int			attnum = lfirst_int(lc);
+			Datum		value;
+			bool		isnull;
 
-            value = slot_getattr(slot, attnum, &isnull);
+			value = slot_getattr(slot, attnum, &isnull);
 
-            if (isnull)
-                p_values[pindex] = NULL;
-            else
-            {
-                /* include/fmgr.h:extern char *OutputFunctionCall(FmgrInfo *flinfo, Datum val); */
-                /* backend/utils/fmgr/fmgr.c */
+			if (isnull)
+				p_values[pindex] = NULL;
+			else
+			{
+				/* include/fmgr.h:extern char *OutputFunctionCall(FmgrInfo *flinfo, Datum val); */
+				/* backend/utils/fmgr/fmgr.c */
 
-                p_values[pindex] = OutputFunctionCall(&fmstate->p_flinfo[pindex],
-                                                      value);
-                elog(DEBUG1, " stmt param %i: %s", pindex, p_values[pindex]);
-            }
-            pindex++;
-        }
-    }
+				p_values[pindex] = OutputFunctionCall(&fmstate->p_flinfo[pindex],
+													  value);
+				elog(DEBUG1, " stmt param %i: %s", pindex, p_values[pindex]);
+			}
+			pindex++;
+		}
+	}
 
-    /* last parameter should be db_key, if used */
-    if (tupleid != NULL)
-    {
-        char *oidout;
-        char *db_key = (char *)palloc0(17);
-        elog(DEBUG2, "extracting RDB$DB_KEY...");
-        oidout = OutputFunctionCall(&fmstate->p_flinfo[pindex],
-                                 PointerGetDatum(tupleid2));
-        // XXX use strtol?
-        sprintf(db_key, "%08x%08x", BlockIdGetBlockNumber(&tupleid->ip_blkid), (unsigned int)atol(oidout));
+	/* last parameter should be db_key, if used */
+	if (tupleid != NULL)
+	{
+		char *oidout;
+		char *db_key = (char *)palloc0(17);
+		elog(DEBUG2, "extracting RDB$DB_KEY...");
+		oidout = OutputFunctionCall(&fmstate->p_flinfo[pindex],
+								 PointerGetDatum(tupleid2));
+		// XXX use strtol?
+		sprintf(db_key, "%08x%08x", BlockIdGetBlockNumber(&tupleid->ip_blkid), (unsigned int)atol(oidout));
 
-        p_values[pindex] = db_key;
-        elog(DEBUG2, "RDB$DB_KEY is: %s", db_key);
+		p_values[pindex] = db_key;
+		elog(DEBUG2, "RDB$DB_KEY is: %s", db_key);
 
-        pindex++;
-    }
+		pindex++;
+	}
 
-    Assert(pindex == fmstate->p_nums);
+	Assert(pindex == fmstate->p_nums);
 
-    MemoryContextSwitchTo(oldcontext);
+	MemoryContextSwitchTo(oldcontext);
 
-    return p_values;
+	return p_values;
 }
 
 
@@ -2452,44 +2452,44 @@ convert_prep_stmt_params(FirebirdFdwModifyState *fmstate,
  */
 const int *
 get_stmt_param_formats(FirebirdFdwModifyState *fmstate,
-                       ItemPointer tupleid,
-                       TupleTableSlot *slot)
+					   ItemPointer tupleid,
+					   TupleTableSlot *slot)
 {
-    int *paramFormats = NULL;
+	int *paramFormats = NULL;
 
-    int         pindex = 0;
-    MemoryContext oldcontext;
+	int			pindex = 0;
+	MemoryContext oldcontext;
 
-    elog(DEBUG2, "entering function %s", __func__);
+	elog(DEBUG2, "entering function %s", __func__);
 
-    oldcontext = MemoryContextSwitchTo(fmstate->temp_cxt);
+	oldcontext = MemoryContextSwitchTo(fmstate->temp_cxt);
 
-    paramFormats = (int *) palloc0(sizeof(int *) * fmstate->p_nums);
+	paramFormats = (int *) palloc0(sizeof(int *) * fmstate->p_nums);
 
-    /* get parameters from slot */
-    if (slot != NULL && fmstate->target_attrs != NIL)
-    {
-        ListCell   *lc;
+	/* get parameters from slot */
+	if (slot != NULL && fmstate->target_attrs != NIL)
+	{
+		ListCell   *lc;
 
-        foreach(lc, fmstate->target_attrs)
-        {
-            paramFormats[pindex] = 0;
-            pindex++;
-        }
-    }
+		foreach (lc, fmstate->target_attrs)
+		{
+			paramFormats[pindex] = 0;
+			pindex++;
+		}
+	}
 
-    /* last parameter should be db_key, if used */
-    if (tupleid != NULL)
-    {
-        paramFormats[pindex] = -1;
-        pindex++;
-    }
+	/* last parameter should be db_key, if used */
+	if (tupleid != NULL)
+	{
+		paramFormats[pindex] = -1;
+		pindex++;
+	}
 
-    Assert(pindex == fmstate->p_nums);
+	Assert(pindex == fmstate->p_nums);
 
-    MemoryContextSwitchTo(oldcontext);
+	MemoryContextSwitchTo(oldcontext);
 
-    return paramFormats;
+	return paramFormats;
 }
 
 
@@ -2505,26 +2505,26 @@ static void
 store_returning_result(FirebirdFdwModifyState *fmstate,
                        TupleTableSlot *slot, FQresult *res)
 {
-    /* PGresult must be released before leaving this function. */
-    PG_TRY();
-    {
-        HeapTuple   newtup;
+	/* PGresult must be released before leaving this function. */
+	PG_TRY();
+	{
+		HeapTuple	newtup;
 
-        newtup = create_tuple_from_result(res, 0,
-                                            fmstate->rel,
-                                            fmstate->attinmeta,
-                                            fmstate->retrieved_attrs,
-                                            fmstate->temp_cxt);
-        /* tuple will be deleted when it is cleared from the slot */
-        ExecStoreTuple(newtup, slot, InvalidBuffer, true);
-    }
-    PG_CATCH();
-    {
-        if (res)
-            FQclear(res);
-        PG_RE_THROW();
-    }
-    PG_END_TRY();
+		newtup = create_tuple_from_result(res, 0,
+											fmstate->rel,
+											fmstate->attinmeta,
+											fmstate->retrieved_attrs,
+											fmstate->temp_cxt);
+		/* tuple will be deleted when it is cleared from the slot */
+		ExecStoreTuple(newtup, slot, InvalidBuffer, true);
+	}
+	PG_CATCH();
+	{
+		if (res)
+			FQclear(res);
+		PG_RE_THROW();
+	}
+	PG_END_TRY();
 }
 
 
@@ -2558,80 +2558,80 @@ store_returning_result(FirebirdFdwModifyState *fmstate,
  */
 static HeapTuple
 create_tuple_from_result(FQresult *res,
-                         int row,
-                         Relation rel,
-                         AttInMetadata *attinmeta,
-                         List *retrieved_attrs,
-                         MemoryContext tmp_context)
+						 int row,
+						 Relation rel,
+						 AttInMetadata *attinmeta,
+						 List *retrieved_attrs,
+						 MemoryContext tmp_context)
 {
-    HeapTuple   tuple;
-    TupleDesc   tupdesc = RelationGetDescr(rel);
-    Datum      *values;
-    bool       *nulls;
-    MemoryContext orig_context;
-    ListCell   *lc;
-    int         res_col;
+	HeapTuple	tuple;
+	TupleDesc	tupdesc = RelationGetDescr(rel);
+	Datum	   *values;
+	bool	   *nulls;
+	MemoryContext orig_context;
+	ListCell   *lc;
+	int			res_col;
 
-    /* Make sure we're not working with an invalid row... */
-    Assert(row < FQntuples(res));
+	/* Make sure we're not working with an invalid row... */
+	Assert(row < FQntuples(res));
 
-    /* Create a temp context for each tuple operation to clean up data
-     * and avoid potential memory leaks
-     */
-    orig_context = MemoryContextSwitchTo(tmp_context);
+	/* Create a temp context for each tuple operation to clean up data
+	 * and avoid potential memory leaks
+	 */
+	orig_context = MemoryContextSwitchTo(tmp_context);
 
-    values = (Datum *) palloc0(tupdesc->natts * sizeof(Datum));
-    nulls = (bool *) palloc0(tupdesc->natts * sizeof(bool));
+	values = (Datum *) palloc0(tupdesc->natts * sizeof(Datum));
+	nulls = (bool *) palloc0(tupdesc->natts * sizeof(bool));
 
-    /* Initialize columns not present in result as NULLs */
-    memset(nulls, true, tupdesc->natts * sizeof(bool));
+	/* Initialize columns not present in result as NULLs */
+	memset(nulls, true, tupdesc->natts * sizeof(bool));
 
 
-    res_col = 0;
-    foreach(lc, retrieved_attrs)
-    {
-        int         i = lfirst_int(lc);
-        char       *valstr;
+	res_col = 0;
+	foreach (lc, retrieved_attrs)
+	{
+		int			i = lfirst_int(lc);
+		char	   *valstr;
 
-        /* fetch next column's textual value */
-        if (FQgetisnull(res, row, res_col))
-            valstr = NULL;
-        else
-            valstr = FQgetvalue(res, row, res_col);
+		/* fetch next column's textual value */
+		if (FQgetisnull(res, row, res_col))
+			valstr = NULL;
+		else
+			valstr = FQgetvalue(res, row, res_col);
 
-        /* convert value to internal representation */
-        if (i > 0)
-        {
-            /* ordinary column */
-            Assert(i <= tupdesc->natts);
-            nulls[i - 1] = (valstr == NULL);
-            values[i - 1] = InputFunctionCall(&attinmeta->attinfuncs[i - 1],
-                                              valstr,
-                                              attinmeta->attioparams[i - 1],
-                                              attinmeta->atttypmods[i - 1]);
-        }
+		/* convert value to internal representation */
+		if (i > 0)
+		{
+			/* ordinary column */
+			Assert(i <= tupdesc->natts);
+			nulls[i - 1] = (valstr == NULL);
+			values[i - 1] = InputFunctionCall(&attinmeta->attinfuncs[i - 1],
+											  valstr,
+											  attinmeta->attioparams[i - 1],
+											  attinmeta->atttypmods[i - 1]);
+		}
 
-        res_col++;
-    }
+		res_col++;
+	}
 
-    /*
-     * Verify the expected number of columns was returned.  Note: res_col == 0 and
-     * FQnfields == 1 is expected, since deparse emits a NULL if no columns.
-     */
-    if (res_col > 0 && res_col != FQnfields(res))
-        elog(ERROR, "remote query result does not match the foreign table");
+	/*
+	 * Verify the expected number of columns was returned.	Note: res_col == 0 and
+	 * FQnfields == 1 is expected, since deparse emits a NULL if no columns.
+	 */
+	if (res_col > 0 && res_col != FQnfields(res))
+		elog(ERROR, "remote query result does not match the foreign table");
 
-    /*
-     * Build the result tuple in caller's memory context.
-     */
-    MemoryContextSwitchTo(orig_context);
+	/*
+	 * Build the result tuple in caller's memory context.
+	 */
+	MemoryContextSwitchTo(orig_context);
 
-    tuple = heap_form_tuple(tupdesc, values, nulls);
+	tuple = heap_form_tuple(tupdesc, values, nulls);
 
-    /* Clean up */
-    MemoryContextReset(tmp_context);
+	/* Clean up */
+	MemoryContextReset(tmp_context);
 
-    return tuple;
+	return tuple;
 }
 
 
@@ -2644,16 +2644,16 @@ create_tuple_from_result(FQresult *res,
 char *
 fbFormatMsg(char *msg, ...)
 {
-    va_list argp;
-    char *buffer = palloc0(2048 + FB_FDW_LOGPREFIX_LEN);
+	va_list argp;
+	char *buffer = palloc0(2048 + FB_FDW_LOGPREFIX_LEN);
 
-    snprintf(buffer, FB_FDW_LOGPREFIX_LEN, "%s", FB_FDW_LOGPREFIX);
+	snprintf(buffer, FB_FDW_LOGPREFIX_LEN, "%s", FB_FDW_LOGPREFIX);
 
-    va_start(argp, msg);
-    vsnprintf(buffer + FB_FDW_LOGPREFIX_LEN, 2048 + FB_FDW_LOGPREFIX_LEN, msg, argp);
-    va_end(argp);
+	va_start(argp, msg);
+	vsnprintf(buffer + FB_FDW_LOGPREFIX_LEN, 2048 + FB_FDW_LOGPREFIX_LEN, msg, argp);
+	va_end(argp);
 
-    return buffer;
+	return buffer;
 }
 
 
@@ -2665,13 +2665,13 @@ fbFormatMsg(char *msg, ...)
 char *
 fbFormatErrDetail(FQresult *res)
 {
-    StringInfoData buf;
-    initStringInfo(&buf);
+	StringInfoData buf;
+	initStringInfo(&buf);
 
-    appendStringInfoChar(&buf,'\n');
-    appendStringInfo(&buf, "%s", FQresultErrorFieldsAsString(res, FB_FDW_LOGPREFIX));
+	appendStringInfoChar(&buf,'\n');
+	appendStringInfo(&buf, "%s", FQresultErrorFieldsAsString(res, FB_FDW_LOGPREFIX));
 
-    return buf.data;
+	return buf.data;
 }
 
 
@@ -2686,19 +2686,19 @@ extractDbKeyParts(TupleTableSlot *planSlot,
                   Datum *datum_ctid,
                   Datum *datum_oid)
 {
-    bool        isNull;
+	bool		isNull;
 
-    /* src/include/executor/executor.h:extern Datum ExecGetJunkAttribute(TupleTableSlot *slot, AttrNumber attno, */
-    *datum_ctid = ExecGetJunkAttribute(planSlot,
-                                      fmstate->db_keyAttno_CtidPart,
-                                      &isNull);
-    /* shouldn't ever get a null result... */
-    if (isNull)
-        elog(ERROR, "db_key (CTID part) is NULL");
+	/* src/include/executor/executor.h:extern Datum ExecGetJunkAttribute(TupleTableSlot *slot, AttrNumber attno, */
+	*datum_ctid = ExecGetJunkAttribute(planSlot,
+									  fmstate->db_keyAttno_CtidPart,
+									  &isNull);
+	/* shouldn't ever get a null result... */
+	if (isNull)
+		elog(ERROR, "db_key (CTID part) is NULL");
 
-    *datum_oid = ExecGetJunkAttribute(planSlot,
-                                     fmstate->db_keyAttno_OidPart,
-                                     &isNull);
-    if (isNull)
-        elog(ERROR, "db_key (OID part) is NULL");
+	*datum_oid = ExecGetJunkAttribute(planSlot,
+									 fmstate->db_keyAttno_OidPart,
+									 &isNull);
+	if (isNull)
+		elog(ERROR, "db_key (OID part) is NULL");
 }
