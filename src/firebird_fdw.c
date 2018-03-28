@@ -1130,7 +1130,7 @@ firebirdIterateForeignScan(ForeignScanState *node)
 	{
 		/* include/storage/itemptr.h */
 
-#if (PG_VERSION_NUM >= 10000)
+#if (PG_VERSION_NUM >= 100000)
 		ItemPointer ctid_dummy = palloc0(sizeof(ItemPointerData));
 #else
 		ItemPointer ctid_dummy = palloc0(SizeOfIptrData);
