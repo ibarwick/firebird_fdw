@@ -2268,7 +2268,7 @@ List *firebirdImportForeignSchema(ImportForeignSchemaStmt *stmt,
 {
 	ForeignServer *server;
 	UserMapping *user;
-	FQconn	   *conn;
+	FBconn	   *conn;
 	FQresult *res;
 	int row;
 	StringInfoData table_query;

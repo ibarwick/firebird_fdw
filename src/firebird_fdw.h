@@ -87,7 +87,7 @@ typedef struct FirebirdFdwState
 	char	   *svr_table;
 	bool		disable_pushdowns;	/* true if server option "disable_pushdowns" supplied */
 
-	FQconn	   *conn;
+	FBconn	   *conn;
 	List	   *remote_conds;
 	List	   *local_conds;
 
@@ -103,7 +103,7 @@ typedef struct FirebirdFdwState
  */
 typedef struct FirebirdFdwScanState
 {
-	FQconn	   *conn;
+	FBconn	   *conn;
 	/* Foreign table information */
 	fbTable	   *table;
 	List	   *retrieved_attrs;	/* attr numbers retrieved by RETURNING */
@@ -125,7 +125,7 @@ typedef struct FirebirdFdwModifyState
 	AttInMetadata *attinmeta;	   /* attribute datatype conversion metadata */
 
 	/* for remote query execution */
-	FQconn		 *conn;			   /* connection for the scan */
+	FBconn		 *conn;			   /* connection for the scan */
 
 	/* extracted fdw_private data */
 	char		 *query;		   /* text of INSERT/UPDATE/DELETE command */
@@ -148,7 +148,7 @@ typedef struct FirebirdFdwModifyState
 /* connection functions (in connection.c) */
 
 
-extern FQconn *firebirdInstantiateConnection(ForeignServer *server, UserMapping *user);
+extern FBconn *firebirdInstantiateConnection(ForeignServer *server, UserMapping *user);
 extern void firebirdCloseConnections(void);
 
 /* option functions (in options.c) */

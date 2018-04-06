@@ -25,7 +25,7 @@ typedef struct ConnCacheKey
 typedef struct ConnCacheEntry
 {
 	ConnCacheKey key;			/* hash key (must be first) */
-	FQconn	   *conn;			/* connection to foreign server, or NULL */
+	FBconn	   *conn;			/* connection to foreign server, or NULL */
 	int			xact_depth;		/* 0 = no xact open, 1 = main xact open, 2 =
 								 * one level of subxact open, etc */
 	bool		have_error;		/* have any subxacts aborted in this xact? */
@@ -41,7 +41,7 @@ static bool xact_got_connection = false;
 
 
 static char *firebirdDbPath(char **address, char **database, int *port);
-static FQconn *firebirdGetConnection(char *dbpath, char *svr_username, char *svr_password);
+static FBconn *firebirdGetConnection(char *dbpath, char *svr_username, char *svr_password);
 static void fb_begin_remote_xact(ConnCacheEntry *entry);
 static void fb_xact_callback(XactEvent event, void *arg);
 static void fb_subxact_callback(SubXactEvent event,
@@ -54,10 +54,10 @@ static void fb_subxact_callback(SubXactEvent event,
  *
  * Establish DB connection
  */
-static FQconn *
+static FBconn *
 firebirdGetConnection(char *dbpath, char *svr_username, char *svr_password)
 {
-	FQconn *volatile conn;
+	FBconn *volatile conn;
 	const char *kw[5];
 	const char *val[5];
 	int i = 0;
@@ -108,7 +108,7 @@ firebirdGetConnection(char *dbpath, char *svr_username, char *svr_password)
  *
  * Connect to the foreign database using the foreign server parameters
  */
-FQconn *
+FBconn *
 firebirdInstantiateConnection(ForeignServer *server, UserMapping *user)
 {
 	bool		found;
