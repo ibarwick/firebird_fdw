@@ -342,7 +342,7 @@ buildWhereClause(StringInfo output,
  * Convert table to PostgreSQL format to implement IMPORT FOREIGN SCHEMA
  */
 char *
-convertFirebirdTable(char *server_name, char *table_name, FQresult *colres)
+convertFirebirdTable(char *server_name, char *table_name, FBresult *colres)
 {
 	int colnr, coltotal;
 

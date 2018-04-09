@@ -219,7 +219,7 @@ static const int *get_stmt_param_formats(FirebirdFdwModifyState *fmstate,
 						 TupleTableSlot *slot);
 
 static HeapTuple
-create_tuple_from_result(FQresult *res,
+create_tuple_from_result(FBresult *res,
 						   int row,
 						   Relation rel,
 						   AttInMetadata *attinmeta,
@@ -228,7 +228,7 @@ create_tuple_from_result(FQresult *res,
 
 static void
 store_returning_result(FirebirdFdwModifyState *fmstate,
-					   TupleTableSlot *slot, FQresult *res);
+					   TupleTableSlot *slot, FBresult *res);
 
 static int
 fbAcquireSampleRowsFunc(Relation relation, int elevel,
@@ -236,7 +236,7 @@ fbAcquireSampleRowsFunc(Relation relation, int elevel,
 						double *totalrows,
 						double *totaldeadrows);
 static void
-convertResToArray(FQresult *res, int row, char **values);
+convertResToArray(FBresult *res, int row, char **values);
 
 static void
 convertDbKeyValue(char *p, uint32_t *key_ctid_part, uint32_t *key_oid_part);
@@ -255,7 +255,7 @@ fbFormatMsg(char *msg, ...)
 __attribute__((format(__printf__, 1, 2)));
 
 static char *
-fbFormatErrDetail(FQresult *res);
+fbFormatErrDetail(FBresult *res);
 
 /**
  * firebird_fdw_handler()
@@ -437,7 +437,7 @@ firebirdGetForeignRelSize(PlannerInfo *root,
 						  Oid foreigntableid)
 {
 	FirebirdFdwState *fdw_state;
-	FQresult *res;
+	FBresult *res;
 	StringInfoData query;
 	ListCell *lc;
 
@@ -1762,7 +1762,7 @@ firebirdExecForeignInsert(EState *estate,
 	FirebirdFdwModifyState *fmstate = (FirebirdFdwModifyState *) resultRelInfo->ri_FdwState;
 	const char * const *p_values;
 	int			 i;
-	FQresult	 *result;
+	FBresult	 *result;
 
 	elog(DEBUG2, "entering function %s", __func__);
 
@@ -1871,7 +1871,7 @@ firebirdExecForeignUpdate(EState *estate,
 	FirebirdFdwModifyState *fmstate = (FirebirdFdwModifyState *) resultRelInfo->ri_FdwState;
 	Datum		datum_ctid;
 	Datum		datum_oid;
-	FQresult	*result;
+	FBresult	*result;
 	const int	*paramFormats;
 	const char * const *p_values;
 
@@ -1977,7 +1977,7 @@ firebirdExecForeignDelete(EState *estate,
 	const int  *paramFormats;
 	Datum		datum_ctid;
 	Datum		datum_oid;
-	FQresult	*result;
+	FBresult	*result;
 
 	elog(DEBUG2, "entering function %s", __func__);
 
@@ -2144,7 +2144,7 @@ fbAcquireSampleRowsFunc(Relation relation, int elevel,
 {
 	FirebirdFdwState *fdw_state;
 	StringInfoData analyze_query;
-	FQresult *res;
+	FBresult *res;
 	int collected_rows = 0, result_rows;
 	double rstate, row_sample_interval = -1;
 
@@ -2269,7 +2269,7 @@ List *firebirdImportForeignSchema(ImportForeignSchemaStmt *stmt,
 	ForeignServer *server;
 	UserMapping *user;
 	FBconn	   *conn;
-	FQresult *res;
+	FBresult *res;
 	int row;
 	StringInfoData table_query;
 
@@ -2308,7 +2308,7 @@ List *firebirdImportForeignSchema(ImportForeignSchemaStmt *stmt,
 	{
 		char *table_name;
 		char *column_query;
-		FQresult *colres;
+		FBresult *colres;
 
 		char *foreign_table_definition;
 
@@ -2343,10 +2343,10 @@ List *firebirdImportForeignSchema(ImportForeignSchemaStmt *stmt,
 /**
  * convertResToArray()
  *
- * Convert an FQresult row to an array of char pointers
+ * Convert an FBresult row to an array of char pointers
  */
 void
-convertResToArray(FQresult *res, int row, char **values)
+convertResToArray(FBresult *res, int row, char **values)
 {
 	int field_total, i;
 
@@ -2498,12 +2498,12 @@ get_stmt_param_formats(FirebirdFdwModifyState *fmstate,
  *
  * Store the result of a RETURNING clause
  *
- * On error, be sure to release the FQresult on the way out.  Callers do not
+ * On error, be sure to release the FBresult on the way out.  Callers do not
  * have PG_TRY blocks to ensure this happens.
  */
 static void
 store_returning_result(FirebirdFdwModifyState *fmstate,
-                       TupleTableSlot *slot, FQresult *res)
+                       TupleTableSlot *slot, FBresult *res)
 {
 	/* PGresult must be released before leaving this function. */
 	PG_TRY();
@@ -2534,7 +2534,7 @@ store_returning_result(FirebirdFdwModifyState *fmstate,
  * Create a tuple from the specified result row
  *
  * Parameters:
- * (FQresult *) res
+ * (FBresult *) res
  *     Pointer to the libfq result object
  *
  * (int) row
@@ -2548,7 +2548,7 @@ store_returning_result(FirebirdFdwModifyState *fmstate,
  *
  * (List *)retrieved_attrs
  *     An integer list of the table column numbers present in the
- *     FQresult object
+ *     FBresult object
  *
  * (MemoryContext) tmp_context
  *     A working context that can be reset after each tuple.
@@ -2557,7 +2557,7 @@ store_returning_result(FirebirdFdwModifyState *fmstate,
  *     HeapTuple
  */
 static HeapTuple
-create_tuple_from_result(FQresult *res,
+create_tuple_from_result(FBresult *res,
 						 int row,
 						 Relation rel,
 						 AttInMetadata *attinmeta,
@@ -2663,7 +2663,7 @@ fbFormatMsg(char *msg, ...)
  * Format libfq's error output nicely
  */
 char *
-fbFormatErrDetail(FQresult *res)
+fbFormatErrDetail(FBresult *res)
 {
 	StringInfoData buf;
 	initStringInfo(&buf);

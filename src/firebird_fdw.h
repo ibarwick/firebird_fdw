@@ -111,7 +111,7 @@ typedef struct FirebirdFdwScanState
 	char	   *query;				/* query to send to Firebird */
 	bool		db_key_used;		/* indicate whether RDB$DB_KEY was requested */
 
-	FQresult   *result;
+	FBresult   *result;
 	int			row;
 
 } FirebirdFdwScanState;
@@ -205,7 +205,7 @@ getFirebirdColumnName(Oid foreigntableid, int varattno);
 
 #if (PG_VERSION_NUM >= 90500)
 extern char *
-convertFirebirdTable(char *server_name, char *table_name, FQresult *colres);
+convertFirebirdTable(char *server_name, char *table_name, FBresult *colres);
 extern char *
 _dataTypeSQL(char *table_name);
 #endif

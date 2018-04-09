@@ -232,7 +232,7 @@ firebirdInstantiateConnection(ForeignServer *server, UserMapping *user)
 static void
 fb_begin_remote_xact(ConnCacheEntry *entry)
 {
-	FQresult *res;
+	FBresult *res;
 	int			curlevel = GetCurrentTransactionNestLevel();
 
 	elog(DEBUG2, "xact depth: %i", entry->xact_depth);
@@ -305,7 +305,7 @@ fb_xact_callback(XactEvent event, void *arg)
 	hash_seq_init(&scan, ConnectionHash);
 	while ((entry = (ConnCacheEntry *) hash_seq_search(&scan)))
 	{
-		FQresult   *res;
+		FBresult   *res;
 
 		elog(DEBUG3, "closing remote transaction on connection %p",
 			 entry->conn);
@@ -403,7 +403,7 @@ fb_subxact_callback(SubXactEvent event,
 	hash_seq_init(&scan, ConnectionHash);
 	while ((entry = (ConnCacheEntry *) hash_seq_search(&scan)))
 	{
-		FQresult   *res;
+		FBresult   *res;
 		char		sql[100];
 
 		/*
