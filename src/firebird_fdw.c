@@ -318,6 +318,7 @@ void
 _PG_init(void)
 {
 	on_proc_exit(&exitHook, PointerGetDatum(NULL));
+
 }
 
 
@@ -333,6 +334,36 @@ exitHook(int code, Datum arg)
 	firebirdCloseConnections();
 }
 
+
+/**
+ * fbSigInt()
+ *
+ * This is basically the StatementCancelHandler() function from
+ * "src/backend/tcop/postgres.c"; for reasons as yet undetermined,
+ * if it is not implemented like this, issuing a SIGINT will cause
+ * the backend process to exit with a segfault. There may be better
+ * ways of handling this, but it seems to work for now.
+ */
+void
+fbSigInt(SIGNAL_ARGS)
+{
+	int                     save_errno = errno;
+
+	elog(DEBUG2, "entering function %s", __func__);
+	/*
+	 * Don't joggle the elbow of proc_exit
+	 */
+	if (!proc_exit_inprogress)
+	{
+		InterruptPending = true;
+		QueryCancelPending = true;
+	}
+
+	/* If we're still here, waken anything waiting on the process latch */
+	SetLatch(MyLatch);
+
+	errno = save_errno;
+}
 
 /**
  * getFdwState()
@@ -913,6 +944,7 @@ firebirdBeginForeignScan(ForeignScanState *node,
 			? true
 			: false;
 		fdw_state->table->columns[fdw_state->table->pg_column_total]->used = false;
+
 		fdw_state->table->pg_column_total++;
 	}
 
@@ -922,8 +954,7 @@ firebirdBeginForeignScan(ForeignScanState *node,
 	if (!fdw_state->table->pg_column_total)
 	{
 		ereport(ERROR,
-				(errmsg("No column definitions provided for foreign table %s", fdw_state->table->pg_table_name))
-			);
+				(errmsg("No column definitions provided for foreign table %s", fdw_state->table->pg_table_name)));
 		return;
 	}
 

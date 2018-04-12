@@ -145,6 +145,8 @@ typedef struct FirebirdFdwModifyState
 } FirebirdFdwModifyState;
 
 
+extern void fbSigInt(SIGNAL_ARGS);
+
 /* connection functions (in connection.c) */
 
 

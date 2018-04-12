@@ -90,9 +90,8 @@ firebirdGetConnection(char *dbpath, char *svr_username, char *svr_password)
 
 	if (FQstatus(conn) != CONNECTION_OK)
 		ereport(ERROR,
-			(errcode(ERRCODE_FDW_UNABLE_TO_ESTABLISH_CONNECTION),
-			errmsg("Unable to to connect to foreign server")
-			));
+				(errcode(ERRCODE_FDW_UNABLE_TO_ESTABLISH_CONNECTION),
+				 errmsg("Unable to to connect to foreign server")));
 
 	FQsetAutocommit(conn, false);
 	conn->client_min_messages = DEBUG2;
@@ -196,14 +195,19 @@ firebirdInstantiateConnection(ForeignServer *server, UserMapping *user)
 			svr_password
 		);
 
+
 		elog(DEBUG2, "%s(): new firebird_fdw connection %p for server \"%s\"",
 			 __func__,entry->conn, server->servername);
+
+
 	}
 	else
 	{
 		elog(DEBUG2, "%s(): cache entry %p found",
 			 __func__, entry->conn);
 	}
+	pqsignal(SIGINT, fbSigInt);
+
 
 	/* Start a new transaction or subtransaction if needed */
 	fb_begin_remote_xact(entry);
