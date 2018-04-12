@@ -2,7 +2,7 @@
  *
  * Foreign Data Wrapper for Firebird
  *
- * Copyright (c) 2013-2014 Ian Barwick
+ * Copyright (c) 2013-2018 Ian Barwick
  *
  * This software is released under the PostgreSQL Licence
  *
@@ -471,8 +471,7 @@ firebirdGetForeignRelSize(PlannerInfo *root,
 							 &fdw_state->remote_conds,
 							 &fdw_state->local_conds,
 							 fdw_state->disable_pushdowns,
-							 FQserverVersion(fdw_state->conn)
-		);
+							 FQserverVersion(fdw_state->conn));
 
 
 	/*
@@ -541,7 +540,7 @@ firebirdGetForeignRelSize(PlannerInfo *root,
 	baserel->rows = atof(FQgetvalue(res, 0, 0));
 	baserel->tuples = baserel->rows;
 	FQclear(res);
-
+	pfree(fdw_state->query);
 	elog(DEBUG1, "%s: rows estimated at %f", __func__, baserel->rows);
 }
 
@@ -762,8 +761,6 @@ firebirdGetForeignPlan(PlannerInfo *root,
  *
  * Display additional EXPLAIN information; if VERBOSE specified, add Firebird's
  * somewhat rudimentary PLAN output.
- *
- * This function adds EXPLAIN output with ExplainPropertyText().
  *
  * See also:
  *   include/commands/explain.h
@@ -1012,8 +1009,6 @@ firebirdIterateForeignScan(ForeignScanState *node)
 
 	elog(DEBUG2, "entering function %s", __func__);
 
-	ExecClearTuple(slot);
-
 	/* execute query, if this is the first run */
 	if (!fdw_state->result)
 	{
@@ -1241,6 +1236,8 @@ firebirdIsForeignRelUpdatable(Relation rel)
 	ForeignTable  *table;
 	ListCell	  *lc;
 
+	elog(DEBUG2, "entering function %s", __func__);
+
 	table = GetForeignTable(RelationGetRelid(rel));
 	server = GetForeignServer(table->serverid);
 	/* Get server setting, if available */
@@ -1261,8 +1258,6 @@ firebirdIsForeignRelUpdatable(Relation rel)
 		if (strcmp(def->defname, "updatable") == 0)
 			updatable = defGetBoolean(def);
 	}
-
-	elog(DEBUG2, "entering function %s", __func__);
 
 	return updatable ?
 		(1 << CMD_INSERT) | (1 << CMD_UPDATE) | (1 << CMD_DELETE) : 0;
@@ -1488,7 +1483,7 @@ firebirdPlanForeignModify(PlannerInfo *root,
 		returningList = (List *) list_nth(plan->returningLists, subplan_index);
 
 
-	elog(INFO, "Construct the SQL command string ");
+	elog(DEBUG1, "Construct the SQL command string ");
 	/* Construct the SQL command string */
 	switch (operation)
 	{
@@ -1516,7 +1511,7 @@ firebirdPlanForeignModify(PlannerInfo *root,
 	}
 
 	heap_close(rel, NoLock);
-	elog(INFO, "Constructed the SQL command string ");
+	elog(DEBUG1, "Constructed the SQL command string ");
 
 	/*
 	 * Build the fdw_private list that will be available to the executor.
@@ -1681,12 +1676,11 @@ firebirdBeginForeignModify(ModifyTableState *mtstate,
 
 		fmstate->db_keyAttno_CtidPart = ExecFindJunkAttributeInTlist(
 			subplan->targetlist,
-			"db_key_ctidpart"
-			);
+			"db_key_ctidpart");
 
 		if (!AttributeNumberIsValid(fmstate->db_keyAttno_CtidPart))
 		{
-			elog(ERROR, "Resjunk column db_key_ctidpart not found");
+			elog(ERROR, "Resjunk column \"db_key_ctidpart\" not found");
 			return;
 		}
 
@@ -1697,7 +1691,7 @@ firebirdBeginForeignModify(ModifyTableState *mtstate,
 
 		if (!AttributeNumberIsValid(fmstate->db_keyAttno_OidPart))
 		{
-			elog(ERROR, "Resjunk column db_key_oidpart not found");
+			elog(ERROR, "Resjunk column \"db_key_oidpart\" not found");
 			return;
 		}
 
@@ -1759,12 +1753,18 @@ firebirdExecForeignInsert(EState *estate,
 						  TupleTableSlot *slot,
 						  TupleTableSlot *planSlot)
 {
-	FirebirdFdwModifyState *fmstate = (FirebirdFdwModifyState *) resultRelInfo->ri_FdwState;
+	FirebirdFdwModifyState *fmstate;
 	const char * const *p_values;
 	int			 i;
 	FBresult	 *result;
+	MemoryContext oldcontext;
 
 	elog(DEBUG2, "entering function %s", __func__);
+
+	fmstate = (FirebirdFdwModifyState *) resultRelInfo->ri_FdwState;
+
+	MemoryContextReset(fmstate->temp_cxt);
+	oldcontext = MemoryContextSwitchTo(fmstate->temp_cxt);
 
 	/* Convert parameters needed by prepared statement to text form */
 	p_values = convert_prep_stmt_params(fmstate,
@@ -1773,11 +1773,13 @@ firebirdExecForeignInsert(EState *estate,
 										slot);
 
 	elog(DEBUG1, "Executing: %s", fmstate->query);
+
 	for (i = 0; i < fmstate->p_nums; i++)
 	{
 		if (p_values[i] != NULL)
 			elog(DEBUG2, "Param %i: %s", i, p_values[i]);
 	}
+
 
 	result = FQexecParams(fmstate->conn,
 						  fmstate->query,
@@ -1796,12 +1798,14 @@ firebirdExecForeignInsert(EState *estate,
 		case FBRES_BAD_RESPONSE:
 		case FBRES_NONFATAL_ERROR:
 		case FBRES_FATAL_ERROR:
-			ereport(ERROR,
-					(errmsg("%s", fbFormatMsg("%s",FQresultErrorMessage(result))),
-					 errdetail("%s", fbFormatErrDetail(result))
-						));
+			if (result)
+				FQclear(result);
 
-			FQclear(result);
+			ereport(ERROR,
+					(errcode(ERRCODE_FDW_UNABLE_TO_CREATE_EXECUTION),
+					 errmsg("%s", fbFormatMsg("%s",FQresultErrorMessage(result))),
+					 errdetail("%s", fbFormatErrDetail(result))));
+
 			return NULL;
 
 		default:
@@ -1817,6 +1821,7 @@ firebirdExecForeignInsert(EState *estate,
 	if (result)
 		FQclear(result);
 
+	MemoryContextSwitchTo(oldcontext);
 	MemoryContextReset(fmstate->temp_cxt);
 
 	return slot;
@@ -2018,14 +2023,12 @@ firebirdExecForeignDelete(EState *estate,
 		case FBRES_BAD_RESPONSE:
 		case FBRES_NONFATAL_ERROR:
 		case FBRES_FATAL_ERROR:
-			ereport(ERROR,
-					(errmsg("%s", fbFormatMsg("%s",FQresultErrorMessage(result))),
-					 errdetail("%s", fbFormatErrDetail(result))
-						));
-
 			FQclear(result);
 
-			break;
+			ereport(ERROR,
+					(errmsg("%s", fbFormatMsg("%s",FQresultErrorMessage(result))),
+					 errdetail("%s", fbFormatErrDetail(result))));
+			return NULL;
 		default:
 			elog(DEBUG2, "Query OK");
 			if (fmstate->has_returning)
@@ -2188,8 +2191,7 @@ fbAcquireSampleRowsFunc(Relation relation, int elevel,
 		FQclear(res);
 		ereport(ERROR,
 				(errcode(ERRCODE_FDW_TABLE_NOT_FOUND),
-				 errmsg("Unable to analyze foreign table %s", fdw_state->svr_table)
-					));
+				 errmsg("Unable to analyze foreign table %s", fdw_state->svr_table)));
 		return 0;
 	}
 
@@ -2297,8 +2299,7 @@ List *firebirdImportForeignSchema(ImportForeignSchemaStmt *stmt,
 		FQclear(res);
 		ereport(ERROR,
 				(errcode(ERRCODE_FDW_ERROR),
-				 errmsg("Unable to execute metadata query on %s", server->servername)
-					));
+				 errmsg("Unable to execute metadata query on %s", server->servername)));
 		return 0;
 	}
 
@@ -2324,8 +2325,7 @@ List *firebirdImportForeignSchema(ImportForeignSchemaStmt *stmt,
 			FQclear(colres);
 			ereport(ERROR,
 					(errcode(ERRCODE_FDW_ERROR),
-					 errmsg("Unable to execute metadata query on %s", server->servername)
-					));
+					 errmsg("Unable to execute metadata query on %s", server->servername)));
 			return 0;
 		}
 

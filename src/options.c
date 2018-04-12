@@ -89,17 +89,18 @@ firebird_fdw_validator(PG_FUNCTION_ARGS)
 
 			ereport(ERROR,
 				(errcode(ERRCODE_FDW_INVALID_OPTION_NAME),
-				errmsg("invalid option \"%s\"", def->defname),
-				errhint("Valid options in this context are: %s", buf.len ? buf.data : "<none>")
-				));
+				 errmsg("invalid option \"%s\"", def->defname),
+				 errhint("Valid options in this context are: %s", buf.len ? buf.data : "<none>")));
+
+			pfree(buf.data);
 		}
 
 		if (strcmp(def->defname, "address") == 0)
 		{
 			if (svr_address)
-				ereport(ERROR, (errcode(ERRCODE_SYNTAX_ERROR),
-					errmsg("conflicting or redundant options: address (%s)", defGetString(def))
-					));
+				ereport(ERROR,
+						(errcode(ERRCODE_SYNTAX_ERROR),
+						 errmsg("conflicting or redundant options: address (%s)", defGetString(def))));
 
 			svr_address = defGetString(def);
 		}
@@ -108,26 +109,27 @@ firebird_fdw_validator(PG_FUNCTION_ARGS)
 			if (svr_port)
 				ereport(ERROR,
 					(errcode(ERRCODE_SYNTAX_ERROR),
-					errmsg("conflicting or redundant options: port (%s)", defGetString(def))
-					));
+					errmsg("conflicting or redundant options: port (%s)", defGetString(def))));
 
 			svr_port = atoi(defGetString(def));
 		}
+
 		if (strcmp(def->defname, "username") == 0)
 		{
 			if (svr_username)
-				ereport(ERROR, (errcode(ERRCODE_SYNTAX_ERROR),
-					errmsg("conflicting or redundant options: username (%s)", defGetString(def))
-					));
+				ereport(ERROR,
+						(errcode(ERRCODE_SYNTAX_ERROR),
+						 errmsg("conflicting or redundant options: username (%s)", defGetString(def))));
 
 			svr_username = defGetString(def);
 		}
+
 		if (strcmp(def->defname, "password") == 0)
 		{
 			if (svr_password)
-				ereport(ERROR, (errcode(ERRCODE_SYNTAX_ERROR),
-					errmsg("conflicting or redundant options: password")
-					));
+				ereport(ERROR,
+						(errcode(ERRCODE_SYNTAX_ERROR),
+						 errmsg("conflicting or redundant options: password")));
 
 			svr_password = defGetString(def);
 		}
@@ -135,9 +137,8 @@ firebird_fdw_validator(PG_FUNCTION_ARGS)
 		{
 			if (svr_database)
 				ereport(ERROR,
-					(errcode(ERRCODE_SYNTAX_ERROR),
-					errmsg("conflicting or redundant options: database (%s)", defGetString(def))
-					));
+						(errcode(ERRCODE_SYNTAX_ERROR),
+						 errmsg("conflicting or redundant options: database (%s)", defGetString(def))));
 
 			svr_database = defGetString(def);
 		}
@@ -145,15 +146,13 @@ firebird_fdw_validator(PG_FUNCTION_ARGS)
 		{
 			if (svr_table)
 				ereport(ERROR,
-					(errcode(ERRCODE_SYNTAX_ERROR),
-					errmsg("conflicting options: 'query' cannot be used with 'table_name'")
-					));
+						(errcode(ERRCODE_SYNTAX_ERROR),
+						 errmsg("conflicting options: 'query' cannot be used with 'table_name'")));
 
 			if (svr_query)
 				ereport(ERROR,
-					(errcode(ERRCODE_SYNTAX_ERROR),
-					errmsg("conflicting or redundant options: query (%s)", defGetString(def))
-					));
+						(errcode(ERRCODE_SYNTAX_ERROR),
+						 errmsg("conflicting or redundant options: query (%s)", defGetString(def))));
 
 			svr_query = defGetString(def);
 		}
@@ -167,9 +166,8 @@ firebird_fdw_validator(PG_FUNCTION_ARGS)
 
 			if (svr_table)
 				ereport(ERROR,
-					(errcode(ERRCODE_SYNTAX_ERROR),
-					errmsg("conflicting or redundant options: table (%s)", defGetString(def))
-					));
+						(errcode(ERRCODE_SYNTAX_ERROR),
+						 errmsg("conflicting or redundant options: table (%s)", defGetString(def))));
 
 			svr_table = defGetString(def);
 		}
@@ -188,9 +186,8 @@ firebird_fdw_validator(PG_FUNCTION_ARGS)
 		{
 			if (updatable_set)
 				ereport(ERROR,
-					(errcode(ERRCODE_SYNTAX_ERROR),
-					errmsg("redundant option: 'updatable' set more than once")
-					));
+						(errcode(ERRCODE_SYNTAX_ERROR),
+						 errmsg("redundant option: 'updatable' set more than once")));
 			(void) defGetBoolean(def);
 			updatable_set = true;
 		}
@@ -228,8 +225,10 @@ firebirdGetOptions(Oid foreigntableid, char **query, char **table, bool *disable
 			*disable_pushdowns = defGetBoolean(def);
 	}
 
-	/* If no query and no table name specified, default to PostgreSQL
-	 * table name */
+	/*
+	 * If no query and no table name specified, default to the PostgreSQL
+	 * table name.
+	 */
 	if (!*table && !*query)
 		*table = get_rel_name(foreigntableid);
 }
@@ -239,7 +238,7 @@ firebirdGetOptions(Oid foreigntableid, char **query, char **table, bool *disable
  * firebirdIsValidOption()
  *
  * Check if the provided option is valid.
- * 'context' is the Oid of the catalog holding the object the option is for.
+ * "context" is the Oid of the catalog holding the object the option is for.
  */
 static bool
 firebirdIsValidOption(const char *option, Oid context)
