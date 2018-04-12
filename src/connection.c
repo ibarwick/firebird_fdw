@@ -305,7 +305,6 @@ fb_xact_callback(XactEvent event, void *arg)
 	hash_seq_init(&scan, ConnectionHash);
 	while ((entry = (ConnCacheEntry *) hash_seq_search(&scan)))
 	{
-		FBresult   *res;
 
 		elog(DEBUG3, "closing remote transaction on connection %p",
 			 entry->conn);
@@ -326,17 +325,14 @@ fb_xact_callback(XactEvent event, void *arg)
 			continue;
 		}
 
-
 		switch (event)
 		{
 			case XACT_EVENT_PRE_COMMIT:
 				elog(DEBUG2, "COMMIT");
-				res = FQexec(entry->conn, "COMMIT");
-				if (FQresultStatus(res) != FBRES_TRANSACTION_COMMIT)
+				if (FQcommitTransaction(entry->conn) != TRANS_OK)
 				{
 					elog(DEBUG1, "COMMIT failed");
 				}
-				FQclear(res);
 				break;
 			case XACT_EVENT_PRE_PREPARE:
 				/* XXX not sure how to handle this */
@@ -348,12 +344,10 @@ fb_xact_callback(XactEvent event, void *arg)
 				elog(ERROR, "missed cleaning up connection during pre-commit");
 				break;
 			case XACT_EVENT_ABORT:
-				res = FQexec(entry->conn, "ROLLBACK");
-				if (FQresultStatus(res) != FBRES_TRANSACTION_ROLLBACK)
+				if (FQrollbackTransaction(entry->conn) != TRANS_OK)
 				{
-					elog(DEBUG1, "ROLLBACK failed %i", FQresultStatus(res));
+					elog(DEBUG1, "ROLLBACK failed");
 				}
-				FQclear(res);
 #if (PG_VERSION_NUM >= 90500)
 			case XACT_EVENT_PARALLEL_COMMIT:
 			case XACT_EVENT_PARALLEL_ABORT:
@@ -482,6 +476,8 @@ firebirdCloseConnections(void)
 			continue;
 		elog(DEBUG2, "%s(): closing cached connection %p", __func__, entry->conn);
 		FQfinish(entry->conn);
+		entry->conn = NULL;
+		elog(DEBUG2, "%s(): cached connection closed", __func__);
 	}
 }
 
