@@ -335,7 +335,9 @@ fb_xact_callback(XactEvent event, void *arg)
 				elog(DEBUG2, "COMMIT");
 				if (FQcommitTransaction(entry->conn) != TRANS_OK)
 				{
-					elog(DEBUG1, "COMMIT failed");
+					ereport(ERROR,
+							(errcode(ERRCODE_FDW_ERROR),
+							 errmsg("COMMIT failed")));
 				}
 				break;
 			case XACT_EVENT_PRE_PREPARE:
@@ -350,14 +352,16 @@ fb_xact_callback(XactEvent event, void *arg)
 			case XACT_EVENT_ABORT:
 				if (FQrollbackTransaction(entry->conn) != TRANS_OK)
 				{
-					elog(DEBUG1, "ROLLBACK failed");
+					ereport(ERROR,
+							(errcode(ERRCODE_FDW_ERROR),
+							 errmsg("ROLLBACK failed")));
 				}
 #if (PG_VERSION_NUM >= 90500)
 			case XACT_EVENT_PARALLEL_COMMIT:
 			case XACT_EVENT_PARALLEL_ABORT:
 			case XACT_EVENT_PARALLEL_PRE_COMMIT:
 				/* XXX Handle these */
-				elog(WARNING, "Unhandled XACT_EVENT_PARALLEL_* event");
+				elog(DEBUG2, "Unhandled XACT_EVENT_PARALLEL_* event");
 				break;
 #endif
 		}
