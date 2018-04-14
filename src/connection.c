@@ -503,7 +503,7 @@ firebirdDbPath(char **address, char **database, int *port)
 	char *hostname;
 	if (*address != NULL)
 	{
-		hostname = palloc0(strlen(*address) + strlen(*database) + 1);
+		hostname = palloc0(strlen(*address) + strlen(*database) + 2);
 		sprintf(hostname, "%s:%s", *address, *database);
 	}
 	else
