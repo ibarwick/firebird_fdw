@@ -1,8 +1,15 @@
 Revision history for firebird_fdw
 
-0.2.6   2014-??-??
-	- Ensure tables defined with the 'query' option actually work
+0.3.0   2018-04-??
+	- Support PostgreSQL 9.6 and 10
 	- Add support for IMPORT FOREIGN SCHEMA (PostgreSQL 9.5 and later)
+	- Ensure tables defined with the 'query' option actually work
+	- Update function calls for changes in libfq 0.2.0
+	- Improve SIGINT handling
+	- Fix memory error when generating connection string
+	- Report transaction errors as actual errors; log harmless
+	  unhandled transaction types as DEBUG rather than warning
+	- General code cleanup
 
 0.2.5   2014-02-11
         - Add RPM spec files for openSUSE and Red Hat

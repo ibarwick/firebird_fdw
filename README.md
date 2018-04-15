@@ -6,9 +6,9 @@ to Firebird. It provides basic functionality, including both read (`SELECT`)
 and write (`INSERT`/`UPDATE`/`DELETE`) support. However it is still very much
 work-in-progress; *USE AT YOUR OWN RISK*.
 
-`firebird_fdw` will work with PostgreSQL 9.2 or later (it was developed
-against the current development version). Write support is only available
-in PostgreSQL 9.3 and later.
+`firebird_fdw` is designed to be compatible with PostgreSQL 9.2 ~ 10.
+Write support is only available in PostgreSQL 9.3 and later. Note that
+not all features of the PostgreSQL FDW API are supported.
 
 It was written for Firebird 2.5 and will probably work with Firebird 2.0 or
 later. It should work with earlier versions if the `disable_pushdowns` option
@@ -29,7 +29,11 @@ Prerequisites:
 
 - Firebird client library (`libfbclient`) and API header file (`ibase.h`)
 - `libfq`, a slightly saner API wrapper for the Firebird C API; see:
-  https://github.com/ibarwick/libfq
+
+    https://github.com/ibarwick/libfq
+
+  *NOTE* the latest `libfq` version should be used with the current
+  `firebird_fdw` version, as the two are usually developed in tandem.
 
 The Firebird include/library files often end up in non-standard locations;
 `PG_CPPFLAGS` and `SHLIB_LINK` can be used to provide the appropriate flags.
@@ -162,10 +166,9 @@ Features
 Limitations
 -----------
 
-- No support for some Firebird datatypes (`BLOB`, `ARRAY`)
+- No support for Firebird 3.x
+- No support for Firebird datatypes (`BLOB`, `ARRAY`)
 - Display of messages returned by Firebird is not very pretty
-
-See also file "BUGS" for known issues.
 
 
 Regression tests
@@ -188,6 +191,25 @@ Run with:
     gmake installcheck
 
 
+Development roadmap
+-------------------
+
+Haha, nice one. I should point out that `firebird_fdw` is an entirely personal
+project carried out by myself in my (limited) free time for my own personal
+gratification. While I'm happy to accept feedback, suggestions, feature
+requests, bug reports and (especially) patches, please understand that
+development is entirely at my own discretion depending on (but not limited
+to) available free time and motiviation.
+
+However if you are a commercial entity and wish to have any improvements
+etc. carried out within a plannable period of time, this can be arranged
+via my employer.
+
+Having said that, things I would like to do at some point are:
+
+ - support Firebird 3.0
+ - add support for missing data types
+ - improve support for recent features to the PostgreSQL FDW API.
 
 
 Useful links
