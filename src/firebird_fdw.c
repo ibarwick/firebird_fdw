@@ -919,7 +919,12 @@ firebirdBeginForeignScan(ForeignScanState *node,
 
 	for (i = 0; i < tupdesc->natts; i++)
 	{
+#if (PG_VERSION_NUM >= 110000)
+		Form_pg_attribute att_tuple = TupleDescAttr(tupdesc, i);
+#else
 		Form_pg_attribute att_tuple = tupdesc->attrs[i];
+#endif
+
 		char	 *pg_colname = NULL;
 		char	 *fb_colname = NULL;
 
@@ -1477,7 +1482,11 @@ firebirdPlanForeignModify(PlannerInfo *root,
 
 		for (attnum = 1; attnum <= tupdesc->natts; attnum++)
 		{
+#if (PG_VERSION_NUM >= 110000)
+			Form_pg_attribute attr = TupleDescAttr(tupdesc, attnum - 1);
+#else
 			Form_pg_attribute attr = tupdesc->attrs[attnum - 1];
+#endif
 
 			if (!attr->attisdropped)
 				targetAttrs = lappend_int(targetAttrs, attnum);
@@ -1600,6 +1609,10 @@ firebirdBeginForeignModify(ModifyTableState *mtstate,
 	EState	   *estate = mtstate->ps.state;
 
 	Relation	rel = resultRelInfo->ri_RelationDesc;
+#if (PG_VERSION_NUM >= 110000)
+	TupleDesc	tupdesc = RelationGetDescr(rel);
+#endif
+
 	CmdType		operation = mtstate->operation;
 	RangeTblEntry *rte;
 	Oid			userid;
@@ -1664,11 +1677,17 @@ firebirdBeginForeignModify(ModifyTableState *mtstate,
 
 
 	/* Create context for per-tuple temp workspace */
+#if (PG_VERSION_NUM >= 110000)
+	fmstate->temp_cxt = AllocSetContextCreate(estate->es_query_cxt,
+											  "firebird_fdw temporary data",
+											  ALLOCSET_SMALL_SIZES);
+#else
 	fmstate->temp_cxt = AllocSetContextCreate(estate->es_query_cxt,
 											  "firebird_fdw temporary data",
 											  ALLOCSET_SMALL_MINSIZE,
 											  ALLOCSET_SMALL_INITSIZE,
 											  ALLOCSET_SMALL_MAXSIZE);
+#endif
 
 	/* Prepare for input conversion of RETURNING results. */
 	if (fmstate->has_returning)
@@ -1686,7 +1705,11 @@ firebirdBeginForeignModify(ModifyTableState *mtstate,
 		foreach (lc, fmstate->target_attrs)
 		{
 			int				  attnum = lfirst_int(lc);
+#if (PG_VERSION_NUM >= 110000)
+			Form_pg_attribute attr	 = TupleDescAttr(tupdesc, attnum - 1);
+#else
 			Form_pg_attribute attr	 = RelationGetDescr(rel)->attrs[attnum - 1];
+#endif
 
 			elog(DEBUG2, "ins/upd: attr %i, p_nums %i", attnum, fmstate->p_nums);
 			Assert(!attr->attisdropped);
