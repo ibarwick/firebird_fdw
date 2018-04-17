@@ -198,16 +198,39 @@ firebirdInstantiateConnection(ForeignServer *server, UserMapping *user)
 
 		elog(DEBUG2, "%s(): new firebird_fdw connection %p for server \"%s\"",
 			 __func__,entry->conn, server->servername);
-
-
 	}
 	else
 	{
 		elog(DEBUG2, "%s(): cache entry %p found",
 			 __func__, entry->conn);
-	}
-	pqsignal(SIGINT, fbSigInt);
 
+		/*
+		 * Connection is not valid - reconnect.
+		 *
+		 * XXX if we're in a transaction we should roll back as the Firebird state will be lost
+		 */
+		if (FQstatus(entry->conn) == CONNECTION_BAD)
+		{
+			FBconn *new_conn = FQreconnect(entry->conn);
+
+			elog(WARNING, "Firebird server connection has gone away");
+
+			/* XXX do we need to reset entry->xact_depth? */
+			elog(DEBUG2, "xact_depth: %i", entry->xact_depth);
+
+			new_conn = firebirdGetConnection(
+				FQdb_path(entry->conn),
+				FQuname(entry->conn),
+				FQupass(entry->conn));
+			FQfinish(entry->conn);
+			entry->conn = new_conn;
+			ereport(NOTICE,
+					(errmsg("reconnected to Firebird server")));
+		}
+	}
+
+
+	pqsignal(SIGINT, fbSigInt);
 
 	/* Start a new transaction or subtransaction if needed */
 	fb_begin_remote_xact(entry);
@@ -239,7 +262,7 @@ fb_begin_remote_xact(ConnCacheEntry *entry)
 	FBresult *res;
 	int			curlevel = GetCurrentTransactionNestLevel();
 
-	elog(DEBUG2, "xact depth: %i", entry->xact_depth);
+	elog(DEBUG2, "fb_begin_remote_xact(): xact depth: %i", entry->xact_depth);
 
 	/* Start main transaction if we haven't yet */
 	if (entry->xact_depth <= 0)
@@ -251,7 +274,8 @@ fb_begin_remote_xact(ConnCacheEntry *entry)
 
 		if (FQresultStatus(res) != FBRES_TRANSACTION_START)
 		{
-			elog(ERROR, "ERROR: res is %i", FQresultStatus(res));
+			/* XXX better error handling here */
+			elog(ERROR, "unable to execute SET TRANSACTION SNAPSHOT: %s", FQresultErrorMessage(res));
 		}
 
 		FQclear(res);
@@ -280,7 +304,7 @@ fb_begin_remote_xact(ConnCacheEntry *entry)
 		snprintf(sql, sizeof(sql), "SAVEPOINT s%d", entry->xact_depth + 1);
 		res = FQexec(entry->conn, sql);
 		elog(DEBUG2, "savepoint:\n%s", sql);
-		elog(DEBUG2, "res is %i", FQresultStatus(res));
+		elog(DEBUG2, "res is %s", FQresStatus(FQresultStatus(res)));
 		FQclear(res);
 
 		entry->xact_depth++;
@@ -314,9 +338,15 @@ fb_xact_callback(XactEvent event, void *arg)
 			 entry->conn);
 
 		/* We only care about connections with open remote transactions */
-		if (entry->conn == NULL || entry->xact_depth == 0)
+		if (entry->conn == NULL)
 		{
-			elog(DEBUG3, "%s(): no connection or no open transaction",
+			elog(DEBUG3, "%s(): no connection",
+				 __func__);
+			continue;
+		}
+		else if (entry->xact_depth == 0)
+		{
+			elog(DEBUG3, "%s(): no open transaction",
 				 __func__);
 			continue;
 		}
