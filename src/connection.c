@@ -91,7 +91,8 @@ firebirdGetConnection(char *dbpath, char *svr_username, char *svr_password)
 	if (FQstatus(conn) != CONNECTION_OK)
 		ereport(ERROR,
 				(errcode(ERRCODE_FDW_UNABLE_TO_ESTABLISH_CONNECTION),
-				 errmsg("Unable to to connect to foreign server")));
+				 errmsg("Unable to to connect to foreign server"),
+				 errdetail("%s", FQerrorMessage(conn))));
 
 	FQsetAutocommit(conn, false);
 	conn->client_min_messages = DEBUG2;
@@ -222,6 +223,7 @@ firebirdInstantiateConnection(ForeignServer *server, UserMapping *user)
 				FQdb_path(entry->conn),
 				FQuname(entry->conn),
 				FQupass(entry->conn));
+
 			FQfinish(entry->conn);
 			entry->conn = new_conn;
 			ereport(NOTICE,
