@@ -41,7 +41,7 @@ static bool xact_got_connection = false;
 
 
 static char *firebirdDbPath(char **address, char **database, int *port);
-static FBconn *firebirdGetConnection(char *dbpath, char *svr_username, char *svr_password);
+static FBconn *firebirdGetConnection(const char *dbpath, const char *svr_username, const char *svr_password);
 static void fb_begin_remote_xact(ConnCacheEntry *entry);
 static void fb_xact_callback(XactEvent event, void *arg);
 static void fb_subxact_callback(SubXactEvent event,
@@ -55,7 +55,7 @@ static void fb_subxact_callback(SubXactEvent event,
  * Establish DB connection
  */
 static FBconn *
-firebirdGetConnection(char *dbpath, char *svr_username, char *svr_password)
+firebirdGetConnection(const char *dbpath, const char *svr_username, const char *svr_password)
 {
 	FBconn *volatile conn;
 	const char *kw[5];

@@ -359,8 +359,10 @@ fbSigInt(SIGNAL_ARGS)
 		QueryCancelPending = true;
 	}
 
+#if (PG_VERSION_NUM >= 90600)
 	/* If we're still here, waken anything waiting on the process latch */
 	SetLatch(MyLatch);
+#endif
 
 	errno = save_errno;
 }
