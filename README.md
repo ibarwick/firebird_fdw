@@ -12,15 +12,15 @@ not all features of the PostgreSQL FDW API are supported.
 
 It was written for Firebird 2.5 and will probably work with Firebird 2.0 or
 later. It should work with earlier versions if the `disable_pushdowns` option
-is set (see below).
-
+is set (see below). Currently (2018-04) it works with Firebird 3.0.x but has
+not been extensively tested with that version, and does not take advantage
+of any new Firebird 3 features.
 
 Supported platforms
 -------------------
 
 `firebird_fdw` was developed on Linux and OS X, and should run on any
 reasonably POSIX-compliant system.
-
 
 Installation
 ------------
