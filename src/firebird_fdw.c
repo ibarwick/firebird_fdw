@@ -1836,7 +1836,6 @@ firebirdExecForeignInsert(EState *estate,
 			elog(DEBUG2, "Param %i: %s", i, p_values[i]);
 	}
 
-
 	result = FQexecParams(fmstate->conn,
 						  fmstate->query,
 						  fmstate->p_nums,
@@ -1848,22 +1847,32 @@ firebirdExecForeignInsert(EState *estate,
 
 	elog(DEBUG2, " result status: %s", FQresStatus(FQresultStatus(result)));
 	elog(DEBUG1, " returned rows: %i", FQntuples(result));
+
 	switch(FQresultStatus(result))
 	{
 		case FBRES_EMPTY_QUERY:
 		case FBRES_BAD_RESPONSE:
 		case FBRES_NONFATAL_ERROR:
 		case FBRES_FATAL_ERROR:
-			if (result)
+		{
+			PG_TRY();
+			{
+				ereport(ERROR,
+						(errcode(ERRCODE_FDW_UNABLE_TO_CREATE_EXECUTION),
+						 errmsg("%s", fbFormatMsg("%s",FQresultErrorMessage(result))),
+						 errdetail("%s", fbFormatErrDetail(result))));
+			}
+			PG_CATCH();
+			{
 				FQclear(result);
+				PG_RE_THROW();
+			}
+			PG_END_TRY();
 
-			ereport(ERROR,
-					(errcode(ERRCODE_FDW_UNABLE_TO_CREATE_EXECUTION),
-					 errmsg("%s", fbFormatMsg("%s",FQresultErrorMessage(result))),
-					 errdetail("%s", fbFormatErrDetail(result))));
+			FQclear(result);
 
 			return NULL;
-
+		}
 		default:
 			elog(DEBUG1, "Query OK");
 	}
