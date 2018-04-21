@@ -1047,8 +1047,7 @@ firebirdIterateForeignScan(ForeignScanState *node)
 
 		if (FQresultStatus(fdw_state->result) != FBRES_TUPLES_OK)
 		{
-			ereport(ERROR, (errmsg("Unable to execute remote query")));
-			return slot;
+			fbfdw_report_error(ERROR, ERRCODE_FDW_ERROR, fdw_state->result, fdw_state->conn);
 		}
 	}
 

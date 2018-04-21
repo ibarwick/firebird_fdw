@@ -335,7 +335,7 @@ fb_xact_callback(XactEvent event, void *arg)
 	hash_seq_init(&scan, ConnectionHash);
 	while ((entry = (ConnCacheEntry *) hash_seq_search(&scan)))
 	{
-
+		FBresult   *res = NULL;
 		elog(DEBUG3, "closing remote transaction on connection %p",
 			 entry->conn);
 
@@ -376,31 +376,38 @@ fb_xact_callback(XactEvent event, void *arg)
 				/* XXX not sure how to handle this */
 				elog(DEBUG2, "PREPARE");
 				break;
+#if (PG_VERSION_NUM >= 90500)
+			case XACT_EVENT_PARALLEL_COMMIT:
+			case XACT_EVENT_PARALLEL_PRE_COMMIT:
+#endif
 			case XACT_EVENT_COMMIT:
 			case XACT_EVENT_PREPARE:
 				/* Should not get here -- pre-commit should have handled it */
 				elog(ERROR, "missed cleaning up connection during pre-commit");
 				break;
-			case XACT_EVENT_ABORT:
-				if (FQrollbackTransaction(entry->conn) != TRANS_OK)
-				{
-					ereport(ERROR,
-							(errcode(ERRCODE_FDW_ERROR),
-							 errmsg("ROLLBACK failed")));
-				}
 #if (PG_VERSION_NUM >= 90500)
-			case XACT_EVENT_PARALLEL_COMMIT:
 			case XACT_EVENT_PARALLEL_ABORT:
-			case XACT_EVENT_PARALLEL_PRE_COMMIT:
-				/* XXX Handle these */
-				elog(DEBUG2, "Unhandled XACT_EVENT_PARALLEL_* event");
-				break;
 #endif
+			case XACT_EVENT_ABORT:
+				/* XXX ROLLBACK here is probably ineffective as the FB connection will
+				 * likely have had an implict ROLLBACK; need to verify this...
+				 */
+				elog(DEBUG2, "ROLLBACK");
+				res = FQexec(entry->conn, "ROLLBACK");
+				if (FQresultStatus(res) != FBRES_TRANSACTION_ROLLBACK)
+				{
+					elog(DEBUG2, "transaction rollback failed");
+				}
+				FQclear(res);
+			default:
+				elog(DEBUG2, "Unhandled unknown XactEvent");
 		}
 
 		/* Reset state to show we're out of a transaction */
 		entry->xact_depth = 0;
 	}
+
+	xact_got_connection = false;
 }
 
 
