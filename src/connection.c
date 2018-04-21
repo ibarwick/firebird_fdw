@@ -546,3 +546,26 @@ firebirdDbPath(char **address, char **database, int *port)
 
 	return hostname;
 }
+
+
+void
+fbfdw_report_error(int errlevel, int pg_errcode, FBresult *res, FBconn *conn)
+{
+	PG_TRY();
+	{
+		char *fb_errdetail = FQresultErrorFieldsAsString(res, FB_FDW_LOGPREFIX);
+
+		ereport(errlevel,
+				(errcode(pg_errcode),
+				 errmsg("%s", FQresultErrorMessage(res)),
+				 errdetail("%s", fb_errdetail)));
+
+		free(fb_errdetail);
+	}
+	PG_CATCH();
+	{
+		FQclear(res);
+		PG_RE_THROW();
+	}
+	PG_END_TRY();
+}

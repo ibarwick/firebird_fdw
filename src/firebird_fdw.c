@@ -248,15 +248,6 @@ extractDbKeyParts(TupleTableSlot *planSlot,
 				  Datum *datum_ctid,
 				  Datum *datum_oid);
 
-
-
-static char *
-fbFormatMsg(char *msg, ...)
-__attribute__((format(__printf__, 1, 2)));
-
-static char *
-fbFormatErrDetail(FBresult *res);
-
 /**
  * firebird_fdw_handler()
  *
@@ -555,8 +546,7 @@ firebirdGetForeignRelSize(PlannerInfo *root,
 		FQclear(res);
 		ereport(ERROR,
 				(errcode(ERRCODE_FDW_TABLE_NOT_FOUND),
-				 errmsg("%s", fbFormatMsg("Unable to establish size of foreign table %s", fdw_state->svr_table))
-					));
+				 errmsg("Unable to establish size of foreign table %s", fdw_state->svr_table)));
 		return;
 	}
 
@@ -565,8 +555,7 @@ firebirdGetForeignRelSize(PlannerInfo *root,
 		FQclear(res);
 		ereport(ERROR,
 				(errcode(ERRCODE_FDW_TABLE_NOT_FOUND),
-				 errmsg("%s", fbFormatMsg("Query returned unexpected number of rows"))
-					));
+				 errmsg("Query returned unexpected number of rows")));
 		return;
 	}
 
@@ -1854,25 +1843,7 @@ firebirdExecForeignInsert(EState *estate,
 		case FBRES_BAD_RESPONSE:
 		case FBRES_NONFATAL_ERROR:
 		case FBRES_FATAL_ERROR:
-		{
-			PG_TRY();
-			{
-				ereport(ERROR,
-						(errcode(ERRCODE_FDW_UNABLE_TO_CREATE_EXECUTION),
-						 errmsg("%s", fbFormatMsg("%s",FQresultErrorMessage(result))),
-						 errdetail("%s", fbFormatErrDetail(result))));
-			}
-			PG_CATCH();
-			{
-				FQclear(result);
-				PG_RE_THROW();
-			}
-			PG_END_TRY();
-
-			FQclear(result);
-
-			return NULL;
-		}
+			fbfdw_report_error(ERROR, ERRCODE_FDW_UNABLE_TO_CREATE_EXECUTION, result, fmstate->conn);
 		default:
 			elog(DEBUG1, "Query OK");
 	}
@@ -1978,13 +1949,7 @@ firebirdExecForeignUpdate(EState *estate,
 		case FBRES_BAD_RESPONSE:
 		case FBRES_NONFATAL_ERROR:
 		case FBRES_FATAL_ERROR:
-			ereport(ERROR,
-					(errmsg("%s", fbFormatMsg("%s",FQresultErrorMessage(result))),
-					 errdetail("%s", fbFormatErrDetail(result))
-					));
-			FQclear(result);
-			return NULL;
-
+			fbfdw_report_error(ERROR, ERRCODE_FDW_UNABLE_TO_CREATE_EXECUTION, result, fmstate->conn);
 		default:
 			elog(DEBUG1, "Query OK");
 	}
@@ -2088,12 +2053,7 @@ firebirdExecForeignDelete(EState *estate,
 		case FBRES_BAD_RESPONSE:
 		case FBRES_NONFATAL_ERROR:
 		case FBRES_FATAL_ERROR:
-			FQclear(result);
-
-			ereport(ERROR,
-					(errmsg("%s", fbFormatMsg("%s",FQresultErrorMessage(result))),
-					 errdetail("%s", fbFormatErrDetail(result))));
-			return NULL;
+			fbfdw_report_error(ERROR, ERRCODE_FDW_UNABLE_TO_CREATE_EXECUTION, result, fmstate->conn);
 		default:
 			elog(DEBUG2, "Query OK");
 			if (fmstate->has_returning)
@@ -2697,46 +2657,6 @@ create_tuple_from_result(FBresult *res,
 	MemoryContextReset(tmp_context);
 
 	return tuple;
-}
-
-
-/**
- * fbFormatMsg()
- *
- * Return error message with a prefix like "[firebird_fdw] "
- * for easier disambiguation
- */
-char *
-fbFormatMsg(char *msg, ...)
-{
-	va_list argp;
-	char *buffer = palloc0(2048 + FB_FDW_LOGPREFIX_LEN);
-
-	snprintf(buffer, FB_FDW_LOGPREFIX_LEN, "%s", FB_FDW_LOGPREFIX);
-
-	va_start(argp, msg);
-	vsnprintf(buffer + FB_FDW_LOGPREFIX_LEN, 2048 + FB_FDW_LOGPREFIX_LEN, msg, argp);
-	va_end(argp);
-
-	return buffer;
-}
-
-
-/**
- * fbFormatErrDetail()
- *
- * Format libfq's error output nicely
- */
-char *
-fbFormatErrDetail(FBresult *res)
-{
-	StringInfoData buf;
-	initStringInfo(&buf);
-
-	appendStringInfoChar(&buf,'\n');
-	appendStringInfo(&buf, "%s", FQresultErrorFieldsAsString(res, FB_FDW_LOGPREFIX));
-
-	return buf.data;
 }
 
 

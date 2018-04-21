@@ -166,9 +166,10 @@ Features
 Limitations
 -----------
 
-- No support for Firebird 3.x
+- Works with Firebird 3.x, but does not yet support any 3.x features
 - No support for Firebird datatypes (`BLOB`, `ARRAY`)
 - Display of messages returned by Firebird is not very pretty
+  (this has been improved somewhat)
 
 
 Regression tests

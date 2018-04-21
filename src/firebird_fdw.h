@@ -152,6 +152,8 @@ extern void fbSigInt(SIGNAL_ARGS);
 
 extern FBconn *firebirdInstantiateConnection(ForeignServer *server, UserMapping *user);
 extern void firebirdCloseConnections(void);
+extern void fbfdw_report_error(int errlevel, int pg_errcode, FBresult *res, FBconn *conn);
+
 
 /* option functions (in options.c) */
 extern void firebirdGetOptions(Oid foreigntableid, char **query, char **table, bool *disable_pushdowns);
