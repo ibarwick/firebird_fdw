@@ -4,11 +4,14 @@ Revision history for firebird_fdw
 	- Support PostgreSQL 9.6 and 10
 	- Add support for IMPORT FOREIGN SCHEMA (PostgreSQL 9.5 and later)
 	- Ensure tables defined with the 'query' option actually work
+	- Automatically reconnect if Firebird goes away
 	- Update function calls for changes in libfq 0.2.0
 	- Improve SIGINT handling
+	- Improve error message handling
 	- Fix memory error when generating connection string
+	- Fix crash when multibyte string overflows (GitHub #5)
 	- Report transaction errors as actual errors; log harmless
-	  unhandled transaction types as DEBUG rather than warning
+	  unhandled transaction types as DEBUG rather than as WARNING
 	- General code cleanup
 
 0.2.5   2014-02-11
