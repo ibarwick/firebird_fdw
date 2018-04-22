@@ -1,7 +1,7 @@
 {
     "name": "firebird_fdw",
     "abstract": "A PostgreSQL foreign data wrapper (FDW) for Firebird",
-    "version": "0.2.5",
+    "version": "0.3.0",
     "release_status": "unstable",
     "maintainer": "Ian Barwick <barwick@gmail.com>",
     "license": {
@@ -10,16 +10,16 @@
     "prereqs": {
         "runtime": {
             "requires": {
-                "PostgreSQL": "9.2.0"
+                "PostgreSQL": "9.3.0"
             }
         }
     },
     "provides": {
         "firebird_fdw": {
             "abstract": "A PostgreSQL foreign data wrapper (FDW) for Firebird",
-            "file": "firebird_fdw--0.2.5.sql",
+            "file": "firebird_fdw--0.3.0.sql",
             "docfile": "README.md",
-            "version": "0.2.5"
+            "version": "0.3.0"
         }
     },
     "resources": {

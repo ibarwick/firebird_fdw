@@ -1,6 +1,6 @@
 Summary: A PostgreSQL foreign data wrapper (FDW) for Firebird
 Name: postgresql93-firebird_fdw
-Version: 0.2.5
+Version: 0.3.0
 Release: 1
 Source: firebird_fdw-%{version}.tar.gz
 URL: https://github.com/ibarwick/firebird_fdw
@@ -15,8 +15,8 @@ Requires: postgresql93-server libfq
 %define pgsql_path /usr/pgsql-9.3
 
 %description
-This is an experimental foreign data wrapper (FDW) to connect PostgreSQL
-to Firebird. It provides both read (SELECT) and write (INSERT/UPDATE/DELETE)
+This is a foreign data wrapper (FDW) to connect PostgreSQL to Firebird.
+It provides both read (SELECT) and write (INSERT/UPDATE/DELETE)
 support, WHERE-clause pushdowns, connection caching and Firebird transaction
 support.
 
@@ -44,5 +44,7 @@ rm -rf $RPM_BUILD_ROOT
 %{pgsql_path}/share/extension/firebird_fdw.control
 
 %changelog
+* Sun Apr 22 2014 Ian Barwick (barwick@gmail.com)
+- 0.3.0 release
 * Sun Feb 2 2014 Ian Barwick (barwick@gmail.com)
 - First draft
