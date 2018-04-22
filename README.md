@@ -26,6 +26,14 @@ reasonably POSIX-compliant system.
 Installation
 ------------
 
+### From packages
+
+RPM packages for CentOS and derivatives are available via the Fedora "copr"
+build system; for details see here: <https://copr.fedorainfracloud.org/coprs/ibarwick/firebird_fdw/>
+
+
+### From source
+
 Prerequisites:
 
 - Firebird client library (`libfbclient`) and API header file (`ibase.h`)
@@ -201,7 +209,7 @@ project carried out by myself in my (limited) free time for my own personal
 gratification. While I'm happy to accept feedback, suggestions, feature
 requests, bug reports and (especially) patches, please understand that
 development is entirely at my own discretion depending on (but not limited
-to) available free time and motiviation.
+to) available free time and motivation.
 
 However if you are a commercial entity and wish to have any improvements
 etc. carried out within a plannable period of time, this can be arranged
