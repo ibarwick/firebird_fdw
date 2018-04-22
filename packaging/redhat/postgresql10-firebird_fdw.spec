@@ -1,24 +1,24 @@
 Summary: A PostgreSQL foreign data wrapper (FDW) for Firebird
-Name: postgresql92-firebird_fdw
-Version: 0.2.5
+Name: postgresql10-firebird_fdw
+Version: 0.3.0
 Release: 1
 Source: firebird_fdw-%{version}.tar.gz
 URL: https://github.com/ibarwick/firebird_fdw
 License: PostgreSQL
 Group: Productivity/Databases/Tools
 Packager: Ian Barwick
-BuildRequires: postgresql92-devel
+BuildRequires: postgresql10-devel firebird-devel
 BuildRequires: libfq
 BuildRoot: %{_tmppath}/%{name}-%{version}-build
-Requires: postgresql92-server libfq
+Requires: postgresql10-server libfq
 
-%define pgsql_path /usr/pgsql-9.2
+%define pgsql_path /usr/pgsql-10
 
 %description
-This is an experimental foreign data wrapper (FDW) to connect PostgreSQL
-to Firebird. It provides read-only (SELECT) support, WHERE-clause pushdowns,
-connection caching and Firebird transaction support. (INSERT/UPDATE/DELETE
-support is available with PostgreSQL 9.3 and later).
+This is a foreign data wrapper (FDW) to connect PostgreSQL to Firebird.
+It provides both read (SELECT) and write (INSERT/UPDATE/DELETE)
+support, WHERE-clause pushdowns, connection caching and Firebird transaction
+support.
 
 This code is very much work-in-progress; USE AT YOUR OWN RISK.
 
@@ -33,8 +33,10 @@ PG_CPPFLAGS="-I/usr/include/firebird" make
 rm -rf $RPM_BUILD_ROOT
 export PG_CONFIG=%{pgsql_path}/bin/pg_config
 make DESTDIR=$RPM_BUILD_ROOT install
+
 %clean
 rm -rf $RPM_BUILD_ROOT
+
 %files
 %defattr(-, root, root)
 %{pgsql_path}/lib/firebird_fdw.so
@@ -42,6 +44,7 @@ rm -rf $RPM_BUILD_ROOT
 %{pgsql_path}/share/extension/firebird_fdw.control
 
 %changelog
-* Tue Feb 11 2014 Ian Barwick (barwick@gmail.com)
+* Sun Apr 22 2018 Ian Barwick (barwick@gmail.com)
+- 0.3.0 release
+* Sun Feb 2 2014 Ian Barwick (barwick@gmail.com)
 - First draft
-
