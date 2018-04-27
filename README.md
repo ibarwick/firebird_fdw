@@ -29,8 +29,8 @@ Installation
 ### From packages
 
 RPM packages for CentOS and derivatives are available via the Fedora "copr"
-build system; for details see here: <https://copr.fedorainfracloud.org/coprs/ibarwick/firebird_fdw/>
-
+build system; for details see here:
+<https://copr.fedorainfracloud.org/coprs/ibarwick/firebird_fdw/>
 
 ### From source
 

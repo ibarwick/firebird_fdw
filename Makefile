@@ -2,7 +2,7 @@
 #
 # Firebird Foreign Data Wrapper for PostgreSQL
 #
-# Copyright (c) 2013 Ian Barwick
+# Copyright (c) 2013-2018 Ian Barwick
 #
 # This software is released under the PostgreSQL Licence
 #
@@ -34,10 +34,7 @@ endif
 
 SHLIB_LINK += -lfq -lfbclient
 
-DATA_built = sql/$(EXTENSION)--$(EXTVERSION).sql
-DATA = $(filter-out sql/$(EXTENSION)--$(EXTVERSION).sql, $(wildcard sql/*--*.sql))
-EXTRA_CLEAN = sql/$(EXTENSION)--$(EXTVERSION).sql *~
-
+DATA = sql/firebird_fdw--0.3.0.sql
 
 PGXS := $(shell $(PG_CONFIG) --pgxs)
 include $(PGXS)
