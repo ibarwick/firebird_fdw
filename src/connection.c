@@ -406,6 +406,7 @@ fb_xact_callback(XactEvent event, void *arg)
 		/* Reset state to show we're out of a transaction */
 		entry->xact_depth = 0;
 	}
+	elog(DEBUG3, "leaving fb_xact_callback()");
 
 	xact_got_connection = false;
 }
@@ -512,6 +513,8 @@ firebirdCloseConnections(void)
 {
 	HASH_SEQ_STATUS fstat;
 	ConnCacheEntry *entry;
+
+	elog(DEBUG3, "entering function %s", __func__);
 
 	if (ConnectionHash == NULL)
 		return;

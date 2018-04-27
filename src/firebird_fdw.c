@@ -108,6 +108,7 @@ enum FdwModifyPrivateIndex
 extern Datum firebird_fdw_handler(PG_FUNCTION_ARGS);
 
 PG_FUNCTION_INFO_V1(firebird_fdw_handler);
+PG_FUNCTION_INFO_V1(firebird_fdw_version);
 
 
 extern void _PG_init(void);
@@ -247,6 +248,18 @@ extractDbKeyParts(TupleTableSlot *planSlot,
 				  FirebirdFdwModifyState *fmstate,
 				  Datum *datum_ctid,
 				  Datum *datum_oid);
+
+
+/*
+ * firebird_fdw_version()
+ *
+ * Return the version number as an integer.
+ */
+Datum
+firebird_fdw_version(PG_FUNCTION_ARGS)
+{
+	PG_RETURN_INT32(FIREBIRD_FDW_VERSION);
+}
 
 /**
  * firebird_fdw_handler()

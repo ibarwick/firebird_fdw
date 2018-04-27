@@ -34,7 +34,9 @@ endif
 
 SHLIB_LINK += -lfq -lfbclient
 
-DATA = sql/firebird_fdw--0.3.0.sql
+DATA = sql/firebird_fdw--0.3.0.sql \
+	sql/firebird_fdw--0.3.0--0.4.0.sql \
+	sql/firebird_fdw--0.4.0.sql
 
 PGXS := $(shell $(PG_CONFIG) --pgxs)
 include $(PGXS)

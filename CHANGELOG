@@ -1,5 +1,8 @@
 Revision history for firebird_fdw
 
+0.4.0   2018-05-??
+	- add function firebird_fdw_version()
+
 0.3.0   2018-04-22
 	- Support PostgreSQL 9.6 and 10
 	- Add support for IMPORT FOREIGN SCHEMA (PostgreSQL 9.5 and later)
