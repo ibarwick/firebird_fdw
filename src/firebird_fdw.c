@@ -106,6 +106,7 @@ enum FdwModifyPrivateIndex
 /* FDW handler/validator functions */
 
 extern Datum firebird_fdw_handler(PG_FUNCTION_ARGS);
+extern Datum firebird_fdw_version(PG_FUNCTION_ARGS);
 
 PG_FUNCTION_INFO_V1(firebird_fdw_handler);
 PG_FUNCTION_INFO_V1(firebird_fdw_version);

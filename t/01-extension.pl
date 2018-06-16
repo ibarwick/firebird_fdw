@@ -13,7 +13,7 @@ use warnings;
 use Cwd;
 use Config;
 use TestLib;
-use Test::More tests => 3;
+use Test::More tests => 4;
 
 
 use FirebirdFDWNode;
@@ -28,6 +28,22 @@ $pg_node->init();
 $pg_node->start();
 
 my $pg_db = FirebirdFDWDB->new($pg_node);
+
+# 0. Check version
+# ----------------
+#
+# TODO: parse the value from "firebird_fdw.control" and check for a match
+
+my $version = '400';
+
+my $res = $pg_db->safe_psql(q|SELECT firebird_fdw_version()|);
+
+is(
+	$res,
+	$version,
+	'version OK',
+);
+
 
 # Prepare table
 # --------------
@@ -93,7 +109,7 @@ my $query = $pg_node->{dbh}->prepare($queryText);
 
 $query->execute();
 
-my $res = $query->fetchrow_array();
+$res = $query->fetchrow_array();
 
 $query->finish();
 
