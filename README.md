@@ -196,27 +196,6 @@ Run with
 The TAP tests will create temporary tables in the Firebird database and
 remove them after test completion.
 
-Regression tests
-----------------
-
-A simple set of regression tests is provided. To run this, following
-requirements must be met:
-
- - a running PostgreSQL cluster with `firebird_fdw` available
- - a running Firebird server
-
-The Firebird server must be accessible via the default
-`SYSDBA`/`MASTERKE` user/password combination and a database
-`/tmp/firebird_fdw.fdb` must exist with following table defined:
-
-    CREATE TABLE test1(id int);
-
-Run with:
-
-    gmake installcheck
-
-
-
 
 Development roadmap
 -------------------
