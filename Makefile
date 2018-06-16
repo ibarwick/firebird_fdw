@@ -6,7 +6,7 @@
 #
 # This software is released under the PostgreSQL Licence
 #
-# Author: Ian Barwick <barwick@sql-info.de>
+# Author: Ian Barwick <barwick@gmail.com>
 #
 # IDENTIFICATION
 #        firebird_fdw/Makefile
@@ -51,6 +51,13 @@ all: sql/$(EXTENSION)--$(EXTVERSION).sql
 sql/$(EXTENSION)--$(EXTVERSION).sql: sql/$(EXTENSION).sql
 	cp $< $@
 
+PG_PROVE_FLAGS += -I $(srcdir)/t
+
+prove_installcheck: install
+		rm -rf $(CURDIR)/tmp_check/log
+		cd $(srcdir) && TESTDIR='$(CURDIR)' PATH="$(bindir):$$PATH" PGPORT='6$(DEF_PGPORT)' PG_REGRESS='$(top_builddir)/src/test/regress/pg_regress' $(PROVE) $(PG_PROVE_FLAGS) $(PROVE_FLAGS) $(if $(PROVE_TESTS),$(PROVE_TESTS),t/*.pl)
+
+installcheck: prove_installcheck
 
 # we put all the tests in a test subdir, but pgxs expects us not to, darn it
 override pg_regress_clean_files = test/results/ test/regression.diffs test/regression.out tmp_check/ log/

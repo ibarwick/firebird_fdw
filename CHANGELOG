@@ -1,7 +1,8 @@
 Revision history for firebird_fdw
 
-0.4.0   2018-05-??
+0.4.0   2018-06-??
 	- add function firebird_fdw_version()
+	- Add initial TAP tests
 
 0.3.0   2018-04-22
 	- Support PostgreSQL 9.6 and 10

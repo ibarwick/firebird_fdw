@@ -1,6 +1,7 @@
 test/regression.diffs
 test/regression.out
 test/results
+tmp_check/
 *.o
 *.so
 *~

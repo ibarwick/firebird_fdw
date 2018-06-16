@@ -181,6 +181,21 @@ Limitations
   (this has been improved somewhat)
 
 
+TAP tests
+---------
+
+Simple TAP tests are provided in the `t/` directory. These require a running
+Firebird database to be available; provide connection details for this with
+the standard Firebird environment variables `ISC_DATABASE`, `ISC_USER` and
+`ISC_PASSWORD`.
+
+Run with
+
+    make prove_installcheck
+
+The TAP tests will create temporary tables in the Firebird database and
+remove them after test completion.
+
 Regression tests
 ----------------
 
@@ -199,6 +214,8 @@ The Firebird server must be accessible via the default
 Run with:
 
     gmake installcheck
+
+
 
 
 Development roadmap
