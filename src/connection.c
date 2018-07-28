@@ -399,6 +399,7 @@ fb_xact_callback(XactEvent event, void *arg)
 					elog(DEBUG2, "transaction rollback failed");
 				}
 				FQclear(res);
+				break;
 			default:
 				elog(DEBUG2, "Unhandled unknown XactEvent");
 		}
