@@ -1815,14 +1815,10 @@ firebirdExecForeignInsert(EState *estate,
 	const char * const *p_values;
 	int			 i;
 	FBresult	 *result;
-	MemoryContext oldcontext;
 
 	elog(DEBUG2, "entering function %s", __func__);
 
 	fmstate = (FirebirdFdwModifyState *) resultRelInfo->ri_FdwState;
-
-	MemoryContextReset(fmstate->temp_cxt);
-	oldcontext = MemoryContextSwitchTo(fmstate->temp_cxt);
 
 	/* Convert parameters needed by prepared statement to text form */
 	p_values = convert_prep_stmt_params(fmstate,
@@ -1870,7 +1866,6 @@ firebirdExecForeignInsert(EState *estate,
 	if (result)
 		FQclear(result);
 
-	MemoryContextSwitchTo(oldcontext);
 	MemoryContextReset(fmstate->temp_cxt);
 
 	return slot;
