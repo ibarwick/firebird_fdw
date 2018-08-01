@@ -29,7 +29,7 @@ $pg_node->start();
 
 my $pg_db = FirebirdFDWDB->new($pg_node);
 
-# 0. Check version
+# 1. Check version
 # ----------------
 #
 # TODO: parse the value from "firebird_fdw.control" and check for a match
@@ -50,7 +50,7 @@ is(
 
 my $table_name = 'tbl_';
 
-foreach $a (0..7) {
+foreach my $i (0..7) {
     $table_name .= chr(int(26*rand) + 97);
 }
 
@@ -75,9 +75,9 @@ $pg_db->safe_psql(
     sprintf(
         <<EO_SQL,
 CREATE FOREIGN TABLE %s (
-  LANG_ID                         CHAR(2) NOT NULL,
-  NAME_ENGLISH                    VARCHAR(64) NOT NULL,
-  NAME_NATIVE                     VARCHAR(64) NOT NULL
+  lang_id                         CHAR(2) NOT NULL,
+  name_english                    VARCHAR(64) NOT NULL,
+  name_native                     VARCHAR(64) NOT NULL
 )
   SERVER fb_test
   OPTIONS (table_name '%s')
@@ -88,7 +88,7 @@ EO_SQL
 );
 
 
-# 1. Insert a row
+# 2. Insert a row
 # ---------------
 
 my $insert_q = sprintf(
@@ -120,7 +120,7 @@ is(
 );
 
 
-# 2. Update the row
+# 3. Update the row
 # -----------------
 
 my $update_q = sprintf(
@@ -150,7 +150,7 @@ is(
 );
 
 
-# 3. Delete the row
+# 4. Delete the row
 # -----------------
 
 my $delete_q = sprintf(
