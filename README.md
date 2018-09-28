@@ -6,13 +6,13 @@ It provides both read (`SELECT`) and write (`INSERT`/`UPDATE`/`DELETE`) support,
 as well as pushdown of some operations. However it is still very much
 work-in-progress; *USE AT YOUR OWN RISK*.
 
-`firebird_fdw` is designed to be compatible with PostgreSQL 9.2 ~ 10.
+`firebird_fdw` is designed to be compatible with PostgreSQL 9.2 ~ 11.
 Write support is only available in PostgreSQL 9.3 and later. Note that
 not all features of the PostgreSQL FDW API are supported.
 
 It was written for Firebird 2.5 and will probably work with Firebird 2.0 or
 later. It should work with earlier versions if the `disable_pushdowns` option
-is set (see below). Currently (2018-04) it works with Firebird 3.0.x but has
+is set (see below). Currently (2018-09) it works with Firebird 3.0.x but has
 not yet been extensively tested with that version, and does not take advantage
 of any new Firebird 3 features. This will hopefully be addressed in future
 releases.
@@ -54,7 +54,8 @@ For OS X they would look something like this:
 `firebird_fdw` is installed as a PostgreSQL extension; it requires the
 `pg_config` binary for the target installation to be in the shell path.
 
-`USE_PGXS=1 make install` should take care of the actual compilation and installation.
+`USE_PGXS=1 make install` should take care of the actual compilation and
+installation.
 
 
 Usage
