@@ -54,7 +54,7 @@ For OS X they would look something like this:
 `firebird_fdw` is installed as a PostgreSQL extension; it requires the
 `pg_config` binary for the target installation to be in the shell path.
 
-The usual `make && make install` should take care of the actual compilation.
+`USE_PGXS=1 make install` should take care of the actual compilation and installation.
 
 
 Usage
