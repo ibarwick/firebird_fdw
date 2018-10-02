@@ -26,13 +26,13 @@ This code is very much work-in-progress; USE AT YOUR OWN RISK.
 %setup
 
 %build
-
-PG_CPPFLAGS="-I/usr/include/firebird" make
+export PG_CONFIG=%{pgsql_path}/bin/pg_config
+PG_CPPFLAGS="-I/usr/include/firebird" USE_PGXS=1 make
 
 %install
 rm -rf $RPM_BUILD_ROOT
 export PG_CONFIG=%{pgsql_path}/bin/pg_config
-make DESTDIR=$RPM_BUILD_ROOT install
+USE_PGXS=1 make DESTDIR=$RPM_BUILD_ROOT install
 
 %clean
 rm -rf $RPM_BUILD_ROOT
