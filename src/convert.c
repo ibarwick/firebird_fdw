@@ -186,11 +186,8 @@ buildInsertSql(StringInfo buf, PlannerInfo *root,
 
 	appendStringInfoString(buf, ")");
 
-	if (returningList)
-		convertReturningList(buf, root, rtindex, rel, returningList,
-							 retrieved_attrs);
-	else
-		*retrieved_attrs = NIL;
+	convertReturningList(buf, root, rtindex, rel,
+						 returningList, retrieved_attrs);
 }
 
 
@@ -228,11 +225,8 @@ buildUpdateSql(StringInfo buf, PlannerInfo *root,
 
 	appendStringInfoString(buf, " WHERE rdb$db_key = ?");
 
-	if (returningList)
-		convertReturningList(buf, root, rtindex, rel, returningList,
-							 retrieved_attrs);
-	else
-		*retrieved_attrs = NIL;
+	convertReturningList(buf, root, rtindex, rel,
+						 returningList, retrieved_attrs);
 }
 
 
@@ -267,15 +261,8 @@ buildDeleteSql(StringInfo buf, PlannerInfo *root,
 	convertRelation(buf, rel);
 	appendStringInfoString(buf, " WHERE rdb$db_key = ?");
 
-	if (returningList)
-	{
-		convertReturningList(buf, root, rtindex, rel, returningList,
-							 retrieved_attrs);
-	}
-	else
-	{
-		*retrieved_attrs = NIL;
-	}
+	convertReturningList(buf, root, rtindex, rel,
+						 returningList, retrieved_attrs);
 }
 
 
@@ -1343,17 +1330,38 @@ convertReturningList(StringInfo buf, PlannerInfo *root,
 					 List *returningList,
 					 List **retrieved_attrs)
 {
-	Bitmapset  *attrs_used;
+	Bitmapset  *attrs_used = NULL;
 	bool db_key_used;
 
-	/* Insert column names into the query's RETURNING list */
-	attrs_used = NULL;
-	pull_varattnos((Node *) returningList, rtindex,
-				   &attrs_used);
+	elog(DEBUG2, "entering function %s", __func__);
 
-	appendStringInfoString(buf, " RETURNING ");
-	convertTargetList(buf, root, rtindex, rel, attrs_used,
-					  retrieved_attrs, &db_key_used);
+#if (PG_VERSION_NUM >= 90400)
+	if (rel->trigdesc && rel->trigdesc->trig_insert_after_row)
+	{
+		/* whole-row reference acquires all non-system columns */
+		attrs_used =
+			bms_make_singleton(0 - FirstLowInvalidHeapAttributeNumber);
+	}
+#endif
+
+	if (returningList != NIL)
+	{
+		pull_varattnos((Node *) returningList, rtindex,
+					   &attrs_used);
+	}
+
+	if (attrs_used != NULL)
+	{
+		/* Insert column names into the local query's RETURNING list */
+
+		appendStringInfoString(buf, " RETURNING ");
+		convertTargetList(buf, root, rtindex, rel, attrs_used,
+						  retrieved_attrs, &db_key_used);
+	}
+	else
+	{
+		*retrieved_attrs = NIL;
+	}
 }
 
 

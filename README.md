@@ -3,8 +3,9 @@ Firebird Foreign Data Wrapper for PostgreSQL
 
 This is a foreign data wrapper (FDW) to connect PostgreSQL to Firebird.
 It provides both read (`SELECT`) and write (`INSERT`/`UPDATE`/`DELETE`) support,
-as well as pushdown of some operations. However it is still very much
-work-in-progress; *USE AT YOUR OWN RISK*.
+as well as pushdown of some operations. While it appears to be working
+reliably, please be aware this is still very much work-in-progress;
+*USE AT YOUR OWN RISK*.
 
 `firebird_fdw` is designed to be compatible with PostgreSQL 9.2 ~ 11.
 Write support is only available in PostgreSQL 9.3 and later. Note that
