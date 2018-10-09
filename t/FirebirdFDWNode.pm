@@ -33,8 +33,7 @@ $SIG{__DIE__} = \&Carp::confess;
 	get_new_fdw_node
 );
 
-sub get_new_fdw_node
-{
+sub get_new_fdw_node {
 	my $name = shift;
 
 	my $class = 'FirebirdFDWNode';

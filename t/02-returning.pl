@@ -30,44 +30,7 @@ my $pg_db = FirebirdFDWDB->new($pg_node);
 # Prepare table
 # --------------
 
-my $table_name = 'tbl_';
-
-foreach my $i (0..7) {
-    $table_name .= chr(int(26*rand) + 97);
-}
-
-
-my $tbl_query = $pg_node->{dbh}->prepare(
-    sprintf(
-        <<EO_SQL,
-CREATE TABLE %s (
-  LANG_ID                         CHAR(2) NOT NULL PRIMARY KEY,
-  NAME_ENGLISH                    VARCHAR(64) NOT NULL,
-  NAME_NATIVE                     VARCHAR(64) NOT NULL
-)
-EO_SQL
-        $table_name,
-    ),
-);
-
-$tbl_query->execute();
-$tbl_query->finish();
-
-$pg_db->safe_psql(
-    sprintf(
-        <<EO_SQL,
-CREATE FOREIGN TABLE %s (
-  lang_id                         CHAR(2) NOT NULL,
-  name_english                    VARCHAR(64) NOT NULL,
-  name_native                     VARCHAR(64) NOT NULL
-)
-  SERVER fb_test
-  OPTIONS (table_name '%s')
-EO_SQL
-        $table_name,
-        $table_name,
-    ),
-);
+my $table_name = $pg_db->init_table();
 
 
 # 1. INSERT ... RETURNING ... with specified columns
@@ -286,7 +249,7 @@ my $drop_table = sprintf(
     $table_name,
 );
 
-$tbl_query = $pg_node->{dbh}->prepare( $drop_table );
+my $tbl_query = $pg_node->{dbh}->prepare( $drop_table );
 
 $tbl_query->execute();
 $tbl_query->finish();
