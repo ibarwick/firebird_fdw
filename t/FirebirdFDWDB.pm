@@ -82,6 +82,19 @@ sub safe_psql {
 }
 
 
+sub version {
+    my $self = shift;
+
+    my $sql = <<EO_SQL;
+  SELECT setting
+    FROM pg_catalog.pg_settings
+   WHERE name = 'server_version_num'
+EO_SQL
+
+    return $self->safe_psql($sql);
+}
+
+
 sub init_table {
     my $self = shift;
 
