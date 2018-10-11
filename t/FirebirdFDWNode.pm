@@ -74,4 +74,22 @@ sub firebird_reconnect {
 	);
 }
 
+
+sub drop_table {
+    my $self = shift;
+    my $table_name = shift;
+
+    $self->firebird_reconnect();
+
+    my $drop_table = sprintf(
+        q|DROP TABLE %s|,
+        $table_name,
+    );
+
+    my $tbl_query = $self->{dbh}->prepare( $drop_table );
+
+    $tbl_query->execute();
+    $tbl_query->finish();
+}
+
 1;

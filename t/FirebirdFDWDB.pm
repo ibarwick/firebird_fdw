@@ -134,4 +134,12 @@ EO_SQL
 }
 
 
+sub drop_foreign_server {
+    my $self = shift;
+
+    my $drop_foreign_server = q|DROP SERVER IF EXISTS fb_test CASCADE|;
+
+    $self->safe_psql( $drop_foreign_server );
+}
+
 1;

@@ -19,8 +19,8 @@ use FirebirdFDWDB;
 
 
 
-# Initialize PostgreSQL node
-# --------------------------
+# Initialize nodes
+# ----------------
 
 my $pg_node = get_new_fdw_node('pg_node');
 
@@ -174,5 +174,11 @@ is (
     q/3|baz|/,
     q|Check DELETE|,
 );
+
+# Clean up
+# --------
+
+$pg_db->drop_foreign_server();
+$pg_node->drop_table($table_name);
 
 done_testing();

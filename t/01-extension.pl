@@ -146,21 +146,7 @@ is(
 # Clean up
 # --------
 
-my $drop_foreign_server = q|DROP SERVER IF EXISTS fb_test CASCADE|;
-
-$pg_db->safe_psql( $drop_foreign_server );
-
-$pg_node->firebird_reconnect();
-
-my $drop_table = sprintf(
-    q|DROP TABLE %s|,
-    $table_name,
-);
-
-my $tbl_query = $pg_node->{dbh}->prepare( $drop_table );
-
-$tbl_query->execute();
-$tbl_query->finish();
-
+$pg_db->drop_foreign_server();
+$pg_node->drop_table($table_name);
 
 done_testing();
