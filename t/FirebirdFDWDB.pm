@@ -98,6 +98,8 @@ EO_SQL
 sub init_table {
     my $self = shift;
 
+    # Create Firebird table
+
     my $tbl_query = $self->{pg_fdw_node}->{dbh}->prepare(
         sprintf(
             <<EO_SQL,
@@ -113,6 +115,8 @@ EO_SQL
 
     $tbl_query->execute();
     $tbl_query->finish();
+
+    # Create PostgreSQL foreign table
 
     $self->safe_psql(
         sprintf(
@@ -131,6 +135,50 @@ EO_SQL
     );
 
     return $self->{table_name};
+}
+
+
+sub init_data_table {
+    my $self = shift;
+
+    my $table_name = sprintf(
+        q|%s_data|,
+        $self->{table_name},
+    );
+
+    my $tbl_query = $self->{pg_fdw_node}->{dbh}->prepare(
+        sprintf(
+            <<EO_SQL,
+CREATE TABLE %s (
+  id        INT NOT NULL PRIMARY KEY,
+  blob_type BLOB SUB_TYPE TEXT DEFAULT NULL
+)
+EO_SQL
+            $table_name,
+        ),
+    );
+
+    $tbl_query->execute();
+    $tbl_query->finish();
+
+    # Create PostgreSQL foreign table
+
+    $self->safe_psql(
+        sprintf(
+            <<EO_SQL,
+CREATE FOREIGN TABLE %s (
+  id        INT NOT NULL,
+  blob_type TEXT DEFAULT NULL
+)
+  SERVER fb_test
+  OPTIONS (table_name '%s')
+EO_SQL
+            $table_name,
+            $table_name,
+        ),
+    );
+
+    return $table_name;
 }
 
 

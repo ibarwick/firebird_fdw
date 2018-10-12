@@ -29,8 +29,8 @@ $pg_node->start();
 
 my $pg_db = FirebirdFDWDB->new($pg_node);
 
-# Get version
-# -----------
+# Get PostgreSQL version
+# ----------------------
 
 my $version = $pg_db->version();
 if ($version < 90400) {
