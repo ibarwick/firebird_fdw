@@ -171,14 +171,14 @@ Features
 - pushdown of some `WHERE` clause conditions to Firebird (including translation
   of built-in functions)
 - Connection caching
+- Supports triggers on foreign tables (PostgreSQL 9.4 and later)
 - Supports `IMPORT FOREIGN SCHEMA` (PostgreSQL 9.5 and later)
-
 
 Limitations
 -----------
 
 - Works with Firebird 3.x, but does not yet support any 3.x features
-- No support for Firebird datatypes (`BLOB`, `ARRAY`)
+- No support for Firebird `ARRAY` datatype
 - Display of messages returned by Firebird is not very pretty
   (this has been improved somewhat)
 
@@ -189,7 +189,8 @@ TAP tests
 Simple TAP tests are provided in the `t/` directory. These require a running
 Firebird database to be available; provide connection details for this with
 the standard Firebird environment variables `ISC_DATABASE`, `ISC_USER` and
-`ISC_PASSWORD`.
+`ISC_PASSWORD`. Additionally, PostgreSQL must have been compiled with
+the `--enable-tap-tests` option.
 
 Run with
 
@@ -226,6 +227,9 @@ Useful links
 * Source
  - https://github.com/ibarwick/firebird_fdw (public mirror)
  - http://pgxn.org/dist/firebird_fdw/
+
+* Blog (including release notes)
+ - http://sql-info.de/postgresql/firebird-fdw/index.html
 
 * General FDW Documentation
  - http://www.postgresql.org/docs/current/interactive/ddl-foreign-data.html
