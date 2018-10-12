@@ -31,7 +31,7 @@
 
 #include "libfq.h"
 
-#define FIREBIRD_FDW_VERSION 400
+#define FIREBIRD_FDW_VERSION 500
 
 #define FB_FDW_LOGPREFIX "[firebird_fdw] "
 #define FB_FDW_LOGPREFIX_LEN strlen(FB_FDW_LOGPREFIX)
