@@ -6,7 +6,7 @@
  *
  * This software is released under the PostgreSQL Licence
  *
- * Author: Ian Barwick <barwick@sql-info.de>
+ * Author: Ian Barwick <barwick@gmail.com>
  *
  * Public repository: https://github.com/ibarwick/firebird_fdw
  *
@@ -1287,7 +1287,10 @@ firebirdIsForeignRelUpdatable(Relation rel)
 		DefElem	   *def = (DefElem *) lfirst(lc);
 
 		if (strcmp(def->defname, "updatable") == 0)
+		{
 			updatable = defGetBoolean(def);
+			break;
+		}
 	}
 
 	/* Table setting overrides server setting */
@@ -1297,7 +1300,10 @@ firebirdIsForeignRelUpdatable(Relation rel)
 		DefElem	   *def = (DefElem *) lfirst(lc);
 
 		if (strcmp(def->defname, "updatable") == 0)
+		{
 			updatable = defGetBoolean(def);
+			break;
+		}
 	}
 
 	return updatable ?

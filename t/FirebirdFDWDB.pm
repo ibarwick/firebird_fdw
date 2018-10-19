@@ -71,6 +71,20 @@ EO_SQL
 }
 
 
+sub dbname {
+    $self->{dbname};
+}
+
+sub psql {
+    my $self = shift;
+    my $sql = shift;
+
+    $self->{pg_fdw_node}->psql(
+        $self->{dbname},
+        $sql,
+    );
+}
+
 sub safe_psql {
     my $self = shift;
     my $sql = shift;
@@ -97,6 +111,7 @@ EO_SQL
 
 sub init_table {
     my $self = shift;
+    my %table_options = @_;
 
     # Create Firebird table
 
@@ -118,21 +133,35 @@ EO_SQL
 
     # Create PostgreSQL foreign table
 
-    $self->safe_psql(
-        sprintf(
-            <<EO_SQL,
+    my @options = ();
+
+    push @options, sprintf(
+        q|table_name '%s'|,
+        $self->{table_name},
+    );
+
+    if (defined($table_options{updatable})) {
+        push @options, sprintf(
+            q|updatable '%s'|,
+            $table_options{updatable},
+        );
+    }
+
+    my $sql = sprintf(
+        <<EO_SQL,
 CREATE FOREIGN TABLE %s (
   lang_id                         CHAR(2) NOT NULL,
   name_english                    VARCHAR(64) NOT NULL,
   name_native                     VARCHAR(64) NOT NULL
 )
   SERVER fb_test
-  OPTIONS (table_name '%s')
+  OPTIONS (%s)
 EO_SQL
-            $self->{table_name},
-            $self->{table_name},
-        ),
+        $self->{table_name},
+        join(",\n", @options),
     );
+
+    $self->safe_psql($sql);
 
     return $self->{table_name};
 }
