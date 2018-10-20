@@ -759,7 +759,7 @@ firebirdGetForeignPlan(PlannerInfo *root,
 				   &retrieved_attrs, &db_key_used);
 
 	if (remote_conds)
-		buildWhereClause(&sql, root, baserel, remote_conds, true, &params_list);
+		buildWhereClause(&sql, root, baserel, remote_conds, true, &params_list, FQserverVersion(fdw_state->conn));
 
 	elog(DEBUG2, "db_key_used? %c", db_key_used == true ? 'Y' : 'N');
 
@@ -2449,6 +2449,8 @@ convert_prep_stmt_params(FirebirdFdwModifyState *fmstate,
 			{
 				/* include/fmgr.h:extern char *OutputFunctionCall(FmgrInfo *flinfo, Datum val); */
 				/* backend/utils/fmgr/fmgr.c */
+
+				// XXX need to determine type, if BOOLOID convert to TRUE/FALSE
 
 				p_values[pindex] = OutputFunctionCall(&fmstate->p_flinfo[pindex],
 													  value);

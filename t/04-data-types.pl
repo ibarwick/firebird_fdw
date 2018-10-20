@@ -10,7 +10,7 @@ use warnings;
 use Cwd;
 use Config;
 use TestLib;
-use Test::More tests => 1;
+use Test::More tests => 2;
 
 use FirebirdFDWNode;
 use FirebirdFDWDB;
@@ -34,7 +34,7 @@ my $table_name = $pg_db->init_data_table();
 # 1) Test BLOB type
 # -----------------
 
-my $insert_sql = sprintf(
+my $blob_insert_sql = sprintf(
     <<EO_SQL,
 INSERT INTO %s (id, blob_type)
          VALUES(1, 'foo\nbar\nテスト');
@@ -42,7 +42,7 @@ EO_SQL
     $table_name,
 );
 
-$pg_db->safe_psql($insert_sql);
+$pg_db->safe_psql($blob_insert_sql);
 
 my $q1_sql = sprintf(
     q|SELECT blob_type FROM %s WHERE id = 1|,
@@ -61,6 +61,33 @@ is (
     $q1_res,
     qq/foo\nbar\nテスト/,
     q|Check BLOB (subtype TEXT)|,
+);
+
+
+# 1) Test BOOLEAN type
+# ---------------------
+
+my $bool_insert_sql = sprintf(
+    <<EO_SQL,
+INSERT INTO %s (id, bool_type)
+         VALUES(2, TRUE), (3, FALSE);
+EO_SQL
+    $table_name,
+);
+
+$pg_db->safe_psql($bool_insert_sql);
+
+my $q2_sql = sprintf(
+    q|SELECT id, bool_type FROM %s WHERE id IN (2,3) ORDER BY id|,
+    $table_name,
+);
+
+my $q2_res = $pg_db->safe_psql($q2_sql);
+
+is (
+    $q2_res,
+    qq/2|t\n3|f/,
+    q|Check BOOLEAN|,
 );
 
 

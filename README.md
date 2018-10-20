@@ -177,7 +177,7 @@ Features
 Limitations
 -----------
 
-- Works with Firebird 3.x, but does not yet support any 3.x features
+- Works with Firebird 3.x, but does not yet support all 3.x features
 - No support for Firebird `ARRAY` datatype
 - Display of messages returned by Firebird is not very pretty
   (this has been improved somewhat)

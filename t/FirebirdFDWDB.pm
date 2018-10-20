@@ -180,7 +180,8 @@ sub init_data_table {
             <<EO_SQL,
 CREATE TABLE %s (
   id        INT NOT NULL PRIMARY KEY,
-  blob_type BLOB SUB_TYPE TEXT DEFAULT NULL
+  blob_type BLOB SUB_TYPE TEXT DEFAULT NULL,
+  bool_type BOOLEAN DEFAULT NULL
 )
 EO_SQL
             $table_name,
@@ -197,7 +198,8 @@ EO_SQL
             <<EO_SQL,
 CREATE FOREIGN TABLE %s (
   id        INT NOT NULL,
-  blob_type TEXT DEFAULT NULL
+  blob_type TEXT DEFAULT NULL,
+  bool_type BOOLEAN DEFAULT NULL
 )
   SERVER fb_test
   OPTIONS (table_name '%s')

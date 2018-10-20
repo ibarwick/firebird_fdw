@@ -60,6 +60,7 @@ typedef struct convert_expr_cxt
 	RelOptInfo *foreignrel;		/* the foreign relation we are planning for */
 	StringInfo	buf;			/* cumulative final output */
 	List	  **params_list;	/* exprs that will become remote Params */
+	int firebird_version;		/* Firebird version integer provided by libfq (e.g. 20501) */
 } convert_expr_cxt;
 
 static char *convertDatum(Datum datum, Oid type);
@@ -288,7 +289,8 @@ buildWhereClause(StringInfo output,
 				 RelOptInfo *baserel,
 				 List *exprs,
 				 bool is_first,
-				 List **params)
+				 List **params,
+				 int firebird_version)
 {
 	convert_expr_cxt context;
 	ListCell   *lc;
@@ -301,6 +303,7 @@ buildWhereClause(StringInfo output,
 	context.foreignrel = baserel;
 	context.buf = output;
 	context.params_list = params;
+	context.firebird_version = firebird_version;
 
 	foreach (lc, exprs)
 	{
@@ -451,6 +454,18 @@ convertDatum(Datum datum, Oid type)
 			str = DatumGetCString(OidFunctionCall1(typoutput, datum));
 			initStringInfo(&result);
 			appendStringInfo(&result, "'%s'", str);
+			break;
+
+		case BOOLOID:
+			str = DatumGetCString(OidFunctionCall1(typoutput, datum));
+			initStringInfo(&result);
+
+			if (*str == 't')
+				appendStringInfoString(&result, "TRUE");
+			else
+				appendStringInfoString(&result, "FALSE");
+
+			elog(INFO, "BOOL! '%s' %s", str, result.data);
 			break;
 
 		default:
@@ -704,15 +719,29 @@ convertConst(Const *node, convert_expr_cxt *context, char **result)
 			appendStringInfoString(&buf, extval);
 			break;
 
+		/* BOOL supported from Firebird 3.0 */
+		case BOOLOID:
+			if (context->firebird_version >= 30000)
+			{
+				if (strcmp(extval, "t") == 0)
+					appendStringInfoString(&buf, "true");
+				else
+					appendStringInfoString(&buf, "false");
+				break;
+			}
+			else
+			{
+				ereport(ERROR,
+						(errmsg("BOOLEAN datatype supported from Firebird 3.0")));
+			}
+			break;
+
 		/* Firebird does not support these types */
 		case OIDOID:
 		case BITOID:
 		case VARBITOID:
-		/* BOOL will be supported from Firebird 3.0 */
-		case BOOLOID:
 			ereport(ERROR,
-					(errmsg("Unsupported data type %i", node->consttype))
-				);
+					(errmsg("Unsupported data type %i", node->consttype)));
 			break;
 		default:
 			convertStringLiteral(&buf, extval);
@@ -2005,6 +2034,8 @@ getFirebirdColumnName(Oid foreigntableid, int varattno)
  * _dataTypeSQL()
  *
  * Generate query to get column metadata for a table
+ *
+ * TODO: support BLOB (subtype TEXT)
  */
 char *
 _dataTypeSQL(char *table_name)
@@ -2049,6 +2080,7 @@ _dataTypeSQL(char *table_name)
 "            WHEN 13  THEN 'TIME'\n"
 "            WHEN 35  THEN 'TIMESTAMP'\n"
 "            WHEN 37  THEN 'VARCHAR(' || f.rdb$field_length|| ')'\n"
+"            WHEN 23  THEN 'BOOLEAN' \n"
 "            ELSE 'UNKNOWN'\n"
 "          END AS data_type,\n"
 "         COALESCE(CAST(rf.rdb$default_source AS VARCHAR(80)), '') \n"
