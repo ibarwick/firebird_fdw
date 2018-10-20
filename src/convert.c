@@ -423,14 +423,14 @@ convertDatum(Datum datum, Oid type)
 			str = DatumGetCString(OidFunctionCall1(typoutput, datum));
 			/* quote string */
 			initStringInfo(&result);
-			appendStringInfo(&result, "'");
+			appendStringInfoChar(&result, '\'');
 			for (p=str; *p; ++p)
 			{
 				if (*p == '\'')
-					appendStringInfo(&result, "'");
-				appendStringInfo(&result, "%c", *p);
+					appendStringInfoChar(&result, '\'');
+				appendStringInfoChar(&result, *p);
 			}
-			appendStringInfo(&result, "'");
+			appendStringInfoChar(&result, '\'');
 			break;
 
 		case INT8OID:
@@ -442,7 +442,7 @@ convertDatum(Datum datum, Oid type)
 		case NUMERICOID:
 			str = DatumGetCString(OidFunctionCall1(typoutput, datum));
 			initStringInfo(&result);
-			appendStringInfo(&result, "%s", str);
+			appendStringInfoString(&result, str);
 			break;
 
 		case TIMESTAMPOID:
@@ -528,8 +528,7 @@ convertRelation(StringInfo buf, Relation rel)
 	if (relname == NULL)
 		relname = RelationGetRelationName(rel);
 
-	appendStringInfo(buf, "%s",
-					 quote_identifier(relname));
+	appendStringInfoString(buf, quote_identifier(relname));
 }
 
 

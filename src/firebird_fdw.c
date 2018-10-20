@@ -2323,7 +2323,7 @@ List *firebirdImportForeignSchema(ImportForeignSchemaStmt *stmt,
 
 	/* Query to list all non-system tables */
 	initStringInfo(&table_query);
-	appendStringInfo(&table_query,
+	appendStringInfoString(&table_query,
 "   SELECT TRIM(LOWER(rdb$relation_name)) AS table_name \n"
 "     FROM rdb$relations  \n"
 "    WHERE rdb$view_blr IS NULL \n"
