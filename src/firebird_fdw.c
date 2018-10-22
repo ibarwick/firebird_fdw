@@ -2232,7 +2232,6 @@ fbAcquireSampleRowsFunc(Relation relation, int elevel,
 		ereport(ERROR,
 				(errcode(ERRCODE_FDW_TABLE_NOT_FOUND),
 				 errmsg("Unable to analyze foreign table %s", fdw_state->svr_table)));
-		return 0;
 	}
 
 	result_rows = FQntuples(res);
@@ -2299,14 +2298,14 @@ fbAcquireSampleRowsFunc(Relation relation, int elevel,
  *
  * TODO:
  *  - preserve quoted names
- *  - verify data types
+ *  - verify data types, warn about ones which can't be imported
  *  - verify object names (FB is generally somewhat stricter than Pg,
  *    so range of names valid in FB but not in Pg should be fairly small)
  *  - warn about comments
- *  - move code to convert.c
  */
-List *firebirdImportForeignSchema(ImportForeignSchemaStmt *stmt,
-								  Oid serverOid)
+List *
+firebirdImportForeignSchema(ImportForeignSchemaStmt *stmt,
+							Oid serverOid)
 {
 	ForeignServer *server;
 	UserMapping *user;
@@ -2324,12 +2323,11 @@ List *firebirdImportForeignSchema(ImportForeignSchemaStmt *stmt,
 	/* Query to list all non-system tables */
 	initStringInfo(&table_query);
 	appendStringInfoString(&table_query,
-"   SELECT TRIM(LOWER(rdb$relation_name)) AS table_name \n"
-"     FROM rdb$relations  \n"
-"    WHERE rdb$view_blr IS NULL \n"
-"      AND rdb$system_flag = 0 \n"
-" ORDER BY 1"
-		);
+						   "   SELECT TRIM(LOWER(rdb$relation_name)) AS table_name \n"
+						   "     FROM rdb$relations  \n"
+						   "    WHERE rdb$view_blr IS NULL \n"
+						   "      AND rdb$system_flag = 0 \n"
+						   " ORDER BY 1");
 
 	/* Loop through tables */
 	res = FQexec(conn, table_query.data);
@@ -2340,7 +2338,6 @@ List *firebirdImportForeignSchema(ImportForeignSchemaStmt *stmt,
 		ereport(ERROR,
 				(errcode(ERRCODE_FDW_ERROR),
 				 errmsg("Unable to execute metadata query on %s", server->servername)));
-		return 0;
 	}
 
 	elog(DEBUG1, "%s: %i", server->servername, FQntuples(res));
@@ -2365,16 +2362,21 @@ List *firebirdImportForeignSchema(ImportForeignSchemaStmt *stmt,
 			FQclear(colres);
 			ereport(ERROR,
 					(errcode(ERRCODE_FDW_ERROR),
-					 errmsg("Unable to execute metadata query on %s", server->servername)));
-			return 0;
+					 errmsg("Unable to execute metadata query on %s for table %s",
+							server->servername,
+							table_name)));
 		}
 
-		foreign_table_definition = convertFirebirdTable(server->servername, table_name, colres);
+		if (IsImportableForeignTable(table_name, stmt))
+		{
+			foreign_table_definition = convertFirebirdTable(server->servername, table_name, colres);
 
-		firebirdTables = lappend(firebirdTables, foreign_table_definition);
+			firebirdTables = lappend(firebirdTables, foreign_table_definition);
+		}
 	}
 
 	FQclear(res);
+
 	return firebirdTables;
 }
 #endif

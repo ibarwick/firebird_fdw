@@ -340,9 +340,8 @@ convertFirebirdTable(char *server_name, char *table_name, FBresult *colres)
 
 	initStringInfo(&create_table);
 	appendStringInfo(&create_table,
-"CREATE FOREIGN TABLE %s (\n",
-					 table_name
-		);
+					 "CREATE FOREIGN TABLE %s (\n",
+					 table_name);
 
 	coltotal = FQntuples(colres);
 	for (colnr = 0; colnr < coltotal; colnr++)
@@ -368,23 +367,22 @@ convertFirebirdTable(char *server_name, char *table_name, FBresult *colres)
 		/* NOT NULL */
 		if (FQgetvalue(colres, colnr, 4) != NULL)
 		{
-			appendStringInfo(&create_table, " NOT NULL");
+			appendStringInfoString(&create_table, " NOT NULL");
 		}
 
 		if (colnr < (coltotal -1))
 		{
-			appendStringInfo(&create_table, ",\n");
+			appendStringInfoString(&create_table, ",\n");
 		}
 		else
 		{
-			appendStringInfo(&create_table, "\n");
+			appendStringInfoString(&create_table, "\n");
 		}
 	}
 
 	appendStringInfo(&create_table,
-") SERVER %s",
-					 server_name
-		);
+					 ") SERVER %s",
+					 server_name);
 
 	elog(DEBUG1, "%s", create_table.data);
 

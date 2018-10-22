@@ -13,10 +13,23 @@ not all features of the PostgreSQL FDW API are supported.
 
 It was written for Firebird 2.5 and will probably work with Firebird 2.0 or
 later. It should work with earlier versions if the `disable_pushdowns` option
-is set (see below). Currently (2018-09) it works with Firebird 3.0.x but has
+is set (see below). Currently (2018-10) it works with Firebird 3.0.x but has
 not yet been extensively tested with that version, and does not take advantage
-of any new Firebird 3 features. This will hopefully be addressed in future
+of all new Firebird 3 features. This will hopefully be addressed in future
 releases.
+
+Features
+--------
+
+- `UPDATE` and `DELETE` statements use Firebird's row identifier `RDB$DB_KEY`
+  to operate on arbitrary rows
+- `ANALYZE` support
+- pushdown of some `WHERE` clause conditions to Firebird (including translation
+  of built-in functions)
+- Connection caching
+- Supports triggers on foreign tables (PostgreSQL 9.4 and later)
+- Supports `IMPORT FOREIGN SCHEMA` (PostgreSQL 9.5 and later)
+
 
 Supported platforms
 -------------------
@@ -104,8 +117,8 @@ any columns, `firebird_fdw`  will raise an error as soon as any operations
 are carried out on it.
 
 
-Example
--------
+Examples
+--------
 
 Install the extension:
 
@@ -161,18 +174,15 @@ Create a foreign table as a Firebird query:
       query 'SELECT id, val FROM fdw_test'
     );
 
+Import a Firebird schema:
 
-Features
---------
+    IMPORT FOREIGN SCHEMA someschema
+      LIMIT TO (sometable)
+      FROM SERVER firebird_server
+      INTO public;
 
-- `UPDATE` and `DELETE` statements use Firebird's row identifier `RDB$DB_KEY`
-  to operate on arbitrary rows
-- `ANALYZE` support
-- pushdown of some `WHERE` clause conditions to Firebird (including translation
-  of built-in functions)
-- Connection caching
-- Supports triggers on foreign tables (PostgreSQL 9.4 and later)
-- Supports `IMPORT FOREIGN SCHEMA` (PostgreSQL 9.5 and later)
+Note: `someschema` has no particular meaning and can be set to an arbitrary value.
+
 
 Limitations
 -----------
@@ -245,4 +255,3 @@ Useful links
 
 If you appreciate PostgreSQL's `psql` client, why not try `fbsql`, a `psql`-style
 client for Firebird? See: https://github.com/ibarwick/fbsql for details.
-
