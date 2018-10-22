@@ -184,6 +184,7 @@ Import a Firebird schema:
 Note: `someschema` has no particular meaning and can be set to an arbitrary value.
 
 
+
 Limitations
 -----------
 
@@ -242,12 +243,12 @@ Useful links
  - http://sql-info.de/postgresql/firebird-fdw/index.html
 
 * General FDW Documentation
- - http://www.postgresql.org/docs/current/interactive/ddl-foreign-data.html
- - http://www.postgresql.org/docs/current/interactive/sql-createforeigndatawrapper.html
- - http://www.postgresql.org/docs/current/interactive/sql-createforeigntable.html
- - http://www.postgresql.org/docs/current/interactive/fdwhandler.html
- - http://www.postgresql.org/docs/current/interactive/postgres-fdw.html
- - http://www.postgresql.org/docs/devel/static/sql-importforeignschema.html
+ - https://www.postgresql.org/docs/current/static/ddl-foreign-data.html
+ - https://www.postgresql.org/docs/current/static/sql-createforeigndatawrapper.html
+ - https://www.postgresql.org/docs/current/static/sql-createforeigntable.html
+ - https://www.postgresql.org/docs/current/static/sql-importforeignschema.html
+ - https://www.postgresql.org/docs/current/static/fdwhandler.html
+ - https://www.postgresql.org/docs/current/static/postgres-fdw.html
 
 * Other FDWs
  - https://wiki.postgresql.org/wiki/Fdw
