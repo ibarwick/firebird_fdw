@@ -2331,6 +2331,7 @@ firebirdImportForeignSchema(ImportForeignSchemaStmt *stmt,
 
 	/* Loop through tables */
 	res = FQexec(conn, table_query.data);
+	pfree(table_query.data);
 
 	if (FQresultStatus(res) != FBRES_TUPLES_OK)
 	{
@@ -2347,8 +2348,6 @@ firebirdImportForeignSchema(ImportForeignSchemaStmt *stmt,
 		char *table_name;
 		char *column_query;
 		FBresult *colres;
-
-		char *foreign_table_definition;
 
 		table_name = FQgetvalue(res, row, 0);
 
@@ -2369,7 +2368,8 @@ firebirdImportForeignSchema(ImportForeignSchemaStmt *stmt,
 
 		if (IsImportableForeignTable(table_name, stmt))
 		{
-			foreign_table_definition = convertFirebirdTable(server->servername, table_name, colres);
+			char *foreign_table_definition = convertFirebirdTable(server->servername,
+																  table_name, colres);
 
 			firebirdTables = lappend(firebirdTables, foreign_table_definition);
 		}
