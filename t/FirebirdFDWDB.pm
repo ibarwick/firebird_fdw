@@ -169,6 +169,9 @@ EO_SQL
 
 sub init_data_table {
     my $self = shift;
+    my %params = @_;
+
+    $params{firebird_only} //= 0;
 
     my $table_name = sprintf(
         q|%s_data|,
@@ -190,6 +193,8 @@ EO_SQL
 
     $tbl_query->execute();
     $tbl_query->finish();
+
+    return $table_name if $params{firebird_only} == 1;
 
     # Create PostgreSQL foreign table
 
