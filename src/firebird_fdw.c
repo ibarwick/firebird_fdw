@@ -393,8 +393,7 @@ getFdwState(Oid foreigntableid)
 		foreigntableid,
 		&fdw_state->svr_query,
 		&fdw_state->svr_table,
-		&fdw_state->disable_pushdowns
-		);
+		&fdw_state->disable_pushdowns);
 
 	return fdw_state;
 }
@@ -745,7 +744,7 @@ firebirdGetForeignPlan(PlannerInfo *root,
 			elog(DEBUG1, " - local");
 			local_exprs = lappend(local_exprs, rinfo->clause);
 		}
-				else
+		else
 		{
 			Assert(isFirebirdExpr(root, baserel, rinfo->clause, FQserverVersion(fdw_state->conn)));
 			elog(DEBUG1, " - remote, but not a member of fdw_state->remote_conds");
@@ -769,8 +768,7 @@ firebirdGetForeignPlan(PlannerInfo *root,
 	 */
 	fdw_private = list_make3(makeString(sql.data),
 							 retrieved_attrs,
-							 makeInteger(db_key_used)
-		);
+							 makeInteger(db_key_used));
 
 	/* Create the ForeignScan node */
 #if (PG_VERSION_NUM >= 90500)
@@ -893,8 +891,7 @@ firebirdBeginForeignScan(ForeignScanState *node,
 	firebirdGetOptions(foreigntableid,
 					   &svr_query,
 					   &svr_table,
-					   &disable_pushdowns
-		);
+					   &disable_pushdowns);
 
 	/* Initialise FDW state */
 	fdw_state = (FirebirdFdwScanState *) palloc0(sizeof(FirebirdFdwScanState));
@@ -1140,8 +1137,7 @@ firebirdIterateForeignScan(ForeignScanState *node)
 		convertDbKeyValue(
 			FQgetvalue(fdw_state->result, fdw_state->row, last_field - 1),
 			&key_ctid_part,
-			&key_oid_part
-			);
+			&key_oid_part);
 
 		/* Ensure this tuple has an OID, which we will use in conjunction with
 		 * the CTID to smuggle through Firebird's RDB$DB_KEY value
@@ -1157,8 +1153,7 @@ firebirdIterateForeignScan(ForeignScanState *node)
 
 	tuple = BuildTupleFromCStrings(
 		attinmeta,
-		values
-		);
+		values);
 
 	pfree(values);
 
@@ -2320,7 +2315,11 @@ firebirdImportForeignSchema(ImportForeignSchemaStmt *stmt,
 	user = GetUserMapping(GetUserId(), server->serverid);
 	conn = firebirdInstantiateConnection(server, user);
 
-	/* Query to list all non-system tables */
+	/* Query to list all non-system tables
+	 *
+	 * TODO: use "stmt->list_type" and "stmt->table_list" to
+	 * pre-filter tables
+	 */
 	initStringInfo(&table_query);
 	appendStringInfoString(&table_query,
 						   "   SELECT TRIM(LOWER(rdb$relation_name)) AS table_name \n"
@@ -2556,10 +2555,10 @@ store_returning_result(FirebirdFdwModifyState *fmstate,
 		HeapTuple	newtup;
 
 		newtup = create_tuple_from_result(res, 0,
-											fmstate->rel,
-											fmstate->attinmeta,
-											fmstate->retrieved_attrs,
-											fmstate->temp_cxt);
+										  fmstate->rel,
+										  fmstate->attinmeta,
+										  fmstate->retrieved_attrs,
+										  fmstate->temp_cxt);
 		/* tuple will be deleted when it is cleared from the slot */
 		ExecStoreTuple(newtup, slot, InvalidBuffer, true);
 	}
@@ -2693,10 +2692,10 @@ extractDbKeyParts(TupleTableSlot *planSlot,
 {
 	bool		isNull;
 
-	/* src/include/executor/executor.h:extern Datum ExecGetJunkAttribute(TupleTableSlot *slot, AttrNumber attno, */
 	*datum_ctid = ExecGetJunkAttribute(planSlot,
 									  fmstate->db_keyAttno_CtidPart,
 									  &isNull);
+
 	/* shouldn't ever get a null result... */
 	if (isNull)
 		elog(ERROR, "db_key (CTID part) is NULL");
@@ -2704,6 +2703,8 @@ extractDbKeyParts(TupleTableSlot *planSlot,
 	*datum_oid = ExecGetJunkAttribute(planSlot,
 									 fmstate->db_keyAttno_OidPart,
 									 &isNull);
+
+	/* shouldn't ever get a null result... */
 	if (isNull)
 		elog(ERROR, "db_key (OID part) is NULL");
 }
