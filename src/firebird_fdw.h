@@ -211,7 +211,7 @@ getFirebirdColumnName(Oid foreigntableid, int varattno);
 
 #if (PG_VERSION_NUM >= 90500)
 extern char *
-convertFirebirdTable(char *server_name, char *table_name, FBresult *colres);
+convertFirebirdTable(char *server_name, char *schema, char *table_name, FBresult *colres);
 extern char *
 _dataTypeSQL(char *table_name);
 #endif

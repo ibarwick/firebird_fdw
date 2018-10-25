@@ -332,15 +332,18 @@ buildWhereClause(StringInfo output,
  * Convert table to PostgreSQL format to implement IMPORT FOREIGN SCHEMA
  */
 char *
-convertFirebirdTable(char *server_name, char *table_name, FBresult *colres)
+convertFirebirdTable(char *server_name, char *schema, char *table_name, FBresult *colres)
 {
 	int colnr, coltotal;
 
 	StringInfoData create_table;
 
 	initStringInfo(&create_table);
+
+	/* XXX consider quoting schema and table names */
 	appendStringInfo(&create_table,
-					 "CREATE FOREIGN TABLE %s (\n",
+					 "CREATE FOREIGN TABLE %s.%s (\n",
+					 schema,
 					 table_name);
 
 	coltotal = FQntuples(colres);
@@ -354,8 +357,7 @@ convertFirebirdTable(char *server_name, char *table_name, FBresult *colres)
 		appendStringInfo(&create_table,
 						 "	%s %s",
 						 FQgetvalue(colres, colnr, 0),
-						 datatype
-			);
+						 datatype);
 
 		/* Default value */
 		default_value = FQgetvalue(colres, colnr, 3);

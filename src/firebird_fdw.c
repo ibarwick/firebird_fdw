@@ -2369,6 +2369,7 @@ firebirdImportForeignSchema(ImportForeignSchemaStmt *stmt,
 		if (IsImportableForeignTable(table_name, stmt))
 		{
 			char *foreign_table_definition = convertFirebirdTable(server->servername,
+																  stmt->local_schema,
 																  table_name, colres);
 
 			firebirdTables = lappend(firebirdTables, foreign_table_definition);
