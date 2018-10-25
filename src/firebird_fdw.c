@@ -1177,8 +1177,11 @@ firebirdIterateForeignScan(ForeignScanState *node)
 		HeapTupleSetOid(tuple, (Oid)key_oid_part);
 	}
 
+#if (PG_VERSION_NUM >= 120000)
+	ExecStoreHeapTuple(tuple, slot, false);
+#else
 	ExecStoreTuple(tuple, slot, InvalidBuffer, false);
-
+#endif
 	fdw_state->row++;
 
 	elog(DEBUG2, "leaving function %s", __func__);
@@ -2560,7 +2563,11 @@ store_returning_result(FirebirdFdwModifyState *fmstate,
 										  fmstate->retrieved_attrs,
 										  fmstate->temp_cxt);
 		/* tuple will be deleted when it is cleared from the slot */
+#if (PG_VERSION_NUM >= 120000)
+		ExecStoreHeapTuple(newtup, slot, true);
+#else
 		ExecStoreTuple(newtup, slot, InvalidBuffer, true);
+#endif
 	}
 	PG_CATCH();
 	{
