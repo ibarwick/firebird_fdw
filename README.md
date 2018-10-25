@@ -192,6 +192,8 @@ Limitations
 - No support for Firebird `ARRAY` datatype
 - Display of messages returned by Firebird is not very pretty
   (this has been improved somewhat)
+- No consideration given to object names which may require
+  quoting when passed between PostgreSQL and Firebird
 
 
 TAP tests
