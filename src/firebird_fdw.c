@@ -2318,6 +2318,8 @@ firebirdImportForeignSchema(ImportForeignSchemaStmt *stmt,
 	char **p_values;
 
 	bool		import_not_null = true;
+	bool		import_views = true;
+	bool		verbose = false;
 
 	/* Parse statement options */
 	foreach(lc, stmt->options)
@@ -2326,6 +2328,10 @@ firebirdImportForeignSchema(ImportForeignSchemaStmt *stmt,
 
 		if (strcmp(def->defname, "import_not_null") == 0)
 			import_not_null = defGetBoolean(def);
+		else if (strcmp(def->defname, "import_views") == 0)
+			import_views = defGetBoolean(def);
+		else if (strcmp(def->defname, "verbose") == 0)
+			verbose = defGetBoolean(def);
 		else
 			ereport(ERROR,
 					(errcode(ERRCODE_FDW_INVALID_OPTION_NAME),
@@ -2337,15 +2343,18 @@ firebirdImportForeignSchema(ImportForeignSchemaStmt *stmt,
 	conn = firebirdInstantiateConnection(server, user);
 
 	/*
-	 * Query to list all non-system tables, potentially filtered by the values
-	 * specified in IMPORT FOREIGN SCHEMA's "LIMIT TO" or "EXCEPT" clauses.
+	 * Query to list all non-system tables/views, potentially filtered by the values
+	 * specified in IMPORT FOREIGN SCHEMA's "LIMIT TO" or "EXCEPT" clauses. We won't
+	 * exclude views here so we can warn about any inclcded in "LIMIT TO"/"EXCEPT", which
+	 * will be excluded by "import_views == false".
 	 */
 	initStringInfo(&table_query);
 	appendStringInfoString(&table_query,
-						   "   SELECT TRIM(LOWER(rdb$relation_name)) AS table_name \n"
+						   "   SELECT TRIM(LOWER(rdb$relation_name)) AS table_name,  \n"
+						   "          CASE WHEN rdb$view_blr IS NULL THEN 'r' ELSE 'v' END AS type \n"
 						   "     FROM rdb$relations  \n"
-						   "    WHERE rdb$view_blr IS NULL \n"
-						   "      AND rdb$system_flag = 0 \n");
+						   "    WHERE rdb$system_flag = 0 \n");
+
 
 	/* Apply restrictions for LIMIT TO and EXCEPT */
 	if (stmt->list_type == FDW_IMPORT_SCHEMA_LIMIT_TO ||
@@ -2379,6 +2388,7 @@ firebirdImportForeignSchema(ImportForeignSchemaStmt *stmt,
 		foreach(lc, stmt->table_list)
 		{
 			RangeVar   *rv = (RangeVar *) lfirst(lc);
+
 			p_values[i++] = pstrdup(rv->relname);
 		}
 
@@ -2429,19 +2439,36 @@ firebirdImportForeignSchema(ImportForeignSchemaStmt *stmt,
 
 	elog(DEBUG3, "returned tuples: %i", FQntuples(res));
 
+
+	if (FQntuples(res) == 0)
+	{
+		elog(WARNING, "no objects available for import from server %s",
+			 server->servername);
+	}
+
 	for (row = 0; row < FQntuples(res); row++)
 	{
-		char *table_name;
+		char *object_name;
+		char *object_type;
 		char *column_query;
 		FBresult *colres;
 		char *foreign_table_definition;
 
-		table_name = FQgetvalue(res, row, 0);
+		object_name = FQgetvalue(res, row, 0);
+		object_type = FQgetvalue(res, row, 1);
 
-		elog(DEBUG3, "table: %s", table_name);
+		elog(DEBUG3, "object: %s %c", object_name, object_type[0]);
+
+		if (import_views == false && object_type[0] == 'v')
+		{
+			if (stmt->list_type == FDW_IMPORT_SCHEMA_LIMIT_TO)
+				elog(NOTICE,
+					 "skipping view '%s' specified in LIMIT TO", object_name);
+			continue;
+		}
 
 		/* List all columns for the table */
-		column_query = _dataTypeSQL(table_name);
+		column_query = _dataTypeSQL(object_name);
 		colres = FQexec(conn, column_query);
 
 		if (FQresultStatus(colres) != FBRES_TUPLES_OK)
@@ -2452,12 +2479,18 @@ firebirdImportForeignSchema(ImportForeignSchemaStmt *stmt,
 					(errcode(ERRCODE_FDW_ERROR),
 					 errmsg("Unable to execute metadata query on %s for table %s",
 							server->servername,
-							table_name)));
+							object_name)));
 		}
 
-		foreign_table_definition = convertFirebirdTable(server->servername,
-														stmt->local_schema,	table_name,
-														import_not_null, colres);
+		if (verbose == true)
+			elog(INFO,
+				 "importing %s '%s'",
+				 object_type[0] == 'r' ? "table" : "view",
+				 object_name);
+
+		foreign_table_definition = convertFirebirdObject(server->servername,
+														 stmt->local_schema, object_name, object_type[0],
+														 import_not_null, colres);
 
 		firebirdTables = lappend(firebirdTables, foreign_table_definition);
 	}

@@ -327,12 +327,12 @@ buildWhereClause(StringInfo output,
 
 #if (PG_VERSION_NUM >= 90500)
 /**
- * convertFirebirdTable()
+ * convertFirebirdObject()
  *
- * Convert table to PostgreSQL format to implement IMPORT FOREIGN SCHEMA
+ * Convert table or view to PostgreSQL format to implement IMPORT FOREIGN SCHEMA
  */
 char *
-convertFirebirdTable(char *server_name, char *schema, char *table_name, bool import_not_null, FBresult *colres)
+convertFirebirdObject(char *server_name, char *schema, char *object_name, char object_type, bool import_not_null, FBresult *colres)
 {
 	int colnr, coltotal;
 
@@ -344,13 +344,12 @@ convertFirebirdTable(char *server_name, char *schema, char *table_name, bool imp
 	appendStringInfo(&create_table,
 					 "CREATE FOREIGN TABLE %s.%s (\n",
 					 schema,
-					 table_name);
+					 object_name);
 
 	coltotal = FQntuples(colres);
 	for (colnr = 0; colnr < coltotal; colnr++)
 	{
 		char *datatype;
-		char *default_value;
 
 		/* Column name and datatype */
 		datatype = FQgetvalue(colres, colnr, 2);
@@ -359,20 +358,24 @@ convertFirebirdTable(char *server_name, char *schema, char *table_name, bool imp
 						 FQgetvalue(colres, colnr, 0),
 						 datatype);
 
-		/* Default value */
-		default_value = FQgetvalue(colres, colnr, 3);
-		if (strlen(default_value))
+		if (object_type == 'r')
 		{
-			appendStringInfo(&create_table, " %s", default_value);
+			/* Default value */
+			char *default_value = FQgetvalue(colres, colnr, 3);
+
+			if (strlen(default_value))
+			{
+				appendStringInfo(&create_table, " %s", default_value);
+			}
+
+			/* NOT NULL */
+			if (import_not_null == true && FQgetvalue(colres, colnr, 4) != NULL)
+			{
+				appendStringInfoString(&create_table, " NOT NULL");
+			}
 		}
 
-		/* NOT NULL */
-		if (import_not_null == true && FQgetvalue(colres, colnr, 4) != NULL)
-		{
-			appendStringInfoString(&create_table, " NOT NULL");
-		}
-
-		if (colnr < (coltotal -1))
+		if (colnr < (coltotal - 1))
 		{
 			appendStringInfoString(&create_table, ",\n");
 		}
