@@ -47,11 +47,19 @@ my $q1_sql = sprintf(
 
 my $q1_res = $pg_db->safe_psql($q1_sql);
 
-my $q1_expected = <<EO_TXT;
+my $q1_expected_output = {
+	2 => <<EO_TXT,
+id|integer||not null||
+blob_type|text||||
+EO_TXT
+	3 => <<EO_TXT,
 id|integer||not null||
 blob_type|text||||
 bool_type|boolean||||
 EO_TXT
+};
+
+my $q1_expected = $q1_expected_output->{$pg_node->{firebird_major_version}};
 
 chomp $q1_expected;
 

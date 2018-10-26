@@ -178,17 +178,32 @@ sub init_data_table {
         $self->{table_name},
     );
 
-    my $tbl_query = $self->{pg_fdw_node}->{dbh}->prepare(
-        sprintf(
+	my $fb_tables = {
+		2 => sprintf(
             <<EO_SQL,
 CREATE TABLE %s (
   id        INT NOT NULL PRIMARY KEY,
-  blob_type BLOB SUB_TYPE TEXT DEFAULT NULL,
-  bool_type BOOLEAN DEFAULT NULL
+  blob_type BLOB SUB_TYPE TEXT DEFAULT NULL
 )
 EO_SQL
             $table_name,
         ),
+		3 => sprintf(
+            <<EO_SQL,
+CREATE TABLE %s (
+  id        INT NOT NULL PRIMARY KEY,
+  blob_type BLOB SUB_TYPE TEXT DEFAULT NULL,
+  bool_type BOOLEAN DEFAULT NUL
+)
+EO_SQL
+            $table_name,
+        ),
+	};
+
+	my $fb_major_version = $self->{pg_fdw_node}->{firebird_major_version};
+
+    my $tbl_query = $self->{pg_fdw_node}->{dbh}->prepare(
+        $fb_tables->{$fb_major_version},
     );
 
     $tbl_query->execute();
@@ -198,18 +213,34 @@ EO_SQL
 
     # Create PostgreSQL foreign table
 
+	my $pg_column_defs = {
+		2 => sprintf(
+            <<EO_SQL,
+  id        INT NOT NULL,
+  blob_type TEXT DEFAULT NULL
+EO_SQL
+		),
+		3 => sprintf(
+            <<EO_SQL,
+  id        INT NOT NULL,
+  blob_type TEXT DEFAULT NULL,
+  bool_type BOOLEAN DEFAULT NULL
+EO_SQL
+		),
+	};
+
+
     $self->safe_psql(
         sprintf(
             <<EO_SQL,
 CREATE FOREIGN TABLE %s (
-  id        INT NOT NULL,
-  blob_type TEXT DEFAULT NULL,
-  bool_type BOOLEAN DEFAULT NULL
+%s
 )
   SERVER fb_test
   OPTIONS (table_name '%s')
 EO_SQL
             $table_name,
+			$pg_column_defs->{$fb_major_version},
             $table_name,
         ),
     );
