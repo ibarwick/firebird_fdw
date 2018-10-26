@@ -2321,10 +2321,9 @@ firebirdImportForeignSchema(ImportForeignSchemaStmt *stmt,
 	user = GetUserMapping(GetUserId(), server->serverid);
 	conn = firebirdInstantiateConnection(server, user);
 
-	/* Query to list all non-system tables
-	 *
-	 * TODO: use "stmt->list_type" and "stmt->table_list" to
-	 * pre-filter tables
+	/*
+	 * Query to list all non-system tables, potentially filtered by the values
+	 * specified in IMPORT FOREIGN SCHEMA's "LIMIT TO" or "EXCEPT" clauses.
 	 */
 	initStringInfo(&table_query);
 	appendStringInfoString(&table_query,

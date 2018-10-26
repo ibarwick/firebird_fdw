@@ -3,6 +3,7 @@ Revision history for firebird_fdw
 0.6.0	2018-10-??
 	- Support Firebird BOOLEAN datatype (Firebird 3.0 and later)
 	- Improve "IMPORT FOREIGN SCHEMA" implementation
+	- Adapt code to compile against current PostgreSQL HEAD
 
 0.5.0	2018-10-12
 	- Support triggers on foreign tables (PostgreSQL 9.4 and later)
