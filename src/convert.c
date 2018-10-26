@@ -332,7 +332,7 @@ buildWhereClause(StringInfo output,
  * Convert table to PostgreSQL format to implement IMPORT FOREIGN SCHEMA
  */
 char *
-convertFirebirdTable(char *server_name, char *schema, char *table_name, FBresult *colres)
+convertFirebirdTable(char *server_name, char *schema, char *table_name, bool import_not_null, FBresult *colres)
 {
 	int colnr, coltotal;
 
@@ -367,7 +367,7 @@ convertFirebirdTable(char *server_name, char *schema, char *table_name, FBresult
 		}
 
 		/* NOT NULL */
-		if (FQgetvalue(colres, colnr, 4) != NULL)
+		if (import_not_null == true && FQgetvalue(colres, colnr, 4) != NULL)
 		{
 			appendStringInfoString(&create_table, " NOT NULL");
 		}

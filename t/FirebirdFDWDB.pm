@@ -113,6 +113,8 @@ sub init_table {
     my $self = shift;
     my %table_options = @_;
 
+	$table_options{firebird_only} //= 0;
+
     # Create Firebird table
 
     my $tbl_query = $self->{pg_fdw_node}->{dbh}->prepare(
@@ -130,6 +132,8 @@ EO_SQL
 
     $tbl_query->execute();
     $tbl_query->finish();
+
+    return $self->{table_name} if $table_options{firebird_only} == 1;
 
     # Create PostgreSQL foreign table
 

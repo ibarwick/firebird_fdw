@@ -2317,6 +2317,21 @@ firebirdImportForeignSchema(ImportForeignSchemaStmt *stmt,
 	ListCell   *lc;
 	char **p_values;
 
+	bool		import_not_null = true;
+
+	/* Parse statement options */
+	foreach(lc, stmt->options)
+	{
+		DefElem    *def = (DefElem *) lfirst(lc);
+
+		if (strcmp(def->defname, "import_not_null") == 0)
+			import_not_null = defGetBoolean(def);
+		else
+			ereport(ERROR,
+					(errcode(ERRCODE_FDW_INVALID_OPTION_NAME),
+					 errmsg("invalid option \"%s\"", def->defname)));
+	}
+
 	server = GetForeignServer(serverOid);
 	user = GetUserMapping(GetUserId(), server->serverid);
 	conn = firebirdInstantiateConnection(server, user);
@@ -2441,8 +2456,8 @@ firebirdImportForeignSchema(ImportForeignSchemaStmt *stmt,
 		}
 
 		foreign_table_definition = convertFirebirdTable(server->servername,
-														stmt->local_schema,
-														table_name, colres);
+														stmt->local_schema,	table_name,
+														import_not_null, colres);
 
 		firebirdTables = lappend(firebirdTables, foreign_table_definition);
 	}
