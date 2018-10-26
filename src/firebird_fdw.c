@@ -2309,10 +2309,13 @@ firebirdImportForeignSchema(ImportForeignSchemaStmt *stmt,
 	UserMapping *user;
 	FBconn	   *conn;
 	FBresult *res;
-	int row;
+	int			row;
+	int		    params = 0;
 	StringInfoData table_query;
 
 	List *firebirdTables = NIL;
+	ListCell   *lc;
+	char **p_values;
 
 	server = GetForeignServer(serverOid);
 	user = GetUserMapping(GetUserId(), server->serverid);
@@ -2328,12 +2331,79 @@ firebirdImportForeignSchema(ImportForeignSchemaStmt *stmt,
 						   "   SELECT TRIM(LOWER(rdb$relation_name)) AS table_name \n"
 						   "     FROM rdb$relations  \n"
 						   "    WHERE rdb$view_blr IS NULL \n"
-						   "      AND rdb$system_flag = 0 \n"
+						   "      AND rdb$system_flag = 0 \n");
+
+	/* Apply restrictions for LIMIT TO and EXCEPT */
+	if (stmt->list_type == FDW_IMPORT_SCHEMA_LIMIT_TO ||
+		stmt->list_type == FDW_IMPORT_SCHEMA_EXCEPT)
+	{
+		bool		first_item = true;
+		int			i = 0;
+
+		appendStringInfoString(&table_query, " AND TRIM(LOWER(rdb$relation_name)) ");
+
+		if (stmt->list_type == FDW_IMPORT_SCHEMA_EXCEPT)
+			appendStringInfoString(&table_query, "NOT ");
+
+		appendStringInfoString(&table_query, "IN (");
+
+		/* Append list of table names within IN clause */
+		foreach(lc, stmt->table_list)
+		{
+			if (first_item)
+				first_item = false;
+			else
+				appendStringInfoString(&table_query, ", ");
+
+			appendStringInfoChar(&table_query, '?');
+
+			params++;
+		}
+
+		p_values = (char **) palloc0(sizeof(char *) * params);
+
+		foreach(lc, stmt->table_list)
+		{
+			RangeVar   *rv = (RangeVar *) lfirst(lc);
+			p_values[i++] = pstrdup(rv->relname);
+		}
+
+		appendStringInfoChar(&table_query, ')');
+	}
+
+	appendStringInfoString(&table_query,
 						   " ORDER BY 1");
 
+	elog(DEBUG3, "%s", table_query.data);
+
 	/* Loop through tables */
-	res = FQexec(conn, table_query.data);
+	if (params == 0)
+	{
+		res = FQexec(conn, table_query.data);
+	}
+	else
+	{
+		res = FQexecParams(conn,
+						   table_query.data,
+						   params,
+						   NULL,
+						   (const char **)p_values,
+						   NULL,
+						   NULL,
+						   0);
+	}
+
 	pfree(table_query.data);
+
+	if (params > 0)
+	{
+		int			i;
+		for (i = 0; i < params; i++)
+		{
+			pfree(p_values[i]);
+		}
+		pfree(p_values);
+	}
 
 	if (FQresultStatus(res) != FBRES_TUPLES_OK)
 	{
@@ -2343,15 +2413,18 @@ firebirdImportForeignSchema(ImportForeignSchemaStmt *stmt,
 				 errmsg("Unable to execute metadata query on %s", server->servername)));
 	}
 
-	elog(DEBUG1, "%s: %i", server->servername, FQntuples(res));
+	elog(DEBUG3, "returned tuples: %i", FQntuples(res));
 
 	for (row = 0; row < FQntuples(res); row++)
 	{
 		char *table_name;
 		char *column_query;
 		FBresult *colres;
+		char *foreign_table_definition;
 
 		table_name = FQgetvalue(res, row, 0);
+
+		elog(DEBUG3, "table: %s", table_name);
 
 		/* List all columns for the table */
 		column_query = _dataTypeSQL(table_name);
@@ -2368,14 +2441,11 @@ firebirdImportForeignSchema(ImportForeignSchemaStmt *stmt,
 							table_name)));
 		}
 
-		if (IsImportableForeignTable(table_name, stmt))
-		{
-			char *foreign_table_definition = convertFirebirdTable(server->servername,
-																  stmt->local_schema,
-																  table_name, colres);
+		foreign_table_definition = convertFirebirdTable(server->servername,
+														stmt->local_schema,
+														table_name, colres);
 
-			firebirdTables = lappend(firebirdTables, foreign_table_definition);
-		}
+		firebirdTables = lappend(firebirdTables, foreign_table_definition);
 	}
 
 	FQclear(res);
