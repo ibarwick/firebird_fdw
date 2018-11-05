@@ -1470,6 +1470,9 @@ firebirdPlanForeignModify(PlannerInfo *root,
 	Relation	rel;
 	StringInfoData sql;
 
+	Oid relid;
+	FirebirdFdwState *fdw_state;
+
 	List	   *targetAttrs = NIL;
 	List	   *returningList = NIL;
 	List	   *retrieved_attrs = NIL;
@@ -1496,6 +1499,14 @@ firebirdPlanForeignModify(PlannerInfo *root,
 	 */
 
 	rel = heap_open(rte->relid, NoLock);
+
+	relid = RelationGetRelid(rel);
+	fdw_state = getFdwState(relid);
+
+	if (fdw_state->svr_table == NULL)
+		ereport(ERROR,
+				(errcode(ERRCODE_FDW_TABLE_NOT_FOUND),
+				 errmsg("Unable to modify a foreign table defined as a query")));
 
 	/*
 	 * In an INSERT, we transmit all columns that are defined in the foreign
