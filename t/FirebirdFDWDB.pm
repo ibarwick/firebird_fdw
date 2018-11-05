@@ -197,7 +197,7 @@ EO_SQL
 CREATE TABLE %s (
   id        INT NOT NULL PRIMARY KEY,
   blob_type BLOB SUB_TYPE TEXT DEFAULT NULL,
-  bool_type BOOLEAN DEFAULT NUL
+  bool_type BOOLEAN DEFAULT NULL
 )
 EO_SQL
             $table_name,
