@@ -555,23 +555,21 @@ firebirdGetForeignRelSize(PlannerInfo *root,
 
 	if (FQresultStatus(res) != FBRES_TUPLES_OK)
 	{
+		StringInfoData detail;
 
+		initStringInfo(&detail);
+		appendStringInfoString(&detail,
+							   FQresultErrorField(res, FB_DIAG_MESSAGE_PRIMARY));
+
+		if (FQresultErrorField(res, FB_DIAG_MESSAGE_DETAIL) != NULL)
+			appendStringInfo(&detail,
+							 ": %s",
+							 FQresultErrorField(res, FB_DIAG_MESSAGE_DETAIL));
+
+		FQclear(res);
 
 		if (fdw_state->svr_query)
 		{
-			StringInfoData detail;
-
-			initStringInfo(&detail);
-			appendStringInfoString(&detail,
-								   FQresultErrorField(res, FB_DIAG_MESSAGE_PRIMARY));
-
-			if (FQresultErrorField(res, FB_DIAG_MESSAGE_DETAIL) != NULL)
-				appendStringInfo(&detail,
-								 ": %s",
-								 FQresultErrorField(res, FB_DIAG_MESSAGE_DETAIL));
-
-			FQclear(res);
-
 			ereport(ERROR,
 					(errcode(ERRCODE_FDW_TABLE_NOT_FOUND),
 					 errmsg("Unable to execute query \"%s\"", fdw_state->svr_query),
@@ -581,16 +579,19 @@ firebirdGetForeignRelSize(PlannerInfo *root,
 		{
 			ereport(ERROR,
 					(errcode(ERRCODE_FDW_TABLE_NOT_FOUND),
-					 errmsg("Unable to establish size of foreign table %s", fdw_state->svr_table)));
+					 errmsg("Unable to establish size of foreign table %s", fdw_state->svr_table),
+					 errdetail("%s", detail.data)));
 		}
 	}
 
 	if (FQntuples(res) != 1)
 	{
+		int returned_rows = FQntuples(res);
 		FQclear(res);
 		ereport(ERROR,
 				(errcode(ERRCODE_FDW_TABLE_NOT_FOUND),
-				 errmsg("Query returned unexpected number of rows")));
+				 errmsg("Query returned unexpected number of rows"),
+				 errdetail("%i row(s) returned", returned_rows)));
 	}
 
 	baserel->rows = atof(FQgetvalue(res, 0, 0));
