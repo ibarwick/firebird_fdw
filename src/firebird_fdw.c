@@ -2619,7 +2619,7 @@ convert_prep_stmt_params(FirebirdFdwModifyState *fmstate,
 	if (tupleid != NULL)
 	{
 		char *oidout;
-		char *db_key = (char *)palloc0(17);
+		char *db_key = (char *)palloc0(FB_DB_KEY_LEN + 1);
 		elog(DEBUG2, "extracting RDB$DB_KEY...");
 		oidout = OutputFunctionCall(&fmstate->p_flinfo[pindex],
 								 PointerGetDatum(tupleid2));
