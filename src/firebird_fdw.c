@@ -103,7 +103,7 @@ enum FdwModifyPrivateIndex
 };
 #endif
 
-/* FDW handler/validator functions */
+/* FDW public functions */
 
 extern Datum firebird_fdw_handler(PG_FUNCTION_ARGS);
 extern Datum firebird_fdw_version(PG_FUNCTION_ARGS);
@@ -323,7 +323,6 @@ void
 _PG_init(void)
 {
 	on_proc_exit(&exitHook, PointerGetDatum(NULL));
-
 }
 
 
