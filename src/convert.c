@@ -332,7 +332,7 @@ buildWhereClause(StringInfo output,
  * Convert table or view to PostgreSQL format to implement IMPORT FOREIGN SCHEMA
  */
 char *
-convertFirebirdObject(char *server_name, char *schema, char *object_name, char object_type, bool import_not_null, FBresult *colres)
+convertFirebirdObject(char *server_name, char *schema, char *object_name, char object_type, bool import_not_null, bool updatable, FBresult *colres)
 {
 	int colnr, coltotal;
 
@@ -388,6 +388,12 @@ convertFirebirdObject(char *server_name, char *schema, char *object_name, char o
 	appendStringInfo(&create_table,
 					 ") SERVER %s",
 					 server_name);
+
+	if (updatable == false)
+	{
+		appendStringInfo(&create_table,
+						 "\n OPTIONS(updatable 'false')");
+	}
 
 	elog(DEBUG1, "%s", create_table.data);
 

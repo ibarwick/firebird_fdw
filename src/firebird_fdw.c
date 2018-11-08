@@ -2362,6 +2362,7 @@ firebirdImportForeignSchema(ImportForeignSchemaStmt *stmt,
 
 	bool		import_not_null = true;
 	bool		import_views = true;
+	bool		updatable = true;
 	bool		verbose = false;
 
 	/* Parse statement options */
@@ -2373,6 +2374,8 @@ firebirdImportForeignSchema(ImportForeignSchemaStmt *stmt,
 			import_not_null = defGetBoolean(def);
 		else if (strcmp(def->defname, "import_views") == 0)
 			import_views = defGetBoolean(def);
+		else if (strcmp(def->defname, "updatable") == 0)
+			updatable = defGetBoolean(def);
 		else if (strcmp(def->defname, "verbose") == 0)
 			verbose = defGetBoolean(def);
 		else
@@ -2389,7 +2392,7 @@ firebirdImportForeignSchema(ImportForeignSchemaStmt *stmt,
 	 * Query to list all non-system tables/views, potentially filtered by the values
 	 * specified in IMPORT FOREIGN SCHEMA's "LIMIT TO" or "EXCEPT" clauses. We won't
 	 * exclude views here so we can warn about any inclcded in "LIMIT TO"/"EXCEPT", which
-	 * will be excluded by "import_views == false".
+	 * will be excluded by "import_views = =false".
 	 */
 	initStringInfo(&table_query);
 	appendStringInfoString(&table_query,
@@ -2526,14 +2529,17 @@ firebirdImportForeignSchema(ImportForeignSchemaStmt *stmt,
 		}
 
 		if (verbose == true)
+		{
 			elog(INFO,
 				 "importing %s '%s'",
 				 object_type[0] == 'r' ? "table" : "view",
 				 object_name);
+		}
 
-		foreign_table_definition = convertFirebirdObject(server->servername,
-														 stmt->local_schema, object_name, object_type[0],
-														 import_not_null, colres);
+		foreign_table_definition = convertFirebirdObject(
+			server->servername,
+			stmt->local_schema, object_name, object_type[0],
+			import_not_null, updatable, colres);
 
 		firebirdTables = lappend(firebirdTables, foreign_table_definition);
 	}

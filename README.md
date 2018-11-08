@@ -149,6 +149,9 @@ are carried out on it.
     'import_views':
         Determines whether Firebird views are imported as foreign tables. The default is `true`.
 
+    'updatable':
+        If set to 'false', mark all imported foreign tables as not updatable. The default is `true`.
+
     'verbose':
         Logs the name of each table or view being imported at log level `INFO`.
 

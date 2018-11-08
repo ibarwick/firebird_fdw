@@ -259,6 +259,18 @@ EO_SQL
     return $table_name;
 }
 
+sub drop_foreign_table {
+    my $self = shift;
+    my $table = shift;
+
+    my $drop_foreign_table = sprintf(
+        q|DROP FOREIGN TABLE IF EXISTS %s CASCADE|,
+        $table,
+    );
+
+    $self->safe_psql( $drop_foreign_table );
+}
+
 
 sub drop_foreign_server {
     my $self = shift;
