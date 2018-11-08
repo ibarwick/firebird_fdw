@@ -62,22 +62,31 @@ firebirdGetConnection(const char *dbpath, const char *svr_username, const char *
 	const char *val[5];
 	int i = 0;
 
-	kw[i] = "db_path";
-	val[i] = dbpath;
-	i++;
+	if (dbpath != NULL)
+	{
+		kw[i] = "db_path";
+		val[i] = dbpath;
+		i++;
+	}
 
-	kw[i] = "user";
-	val[i] = svr_username;
-	i++;
+	if (svr_username != NULL)
+	{
+		kw[i] = "user";
+		val[i] = svr_username;
+		i++;
+	}
 
-	kw[i] = "password";
-	val[i] = svr_password;
-	i++;
+	if (svr_password != NULL)
+	{
+		kw[i] = "password";
+		val[i] = svr_password;
+		i++;
+	}
 
-	/* XXX I am taking a calculated risk and passing the PostgreSQL
+	/* Here we're taking a calculated risk and passing the PostgreSQL
 	 * encoding name directly to Firebird. Firebird seems to be pretty
-	 * good at parsing encoding names but I can't rule out errors
-	 * with more obscure encoding combinations.
+	 * good at parsing encoding names but it's possible there might be
+	 * errors with more obscure encoding combinations.
 	 */
 	kw[i] = "client_encoding";
 	val[i] = GetDatabaseEncodingName();
@@ -95,6 +104,8 @@ firebirdGetConnection(const char *dbpath, const char *svr_username, const char *
 				 errdetail("%s", FQerrorMessage(conn))));
 
 	FQsetAutocommit(conn, false);
+
+	// XXX make this configurable?
 	conn->client_min_messages = DEBUG2;
 
 	elog(DEBUG2, "%s(): DB connection OK", __func__);
@@ -196,7 +207,7 @@ firebirdInstantiateConnection(ForeignServer *server, UserMapping *user)
 			svr_password
 		);
 
-
+		pfree(dbpath);
 		elog(DEBUG2, "%s(): new firebird_fdw connection %p for server \"%s\"",
 			 __func__,entry->conn, server->servername);
 	}
@@ -544,15 +555,21 @@ static char *
 firebirdDbPath(char **address, char **database, int *port)
 {
 	char *hostname;
-	if (*address != NULL)
+
+	if (*database != NULL && *address != NULL)
 	{
 		hostname = palloc0(strlen(*address) + strlen(*database) + 2);
 		sprintf(hostname, "%s:%s", *address, *database);
 	}
-	else
+	else if (*database != NULL)
 	{
 		hostname = palloc0(strlen(*database) + 1);
 		sprintf(hostname, "%s", *database);
+	}
+	else
+	{
+		/* dummy empty string */
+		hostname = palloc0(1);
 	}
 
 	return hostname;
