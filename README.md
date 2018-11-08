@@ -75,9 +75,9 @@ installation.
 Usage
 -----
 
-**NOTE: these options are provisional and may change**
+### CREATE SERVER options
 
-`firebird_fdw` accepts the following options:
+`firebird_fdw` accepts the following options via the `CREATE SERVER` command:
 
     'address':
         The Firebird server's address (default: localhost)
@@ -92,6 +92,18 @@ Usage
         The user's password (note that Firebird only recognizes the first 8
         characters of a password)
 
+    'updatable':
+        Boolean value indicating whether the foreign server as a whole
+        is updatable. Default is true. Note that this can be overridden
+        by table-level settings.
+
+
+### CREATE FOREIGN TABLE options
+
+`firebird_fdw` accepts the following options via the `CREATE FOREIGN TABLE`
+command:
+
+
     'table_name':
         The Firebird table name (not case-sensitive). Cannot be used together
         with the 'query' option.
@@ -103,18 +115,33 @@ Usage
     'column_name':
         The Firebird column name (not case-sensitive).
 
-    'updatable':
-        Boolean value indicating whether the foreign server as a whole,
-        or an individual table, is updatable. Default is true. Note that
-        table-level settings override server-level settings.
-
     'disable_pushdowns':
         Turns off pushdowns of WHERE clause elements to Firebird. Useful
         mainly for debugging and benchmarking.
 
+    'updatable':
+        Boolean value indicating whether the table  is updatable. Default is `true`.
+        Note that this overrides the server-level setting.
+
 Note that while PostgreSQL allows a foreign table to be defined without
 any columns, `firebird_fdw`  will raise an error as soon as any operations
 are carried out on it.
+
+
+### IMPORT FOREIGN SCHEMA options
+
+`firebird_fdw` supports `IMPORT FOREIGN SCHEMA` (when running with PostgreSQL
+9.5 or later), with the following options:
+
+    'import_not_null':
+        Determines whether column `NOT NULL` constraints are included in the definitions
+        of foreign tables imported from a Firebid server. The default is `true`.
+
+    'import_views':
+        Determines whether Firebird views are imported as foreign tables. The default is `true`.
+
+    'verbose':
+        Logs the name of each table or view being imported at log level `INFO`.
 
 
 Examples
