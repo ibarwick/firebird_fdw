@@ -580,15 +580,15 @@ firebirdGetForeignRelSize(PlannerInfo *root,
 			if (fdw_state->svr_query)
 			{
 				ereport(ERROR,
-						(errcode(ERRCODE_FDW_TABLE_NOT_FOUND),
-						 errmsg("Unable to execute query \"%s\"", fdw_state->svr_query),
+						(errcode(ERRCODE_FDW_UNABLE_TO_CREATE_EXECUTION),
+						 errmsg("unable to execute query \"%s\"", fdw_state->svr_query),
 						 errdetail("%s", detail.data)));
 			}
 			else
 			{
 				ereport(ERROR,
-						(errcode(ERRCODE_FDW_TABLE_NOT_FOUND),
-						 errmsg("Unable to establish size of foreign table %s", fdw_state->svr_table),
+						(errcode(ERRCODE_FDW_UNABLE_TO_CREATE_EXECUTION),
+						 errmsg("unable to establish size of foreign table %s", fdw_state->svr_table),
 						 errdetail("%s", detail.data)));
 			}
 		}
@@ -598,8 +598,8 @@ firebirdGetForeignRelSize(PlannerInfo *root,
 			int returned_rows = FQntuples(res);
 			FQclear(res);
 			ereport(ERROR,
-					(errcode(ERRCODE_FDW_TABLE_NOT_FOUND),
-					 errmsg("Query returned unexpected number of rows"),
+					(errcode(ERRCODE_FDW_UNABLE_TO_CREATE_EXECUTION),
+					 errmsg("query returned unexpected number of rows"),
 					 errdetail("%i row(s) returned", returned_rows)));
 		}
 
@@ -994,8 +994,9 @@ firebirdBeginForeignScan(ForeignScanState *node,
 	if (!fdw_state->table->pg_column_total)
 	{
 		ereport(ERROR,
-				(errmsg("No column definitions provided for foreign table %s", fdw_state->table->pg_table_name)));
-		return;
+				(errcode(ERRCODE_FDW_UNABLE_TO_CREATE_EXECUTION),
+				 errmsg("no column definitions provided for foreign table %s",
+						fdw_state->table->pg_table_name)));
 	}
 
 	/* Construct query */
@@ -1516,8 +1517,8 @@ firebirdPlanForeignModify(PlannerInfo *root,
 
 	if (fdw_state->svr_table == NULL)
 		ereport(ERROR,
-				(errcode(ERRCODE_FDW_TABLE_NOT_FOUND),
-				 errmsg("Unable to modify a foreign table defined as a query")));
+				(errcode(ERRCODE_FDW_UNABLE_TO_CREATE_EXECUTION),
+				 errmsg("unable to modify a foreign table defined as a query")));
 
 	/*
 	 * In an INSERT, we transmit all columns that are defined in the foreign
@@ -1708,9 +1709,8 @@ firebirdBeginForeignModify(ModifyTableState *mtstate,
 
 	if (FQstatus(fmstate->conn) != CONNECTION_OK)
 		ereport(ERROR,
-			(errcode(ERRCODE_FDW_UNABLE_TO_ESTABLISH_CONNECTION),
-			errmsg("Unable to connect to foreign server")
-			));
+				(errcode(ERRCODE_FDW_UNABLE_TO_ESTABLISH_CONNECTION),
+				 errmsg("unable to connect to foreign server")));
 
 
 	fmstate->conn->autocommit = true;
@@ -2272,8 +2272,8 @@ fbAcquireSampleRowsFunc(Relation relation, int elevel,
 	{
 		FQclear(res);
 		ereport(ERROR,
-				(errcode(ERRCODE_FDW_TABLE_NOT_FOUND),
-				 errmsg("Unable to analyze foreign table %s", fdw_state->svr_table)));
+				(errcode(ERRCODE_FDW_UNABLE_TO_CREATE_EXECUTION),
+				 errmsg("unable to analyze foreign table %s", fdw_state->svr_table)));
 	}
 
 	result_rows = FQntuples(res);
@@ -2288,10 +2288,9 @@ fbAcquireSampleRowsFunc(Relation relation, int elevel,
 		vacuum_delay_point();
 
 		if (fdw_state->row == 0)
-		   elog(DEBUG2, "Result has %i cols; tupDesc has %i atts",
+		   elog(DEBUG2, "result has %i cols; tupDesc has %i atts",
 				FQnfields(res),
-				tupDesc->natts
-			   );
+				tupDesc->natts);
 
 		if (fdw_state->row < targrows)
 		{
@@ -2478,7 +2477,7 @@ firebirdImportForeignSchema(ImportForeignSchemaStmt *stmt,
 		FQclear(res);
 		ereport(ERROR,
 				(errcode(ERRCODE_FDW_ERROR),
-				 errmsg("Unable to execute metadata query on %s", server->servername)));
+				 errmsg("unable to execute metadata query on %s", server->servername)));
 	}
 
 	elog(DEBUG3, "returned tuples: %i", FQntuples(res));
@@ -2521,7 +2520,7 @@ firebirdImportForeignSchema(ImportForeignSchemaStmt *stmt,
 			FQclear(colres);
 			ereport(ERROR,
 					(errcode(ERRCODE_FDW_ERROR),
-					 errmsg("Unable to execute metadata query on %s for table %s",
+					 errmsg("unable to execute metadata query on %s for table %s",
 							server->servername,
 							object_name)));
 		}

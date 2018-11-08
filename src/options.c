@@ -91,7 +91,7 @@ firebird_fdw_validator(PG_FUNCTION_ARGS)
 			ereport(ERROR,
 				(errcode(ERRCODE_FDW_INVALID_OPTION_NAME),
 				 errmsg("invalid option \"%s\"", def->defname),
-				 errhint("Valid options in this context are: %s", buf.len ? buf.data : "<none>")));
+				 errhint("valid options in this context are: %s", buf.len ? buf.data : "<none>")));
 
 			pfree(buf.data);
 		}

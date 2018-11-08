@@ -735,7 +735,8 @@ convertConst(Const *node, convert_expr_cxt *context, char **result)
 			else
 			{
 				ereport(ERROR,
-						(errmsg("BOOLEAN datatype supported from Firebird 3.0")));
+						(errcode(ERRCODE_FDW_INVALID_DATA_TYPE),
+						 errmsg("BOOLEAN datatype supported from Firebird 3.0")));
 			}
 			break;
 
@@ -744,7 +745,8 @@ convertConst(Const *node, convert_expr_cxt *context, char **result)
 		case BITOID:
 		case VARBITOID:
 			ereport(ERROR,
-					(errmsg("Unsupported data type %i", node->consttype)));
+					(errcode(ERRCODE_FDW_INVALID_DATA_TYPE),
+					 errmsg("unsupported data type %i", node->consttype)));
 			break;
 		default:
 			convertStringLiteral(&buf, extval);
