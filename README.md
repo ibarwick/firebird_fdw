@@ -100,8 +100,8 @@ Usage
 
 ### CREATE FOREIGN TABLE options
 
-`firebird_fdw` accepts the following options via the `CREATE FOREIGN TABLE`
-command:
+`firebird_fdw` accepts the following table-level options via the
+`CREATE FOREIGN TABLE` command:
 
 
     'table_name':
@@ -112,19 +112,23 @@ command:
         A Firebird SQL statement producing a result set which can be treated
         like a table. Cannot be used together with the 'table_name' option.
 
-    'column_name':
-        The Firebird column name (not case-sensitive).
-
     'disable_pushdowns':
         Turns off pushdowns of WHERE clause elements to Firebird. Useful
         mainly for debugging and benchmarking.
 
     'updatable':
-        Boolean value indicating whether the table  is updatable. Default is `true`.
+        Boolean value indicating whether the table is updatable. Default is `true`.
         Note that this overrides the server-level setting.
 
+The following column-level option is available:
+
+    'column_name':
+        The Firebird column name (not case-sensitive), if different to the column
+        name defined in the foreign table. This can also be used for foreign
+        tables defined with the `query` option.
+
 Note that while PostgreSQL allows a foreign table to be defined without
-any columns, `firebird_fdw`  will raise an error as soon as any operations
+any columns, `firebird_fdw` will raise an error as soon as any operations
 are carried out on it.
 
 
