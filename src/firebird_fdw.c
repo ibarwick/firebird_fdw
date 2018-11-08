@@ -387,12 +387,14 @@ getFdwState(Oid foreigntableid)
 	fdw_state->svr_query = NULL;
 	fdw_state->svr_table = NULL;
 	fdw_state->disable_pushdowns = false;
+	fdw_state->estimated_row_count = -1;
 
 	firebirdGetOptions(
 		foreigntableid,
 		&fdw_state->svr_query,
 		&fdw_state->svr_table,
-		&fdw_state->disable_pushdowns);
+		&fdw_state->disable_pushdowns,
+		&fdw_state->estimated_row_count);
 
 	return fdw_state;
 }
@@ -536,67 +538,77 @@ firebirdGetForeignRelSize(PlannerInfo *root,
 					   &fdw_state->attrs_used);
 	}
 
-	initStringInfo(&query);
-	if (fdw_state->svr_query)
+	/* user has supplied "estimated_row_count" as a table option */
+	if (fdw_state->estimated_row_count >= 0)
 	{
-		appendStringInfo(&query, "SELECT COUNT(*) FROM (%s)", fdw_state->svr_query);
+		elog(DEBUG2, "estimated_row_count: %i", fdw_state->estimated_row_count);
+		baserel->rows = fdw_state->estimated_row_count;
 	}
 	else
 	{
-		appendStringInfo(&query, "SELECT COUNT(*) FROM %s", quote_identifier(fdw_state->svr_table));
-	}
-
-	fdw_state->query = pstrdup(query.data);
-	pfree(query.data);
-	elog(DEBUG1, "%s", fdw_state->query);
-
-	res = FQexec(fdw_state->conn, fdw_state->query);
-
-	if (FQresultStatus(res) != FBRES_TUPLES_OK)
-	{
-		StringInfoData detail;
-
-		initStringInfo(&detail);
-		appendStringInfoString(&detail,
-							   FQresultErrorField(res, FB_DIAG_MESSAGE_PRIMARY));
-
-		if (FQresultErrorField(res, FB_DIAG_MESSAGE_DETAIL) != NULL)
-			appendStringInfo(&detail,
-							 ": %s",
-							 FQresultErrorField(res, FB_DIAG_MESSAGE_DETAIL));
-
-		FQclear(res);
-
+		initStringInfo(&query);
 		if (fdw_state->svr_query)
 		{
-			ereport(ERROR,
-					(errcode(ERRCODE_FDW_TABLE_NOT_FOUND),
-					 errmsg("Unable to execute query \"%s\"", fdw_state->svr_query),
-					 errdetail("%s", detail.data)));
+			appendStringInfo(&query, "SELECT COUNT(*) FROM (%s)", fdw_state->svr_query);
 		}
 		else
 		{
+			appendStringInfo(&query, "SELECT COUNT(*) FROM %s", quote_identifier(fdw_state->svr_table));
+		}
+
+		fdw_state->query = pstrdup(query.data);
+		pfree(query.data);
+		elog(DEBUG1, "%s", fdw_state->query);
+
+		res = FQexec(fdw_state->conn, fdw_state->query);
+
+		if (FQresultStatus(res) != FBRES_TUPLES_OK)
+		{
+			StringInfoData detail;
+
+			initStringInfo(&detail);
+			appendStringInfoString(&detail,
+								   FQresultErrorField(res, FB_DIAG_MESSAGE_PRIMARY));
+
+			if (FQresultErrorField(res, FB_DIAG_MESSAGE_DETAIL) != NULL)
+				appendStringInfo(&detail,
+								 ": %s",
+								 FQresultErrorField(res, FB_DIAG_MESSAGE_DETAIL));
+
+			FQclear(res);
+
+			if (fdw_state->svr_query)
+			{
+				ereport(ERROR,
+						(errcode(ERRCODE_FDW_TABLE_NOT_FOUND),
+						 errmsg("Unable to execute query \"%s\"", fdw_state->svr_query),
+						 errdetail("%s", detail.data)));
+			}
+			else
+			{
+				ereport(ERROR,
+						(errcode(ERRCODE_FDW_TABLE_NOT_FOUND),
+						 errmsg("Unable to establish size of foreign table %s", fdw_state->svr_table),
+						 errdetail("%s", detail.data)));
+			}
+		}
+
+		if (FQntuples(res) != 1)
+		{
+			int returned_rows = FQntuples(res);
+			FQclear(res);
 			ereport(ERROR,
 					(errcode(ERRCODE_FDW_TABLE_NOT_FOUND),
-					 errmsg("Unable to establish size of foreign table %s", fdw_state->svr_table),
-					 errdetail("%s", detail.data)));
+					 errmsg("Query returned unexpected number of rows"),
+					 errdetail("%i row(s) returned", returned_rows)));
 		}
-	}
 
-	if (FQntuples(res) != 1)
-	{
-		int returned_rows = FQntuples(res);
+		baserel->rows = atof(FQgetvalue(res, 0, 0));
 		FQclear(res);
-		ereport(ERROR,
-				(errcode(ERRCODE_FDW_TABLE_NOT_FOUND),
-				 errmsg("Query returned unexpected number of rows"),
-				 errdetail("%i row(s) returned", returned_rows)));
+		pfree(fdw_state->query);
 	}
 
-	baserel->rows = atof(FQgetvalue(res, 0, 0));
 	baserel->tuples = baserel->rows;
-	FQclear(res);
-	pfree(fdw_state->query);
 	elog(DEBUG1, "%s: rows estimated at %f", __func__, baserel->rows);
 }
 
@@ -881,7 +893,6 @@ firebirdBeginForeignScan(ForeignScanState *node,
 {
 	char	*svr_query = NULL;
 	char	*svr_table = NULL;
-	bool	 disable_pushdowns = false;
 
 	ForeignScan *fsplan = (ForeignScan *) node->ss.ps.plan;
 	FirebirdFdwScanState *fdw_state;
@@ -912,7 +923,8 @@ firebirdBeginForeignScan(ForeignScanState *node,
 	firebirdGetOptions(foreigntableid,
 					   &svr_query,
 					   &svr_table,
-					   &disable_pushdowns);
+					   NULL,
+					   NULL);
 
 	/* Initialise FDW state */
 	fdw_state = (FirebirdFdwScanState *) palloc0(sizeof(FirebirdFdwScanState));

@@ -74,3 +74,12 @@ is(
 	'en|English|English',
 	'query OK',
 );
+
+
+# Clean up
+# --------
+
+$pg_db->drop_foreign_server();
+$pg_node->drop_table($table_name);
+
+done_testing();

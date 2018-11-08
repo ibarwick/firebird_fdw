@@ -28,6 +28,7 @@ static struct FirebirdFdwOption valid_options[] =
 	{ "query",			   ForeignTableRelationId  },
 	{ "table_name",		   ForeignTableRelationId  },
 	{ "updatable",		   ForeignTableRelationId  },
+	{ "estimated_row_count", ForeignTableRelationId },
 	/* Table column options */
 	{ "column_name",	   AttributeRelationId	   },
 	{ NULL,				   InvalidOid }
@@ -204,7 +205,7 @@ firebird_fdw_validator(PG_FUNCTION_ARGS)
  * Fetch the options for a firebird_fdw foreign table.
  */
 void
-firebirdGetOptions(Oid foreigntableid, char **query, char **table, bool *disable_pushdowns)
+firebirdGetOptions(Oid foreigntableid, char **query, char **table, bool *disable_pushdowns, int *estimated_row_count)
 {
 	ForeignTable  *f_table;
 	ListCell	  *lc;
@@ -215,14 +216,18 @@ firebirdGetOptions(Oid foreigntableid, char **query, char **table, bool *disable
 	{
 		DefElem *def = (DefElem *) lfirst(lc);
 
+		elog(DEBUG2, "option: %s", def->defname);
 		if (strcmp(def->defname, "query") == 0)
 			*query = defGetString(def);
 
 		else if (strcmp(def->defname, "table_name") == 0)
 			*table = defGetString(def);
 
-		else if (strcmp(def->defname, "disable_pushdowns") == 0)
+		else if (strcmp(def->defname, "disable_pushdowns") == 0 && disable_pushdowns != NULL)
 			*disable_pushdowns = defGetBoolean(def);
+
+		else if (strcmp(def->defname, "estimated_row_count") == 0 && estimated_row_count != NULL)
+			*estimated_row_count = strtod(defGetString(def), NULL);
 	}
 
 	/*

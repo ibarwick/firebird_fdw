@@ -151,6 +151,13 @@ EO_SQL
         );
     }
 
+    if (defined($table_options{estimated_row_count})) {
+        push @options, sprintf(
+            q|estimated_row_count '%s'|,
+            $table_options{estimated_row_count},
+        );
+    }
+
     my $sql = sprintf(
         <<EO_SQL,
 CREATE FOREIGN TABLE %s (

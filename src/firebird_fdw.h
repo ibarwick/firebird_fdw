@@ -87,6 +87,7 @@ typedef struct FirebirdFdwState
 	char	   *svr_query;
 	char	   *svr_table;
 	bool		disable_pushdowns;	/* true if server option "disable_pushdowns" supplied */
+	int			estimated_row_count; /* set if server option "estimated_row_count" provided  */
 
 	FBconn	   *conn;
 	List	   *remote_conds;
@@ -157,7 +158,7 @@ extern void fbfdw_report_error(int errlevel, int pg_errcode, FBresult *res, FBco
 
 
 /* option functions (in options.c) */
-extern void firebirdGetOptions(Oid foreigntableid, char **query, char **table, bool *disable_pushdowns);
+extern void firebirdGetOptions(Oid foreigntableid, char **query, char **table, bool *disable_pushdowns, int *estimated_row_count);
 
 /* query-building functions (in convert.c) */
 

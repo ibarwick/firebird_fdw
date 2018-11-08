@@ -5,6 +5,7 @@ Revision history for firebird_fdw
 	- Improve "IMPORT FOREIGN SCHEMA" implementation
 	- Avoid segfault if not all expected Firebird connection parameters
 	  were supplied
+	- Add table option "estimated_row_count"
 	- Adapt code to compile against current PostgreSQL HEAD
 
 0.5.0	2018-10-12

@@ -13,10 +13,9 @@ not all features of the PostgreSQL FDW API are supported.
 
 It was written for Firebird 2.5 and will probably work with Firebird 2.0 or
 later. It should work with earlier versions if the `disable_pushdowns` option
-is set (see below). Currently (2018-10) it works with Firebird 3.0.x but has
-not yet been extensively tested with that version, and does not take advantage
-of all new Firebird 3 features. This will hopefully be addressed in future
-releases.
+is set (see below). It works with Firebird 3.0.x but has not yet been extensively
+tested with that version, and does not take advantage of all new Firebird 3
+features. This will hopefully be addressed in future releases.
 
 Features
 --------
@@ -103,7 +102,6 @@ Usage
 `firebird_fdw` accepts the following table-level options via the
 `CREATE FOREIGN TABLE` command:
 
-
     'table_name':
         The Firebird table name (not case-sensitive). Cannot be used together
         with the 'query' option.
@@ -119,6 +117,13 @@ Usage
     'updatable':
         Boolean value indicating whether the table is updatable. Default is `true`.
         Note that this overrides the server-level setting.
+
+    'estimated_row_count':
+        Integer indicating the expected number of rows in the Firebird table, or
+        rows which would be returned by the statement defined in 'query'. If not
+        set, an attempt will be made to determine the number of rows by executing
+        "SELECT COUNT(*) FROM ...", which can be inefficient, particularly for
+        queries.
 
 The following column-level option is available:
 
@@ -213,7 +218,6 @@ Import a Firebird schema:
       INTO public;
 
 Note: `someschema` has no particular meaning and can be set to an arbitrary value.
-
 
 
 Limitations
