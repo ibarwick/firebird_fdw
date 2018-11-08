@@ -228,11 +228,10 @@ Limitations
 
 - Works with Firebird 3.x, but does not yet support all 3.x features
 - No support for Firebird `ARRAY` datatype
-- Display of messages returned by Firebird is not very pretty
-  (this has been improved somewhat)
 - No consideration given to object names which may require
   quoting when passed between PostgreSQL and Firebird
-
+- The result of the Firebird query is copied into memory before being
+  processed by PostgreSQL; this can be improved by using Firebird cursors
 
 TAP tests
 ---------
@@ -265,9 +264,9 @@ However if you are a commercial entity and wish to have any improvements
 etc. carried out within a plannable period of time, this can be arranged
 via my employer.
 
-Having said that, things I would like to do at some point are:
+Having said that, things I would like to do are:
 
- - support Firebird 3.0
+ - improve support for Firebird 3.0 features
  - add support for missing data types
  - improve support for recent features to the PostgreSQL FDW API.
 
@@ -292,7 +291,7 @@ Useful links
 
 * Other FDWs
  - https://wiki.postgresql.org/wiki/Fdw
- - http://pgxn.org/tag/fdw/
+ - https://pgxn.org/tag/fdw/
 
 If you appreciate PostgreSQL's `psql` client, why not try `fbsql`, a `psql`-style
 client for Firebird? See: https://github.com/ibarwick/fbsql for details.
