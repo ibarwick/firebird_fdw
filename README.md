@@ -171,7 +171,7 @@ Create a foreign table as a Firebird query:
     )
     SERVER firebird_server
     OPTIONS(
-      query 'SELECT id, val FROM fdw_test'
+      query $$ SELECT id, val FROM fdw_test $$
     );
 
 Import a Firebird schema:

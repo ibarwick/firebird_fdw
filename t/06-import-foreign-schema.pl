@@ -1,6 +1,6 @@
 #!/usr/bin/env perl
 
-# 05-import-foreign-schema.pl
+# 06-import-foreign-schema.pl
 #
 # Test "IMPORT FOREIGN SCHEMA" functionality
 
