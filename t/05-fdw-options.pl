@@ -10,7 +10,7 @@ use warnings;
 use Cwd;
 use Config;
 use TestLib;
-use Test::More tests => 2;
+use Test::More tests => 3;
 
 use FirebirdFDWNode;
 use FirebirdFDWDB;
@@ -85,6 +85,65 @@ like (
     qr/$explain_expected/,
     q|Check "estimated_row_count" is used|,
 );
+
+
+# 3. Check "table_name" and "column_name" options
+# -----------------------------------------------
+
+my $column_name_table = sprintf(
+    q|%s_colcheck|,
+    $table_name,
+);
+
+my $column_name_table_q = sprintf(
+    <<'EO_SQL',
+CREATE FOREIGN TABLE %s (
+  pg_lang_id CHAR(2) OPTIONS (column_name 'lang_id'),
+  pg_name_english VARCHAR(64) OPTIONS (column_name 'name_english'),
+  pg_name_native VARCHAR(64) OPTIONS (column_name 'name_native')
+)
+SERVER fb_test
+OPTIONS(
+   table_name '%s'
+)
+EO_SQL
+    $column_name_table,
+    $table_name,
+);
+
+$pg_db->safe_psql( $column_name_table_q );
+
+my $q3_insert_q = sprintf(
+    q|INSERT INTO %s (pg_lang_id, pg_name_english, pg_name_native) VALUES('de', 'German', 'Deutsch')|,
+    $column_name_table,
+);
+
+$pg_db->safe_psql( $q3_insert_q );
+
+# Check it arrives
+
+my $q3_check_query = sprintf(
+    q|SELECT lang_id, name_english, name_native FROM %s WHERE lang_id = 'de'|,
+    $table_name,
+);
+
+my $query = $pg_node->{dbh}->prepare($q3_check_query);
+
+$query->execute();
+
+my @q3_res = $query->fetchrow_array();
+
+my $q3_res = join('|', @q3_res);
+
+$query->finish();
+
+is(
+	$q3_res,
+	'de|German|Deutsch',
+	'table_name/column_name options OK',
+);
+
+
 
 
 # Clean up
