@@ -1,5 +1,5 @@
 Summary: A PostgreSQL foreign data wrapper (FDW) for Firebird
-Name: postgresql96-firebird_fdw
+Name: postgresql11-firebird_fdw
 Version: 1.0.0
 Release: 1
 Source: firebird_fdw-%{version}.tar.gz
@@ -7,12 +7,12 @@ URL: https://github.com/ibarwick/firebird_fdw
 License: PostgreSQL
 Group: Productivity/Databases/Tools
 Packager: Ian Barwick
-BuildRequires: postgresql96-devel firebird-devel
+BuildRequires: postgresql11-devel firebird-devel
 BuildRequires: libfq
 BuildRoot: %{_tmppath}/%{name}-%{version}-build
-Requires: postgresql96-server libfq
+Requires: postgresql11-server libfq
 
-%define pgsql_path /usr/pgsql-9.6
+%define pgsql_path /usr/pgsql-11
 
 %description
 This is a foreign data wrapper (FDW) to connect PostgreSQL to Firebird.

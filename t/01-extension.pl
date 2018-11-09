@@ -34,7 +34,7 @@ my $pg_db = FirebirdFDWDB->new($pg_node);
 #
 # TODO: parse the value from "firebird_fdw.control" and check for a match
 
-my $version = '500';
+my $version = '10000';
 
 my $res = $pg_db->safe_psql(q|SELECT firebird_fdw_version()|);
 
