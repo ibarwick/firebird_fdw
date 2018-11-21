@@ -9,6 +9,10 @@ Group: Productivity/Databases/Tools
 Packager: Ian Barwick
 BuildRequires: postgresql11-devel firebird-devel
 BuildRequires: libfq
+%if 0%{?rhel} && 0%{?rhel} >= 7
+BuildRequires: llvm-toolset-7
+BuildRequires: llvm5.0
+%endif
 BuildRoot: %{_tmppath}/%{name}-%{version}-build
 Requires: postgresql11-server libfq
 
@@ -48,6 +52,10 @@ rm -rf $RPM_BUILD_ROOT
 %{pgsql_path}/share/extension/firebird_fdw--0.5.0--1.0.0.sql
 %{pgsql_path}/share/extension/firebird_fdw--1.0.0.sql
 %{pgsql_path}/share/extension/firebird_fdw.control
+
+%if 0%{?rhel} && 0%{?rhel} >= 7
+%exclude %{pgsql_path}/lib/bitcode
+%endif
 
 %changelog
 * Fri Nov 9 2018 Ian Barwick (barwick@gmail.com)
