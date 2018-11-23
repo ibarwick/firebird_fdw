@@ -518,13 +518,15 @@ fb_subxact_callback(SubXactEvent event,
 /**
  * firebirdCloseConnections()
  *
- * Close any open connections before exiting
+ * Close any open connections before exiting, or if explicitly
+ * requested by the user.
  */
 void
-firebirdCloseConnections(void)
+firebirdCloseConnections(bool verbose)
 {
 	HASH_SEQ_STATUS fstat;
 	ConnCacheEntry *entry;
+	int closed = 0;
 
 	elog(DEBUG3, "entering function %s", __func__);
 
@@ -540,7 +542,13 @@ firebirdCloseConnections(void)
 		FQfinish(entry->conn);
 		entry->conn = NULL;
 		elog(DEBUG2, "%s(): cached connection closed", __func__);
+		closed++;
 	}
+
+	if (verbose)
+		elog(NOTICE,
+			 _("%i cached connections closed"),
+			 closed);
 }
 
 

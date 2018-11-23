@@ -107,10 +107,11 @@ enum FdwModifyPrivateIndex
 
 extern Datum firebird_fdw_handler(PG_FUNCTION_ARGS);
 extern Datum firebird_fdw_version(PG_FUNCTION_ARGS);
+extern Datum firebird_fdw_close_connections(PG_FUNCTION_ARGS);
 
 PG_FUNCTION_INFO_V1(firebird_fdw_handler);
 PG_FUNCTION_INFO_V1(firebird_fdw_version);
-
+PG_FUNCTION_INFO_V1(firebird_fdw_close_connections);
 
 extern void _PG_init(void);
 
@@ -262,6 +263,19 @@ firebird_fdw_version(PG_FUNCTION_ARGS)
 	PG_RETURN_INT32(FIREBIRD_FDW_VERSION);
 }
 
+/*
+ * firebird_fdw_close_connections()
+ *
+ * Close all open connections
+ */
+Datum
+firebird_fdw_close_connections(PG_FUNCTION_ARGS)
+{
+	firebirdCloseConnections(true);
+	PG_RETURN_VOID();
+}
+
+
 /**
  * firebird_fdw_handler()
  *
@@ -335,7 +349,7 @@ void
 exitHook(int code, Datum arg)
 {
 	elog(DEBUG2, "entering function %s", __func__);
-	firebirdCloseConnections();
+	firebirdCloseConnections(false);
 }
 
 

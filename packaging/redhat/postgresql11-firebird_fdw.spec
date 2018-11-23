@@ -51,6 +51,8 @@ rm -rf $RPM_BUILD_ROOT
 %{pgsql_path}/share/extension/firebird_fdw--0.5.0.sql
 %{pgsql_path}/share/extension/firebird_fdw--0.5.0--1.0.0.sql
 %{pgsql_path}/share/extension/firebird_fdw--1.0.0.sql
+%{pgsql_path}/share/extension/firebird_fdw--1.0.0--1.1.0.sql
+%{pgsql_path}/share/extension/firebird_fdw--1.1.0.sql
 %{pgsql_path}/share/extension/firebird_fdw.control
 
 %if 0%{?rhel} && 0%{?rhel} >= 7

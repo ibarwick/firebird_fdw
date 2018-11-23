@@ -36,7 +36,9 @@ DATA = sql/firebird_fdw--0.3.0.sql \
 	sql/firebird_fdw--0.4.0--0.5.0.sql \
 	sql/firebird_fdw--0.5.0.sql \
 	sql/firebird_fdw--0.5.0--1.0.0.sql \
-	sql/firebird_fdw--1.0.0.sql
+	sql/firebird_fdw--1.0.0.sql \
+	sql/firebird_fdw--1.0.0--1.1.0.sql \
+	sql/firebird_fdw--1.1.0.sql
 
 PGXS := $(shell $(PG_CONFIG) --pgxs)
 include $(PGXS)

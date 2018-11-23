@@ -224,6 +224,17 @@ Import a Firebird schema:
 Note: `someschema` has no particular meaning and can be set to an arbitrary value.
 
 
+Functions
+---------
+
+Apart from the standard `firebird_fdw_handler()` and `firebird_fdw_validator()`
+functions, `firebird_fdw` provides the following user-callable utility functions:
+
+ - `firebird_fdw_version()`: returns the version number as an integer
+ - `firebird_fdw_close_connections()`: closes all cached connections from
+      PostgreSQL and Firebird
+
+
 Limitations
 -----------
 

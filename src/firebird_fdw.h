@@ -31,7 +31,7 @@
 
 #include "libfq.h"
 
-#define FIREBIRD_FDW_VERSION 10000
+#define FIREBIRD_FDW_VERSION 10100
 
 #define FB_FDW_LOGPREFIX "[firebird_fdw] "
 #define FB_FDW_LOGPREFIX_LEN strlen(FB_FDW_LOGPREFIX)
@@ -153,7 +153,7 @@ extern void fbSigInt(SIGNAL_ARGS);
 
 
 extern FBconn *firebirdInstantiateConnection(ForeignServer *server, UserMapping *user);
-extern void firebirdCloseConnections(void);
+extern void firebirdCloseConnections(bool verbose);
 extern void fbfdw_report_error(int errlevel, int pg_errcode, FBresult *res, FBconn *conn);
 
 
