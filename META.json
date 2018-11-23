@@ -17,9 +17,9 @@
     "provides": {
         "firebird_fdw": {
             "abstract": "A PostgreSQL foreign data wrapper (FDW) for Firebird",
-            "file": "firebird_fdw--0.5.0.sql",
+            "file": "firebird_fdw--1.0.0.sql",
             "docfile": "README.md",
-            "version": "0.5.0"
+            "version": "1.0.0"
         }
     },
     "resources": {
