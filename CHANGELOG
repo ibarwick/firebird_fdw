@@ -2,6 +2,7 @@ Revision history for firebird_fdw
 
 1.1.0	2018-12-??
 	- Add utility function "firebird_fdw_close_connections()"
+	- Adapt code to deal with tuple-level OID removal in PostgreSQL 12
 
 1.0.0	2018-11-09
 	- Support Firebird BOOLEAN datatype (Firebird 3.0 and later)

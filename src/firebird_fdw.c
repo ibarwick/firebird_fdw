@@ -242,7 +242,7 @@ static void
 convertResToArray(FBresult *res, int row, char **values);
 
 static void
-convertDbKeyValue(char *p, uint32_t *key_ctid_part, uint32_t *key_oid_part);
+convertDbKeyValue(char *p, uint32_t *key_ctid_part, uint32_t *key_xmax_part);
 
 
 static void
@@ -1092,7 +1092,7 @@ firebirdIterateForeignScan(ForeignScanState *node)
 	int last_field = 0;
 
 	uint32_t key_ctid_part = 0;
-	uint32_t key_oid_part  = 0;
+	uint32_t key_xmax_part  = 0;
 
 	elog(DEBUG2, "entering function %s", __func__);
 
@@ -1185,18 +1185,8 @@ firebirdIterateForeignScan(ForeignScanState *node)
 		convertDbKeyValue(
 			FQgetvalue(fdw_state->result, fdw_state->row, last_field - 1),
 			&key_ctid_part,
-			&key_oid_part);
+			&key_xmax_part);
 
-		/* Ensure this tuple has an OID, which we will use in conjunction with
-		 * the CTID to smuggle through Firebird's RDB$DB_KEY value
-		 *
-		 * Trivial note: from a Firebird point of view it would be more logical
-		 * to pass the first four bytes of the RDB$DB_KEY value as the OID, and
-		 * the last four bytes as the CTID, as RDB$DB_KEY appears to be
-		 * formatted as a table / row identifier, but that's a purely academic
-		 * point.
-		 */
-		attinmeta->tupdesc->tdhasoid = true;
 	}
 
 	tuple = BuildTupleFromCStrings(
@@ -1207,22 +1197,11 @@ firebirdIterateForeignScan(ForeignScanState *node)
 
 	if (fdw_state->db_key_used)
 	{
-		/* include/storage/itemptr.h */
+		/* Store the  */
+		tuple->t_self.ip_blkid.bi_hi = (uint16) (key_ctid_part >> 16);
+		tuple->t_self.ip_blkid.bi_lo = (uint16) key_ctid_part;
 
-#if (PG_VERSION_NUM >= 100000)
-		ItemPointer ctid_dummy = palloc0(sizeof(ItemPointerData));
-#else
-		ItemPointer ctid_dummy = palloc0(SizeOfIptrData);
-#endif
-
-		/* Set CTID and OID with values extrapolated from RDB$DB_KEY */
-		ctid_dummy->ip_blkid.bi_hi = (uint16) (key_ctid_part >> 16);
-		ctid_dummy->ip_blkid.bi_lo = (uint16) key_ctid_part;
-		ctid_dummy->ip_posid = 0;
-
-		tuple->t_self = *ctid_dummy;
-
-		HeapTupleSetOid(tuple, (Oid)key_oid_part);
+		tuple->t_data->t_choice.t_heap.t_xmax = (TransactionId)key_xmax_part;
 	}
 
 #if (PG_VERSION_NUM >= 120000)
@@ -1242,9 +1221,16 @@ firebirdIterateForeignScan(ForeignScanState *node)
  * convertDbKeyValue()
  *
  * Split the 8-byte RDB$DB_KEY value into two unsigned 32 bit integers
+ *
+ * Trivial note: from a Firebird point of view it would be more logical
+ * to pass the first four bytes of the RDB$DB_KEY value as the XMAX, and
+ * the last four bytes as the CTID, as RDB$DB_KEY appears to be
+ * formatted as a table / row identifier, but that's a purely academic
+ * point.
  */
+
 void
-convertDbKeyValue(char *p, uint32_t *key_ctid_part, uint32_t *key_oid_part)
+convertDbKeyValue(char *p, uint32_t *key_ctid_part, uint32_t *key_xmax_part)
 {
 	unsigned char *t;
 	uint64_t db_key = 0;
@@ -1258,7 +1244,7 @@ convertDbKeyValue(char *p, uint32_t *key_ctid_part, uint32_t *key_oid_part)
 	}
 
 	*key_ctid_part = (uint32_t) (db_key >> 32);
-	*key_oid_part  = (uint32_t) db_key;
+	*key_xmax_part = (uint32_t) db_key;
 }
 
 
@@ -1361,7 +1347,7 @@ firebirdIsForeignRelUpdatable(Relation rel)
 /**
  * firebirdAddForeignUpdateTargets()
  *
- * Add two fake target columns - 'db_key_ctidpart' and 'db_key_oidpart' -
+ * Add two fake target columns - 'db_key_ctidpart' and 'db_key_xmaxpart' -
  * which we will use to smuggle Firebird's 8-byte RDB$DB_KEY row identifier
  * in the PostgreSQL tuple header. The fake columns are marked resjunk = true.
  *
@@ -1369,11 +1355,17 @@ firebirdIsForeignRelUpdatable(Relation rel)
  * table-scanning functions can be identified unambiguously for UPDATE
  * and DELETE operations.
  *
- * This is a bit of a hack, as I'm not sure if it's feasible to add a
- * non-system column as a resjunk column. There have been indications in the
- * mailing lists that it might be possible, but I haven't been able to get
- * it to work or seen any examples in the wild. This requires futher
- * investigation.
+ * This is a bit of a hack, as it seems it's currently impossible to add
+ * an arbitrary column as a resjunk column, despite what the documentation
+ * implies.
+ *
+ * See:
+ *   - https://www.postgresql.org/message-id/flat/A737B7A37273E048B164557ADEF4A58B53860913%40ntex2010i.host.magwien.gv.at
+ *   - https://www.postgresql.org/message-id/flat/0389EF2F-BF41-4925-A5EB-1E9CF28CC171%40postgrespro.ru
+ *   - https://www.postgresql.org/docs/current/fdw-callbacks.html#FDW-CALLBACKS-UPDATE
+ *
+ * Note: in previous firebird_fdw releases, the tuple header OID was used
+ * together with the CTID, however from PostgreSQL 12 this is no longer possible.
  *
  * Parameters:
  * (Query *)parsetree
@@ -1392,60 +1384,45 @@ firebirdAddForeignUpdateTargets(Query *parsetree,
                                 Relation target_relation)
 {
 	Var		   *var_ctidjunk;
-	Var		   *var_oidjunk;
-	const char *attrname1;
-	const char *attrname2;
+	Var		   *var_xmaxjunk;
+
+	const char *attrname_ctid = "db_key_ctidpart";
+	const char *attrname_xmax = "db_key_xmaxpart";
+
 	TargetEntry *tle;
 
-	elog(DEBUG2, "entering function %s", __func__);
+	var_xmaxjunk = makeVar(parsetree->resultRelation,
+						   /* This is the XMAX header column */
+						   MaxTransactionIdAttributeNumber,
+						   INT4OID,
+						   -1,
+						   InvalidOid,
+						   0);
 
-	/*
-	 * In Firebird, transactionally unique row values are returned
-	 * by the RDB$DB_KEY pseudo-column. This is actually a string of
-	 * unsigned byte values which we coerce into two uint32 variables
-	 */
-
-	/* Make a Var representing the desired value */
-	var_ctidjunk = makeVar(parsetree->resultRelation,
-				   /* This is the CTID attribute, which we are abusing to pass half the RDB$DB_KEY value */
-				   SelfItemPointerAttributeNumber,
-				   TIDOID,
-				   -1,
-				   InvalidOid,
-				   0);
-
-	/* Wrap it in a resjunk TLE with the right name ... */
-	attrname1 = "db_key_ctidpart";
 	elog(DEBUG2, "list_length(parsetree->targetList) %i", list_length(parsetree->targetList));
 
-	/* backend/nodes/makefuncs.c */
-	tle = makeTargetEntry((Expr *) var_ctidjunk,
+	tle = makeTargetEntry((Expr *) var_xmaxjunk,
 						  list_length(parsetree->targetList) + 1,
-						  pstrdup(attrname1),
+						  pstrdup(attrname_xmax),
 						  true);
 
-	/* ... and add it to the query's targetlist */
 	parsetree->targetList = lappend(parsetree->targetList, tle);
 
+	var_ctidjunk = makeVar(parsetree->resultRelation,
+						   /* This is the CTID attribute, which we are abusing to pass half the RDB$DB_KEY value */
+						   SelfItemPointerAttributeNumber,
+						   TIDOID,
+						   -1,
+						   InvalidOid,
+						   0);
 
-	/* And this is the OID attribute, which we abusing
-	 * to pass the other half the RDB$DB_KEY value */
-	var_oidjunk = makeVar(parsetree->resultRelation,
-				   ObjectIdAttributeNumber,
-				   OIDOID,
-				  -1,
-				   InvalidOid,
-				   0);
+	elog(DEBUG2, "list_length(parsetree->targetList) %i", list_length(parsetree->targetList));
 
-	attrname2 = "db_key_oidpart";
-
-	/* backend/nodes/makefuncs.c */
-	tle = makeTargetEntry((Expr *) var_oidjunk,
+	tle = makeTargetEntry((Expr *) var_ctidjunk,
 						  list_length(parsetree->targetList) + 1,
-						  pstrdup(attrname2),
+						  pstrdup(attrname_ctid),
 						  true);
 
-	/* ... and add it to the query's targetlist */
 	parsetree->targetList = lappend(parsetree->targetList, tle);
 }
 
@@ -1805,25 +1782,26 @@ firebirdBeginForeignModify(ModifyTableState *mtstate,
 			return;
 		}
 
-		elog(DEBUG2, "Found resjunk db_key_ctidpart, attno %i", fmstate->db_keyAttno_CtidPart);
+		elog(DEBUG2, "Found resjunk db_key_ctidpart, attno %i", (int)fmstate->db_keyAttno_CtidPart);
 
-		fmstate->db_keyAttno_OidPart = ExecFindJunkAttributeInTlist(subplan->targetlist,
-																	"db_key_oidpart");
 
-		if (!AttributeNumberIsValid(fmstate->db_keyAttno_OidPart))
+		fmstate->db_keyAttno_XmaxPart = ExecFindJunkAttributeInTlist(
+			subplan->targetlist,
+			"db_key_xmaxpart");
+
+		if (!AttributeNumberIsValid(fmstate->db_keyAttno_XmaxPart))
 		{
-			elog(ERROR, "Resjunk column \"db_key_oidpart\" not found");
+			elog(ERROR, "Resjunk column \"db_key_xmaxpart\" not found");
 			return;
 		}
 
-		elog(DEBUG2, "Found resjunk db_key_oidpart, attno %i", fmstate->db_keyAttno_OidPart);
+		elog(DEBUG2, "Found resjunk \"db_key_xmaxpart\", attno %i", (int)fmstate->db_keyAttno_XmaxPart);
 
 		getTypeOutputInfo(OIDOID, &typefnoid, &isvarlena);
 
 		fmgr_info(typefnoid, &fmstate->p_flinfo[fmstate->p_nums]);
 		fmstate->p_nums++;
 	}
-
 
 	elog(DEBUG2, "	p_nums %i; n_params: %i", fmstate->p_nums, n_params);
 	Assert(fmstate->p_nums <= n_params);
@@ -2651,6 +2629,8 @@ convert_prep_stmt_params(FirebirdFdwModifyState *fmstate,
 		char *oidout;
 		char *db_key = (char *)palloc0(FB_DB_KEY_LEN + 1);
 		elog(DEBUG2, "extracting RDB$DB_KEY...");
+
+
 		oidout = OutputFunctionCall(&fmstate->p_flinfo[pindex],
 								 PointerGetDatum(tupleid2));
 		// XXX use strtol?
@@ -2869,7 +2849,7 @@ create_tuple_from_result(FBresult *res,
 /**
  * extractDbKeyParts()
  *
- * Retrieve RDB$DB_KEY smuggled through in the CTID and OID headers
+ * Retrieve RDB$DB_KEY smuggled through in the CTID and XMAX fields
  */
 void
 extractDbKeyParts(TupleTableSlot *planSlot,
@@ -2888,10 +2868,10 @@ extractDbKeyParts(TupleTableSlot *planSlot,
 		elog(ERROR, "db_key (CTID part) is NULL");
 
 	*datum_oid = ExecGetJunkAttribute(planSlot,
-									 fmstate->db_keyAttno_OidPart,
+									 fmstate->db_keyAttno_XmaxPart,
 									 &isNull);
 
 	/* shouldn't ever get a null result... */
 	if (isNull)
-		elog(ERROR, "db_key (OID part) is NULL");
+		elog(ERROR, "db_key (XMAX part) is NULL");
 }

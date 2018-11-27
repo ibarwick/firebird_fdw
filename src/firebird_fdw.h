@@ -136,8 +136,8 @@ typedef struct FirebirdFdwModifyState
 	List		 *retrieved_attrs; /* attr numbers retrieved by RETURNING */
 
 	/* info about parameters for prepared statement */
-	AttrNumber	  db_keyAttno_CtidPart;	 /* attnum of input resjunk rdb$db_key column */
-	AttrNumber	  db_keyAttno_OidPart;	 /* attnum of input resjunk rdb$db_key column (OID part)*/
+	AttrNumber	  db_keyAttno_CtidPart;	 /* attnum of input resjunk rdb$db_key column (CTID part) */
+	AttrNumber	  db_keyAttno_XmaxPart;	  /* attnum of input resjunk rdb$db_key column (xmax part */
 
 	int			  p_nums;		  /* number of parameters to transmit */
 	FmgrInfo	 *p_flinfo;		  /* output conversion functions for them */
