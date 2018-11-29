@@ -37,6 +37,10 @@ Supported platforms
 `firebird_fdw` was developed on Linux and OS X, and should run on any
 reasonably POSIX-compliant system.
 
+While in theory it should work on Windows, I am not able to support that
+platform. I am however happy to accept any assistance with porting it to
+Windows.
+
 Installation
 ------------
 
