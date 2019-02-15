@@ -2044,9 +2044,13 @@ getFirebirdColumnName(Oid foreigntableid, int varattno)
 /**
  * _dataTypeSQL()
  *
- * Generate query to get column metadata for a table
+ * Generate query to get column metadata for a table.
  *
- * TODO: support BLOB (subtype TEXT)
+ * This is used to generate a PostgreSQL table definition for
+ * IMPORT FOREIGN SCHEMA.
+ *
+ * TODO:
+ *  - verify all types can be converted to their PostgreSQL equivalents
  */
 char *
 _dataTypeSQL(char *table_name)
@@ -2066,7 +2070,7 @@ _dataTypeSQL(char *table_name)
 "            WHEN 14  THEN 'CHAR(' || f.rdb$field_length|| ')'\n"
 "            WHEN 40  THEN 'CSTRING'\n"
 "            WHEN 11  THEN 'D_FLOAT'\n"
-"            WHEN 27  THEN 'DOUBLE'\n"
+"            WHEN 27  THEN 'DOUBLE PRECISION'\n"
 "            WHEN 10  THEN 'FLOAT'\n"
 "            WHEN 16  THEN \n"
 "              CASE f.rdb$field_sub_type \n"

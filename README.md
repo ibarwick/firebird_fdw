@@ -231,7 +231,7 @@ Note: `someschema` has no particular meaning and can be set to an arbitrary valu
 Functions
 ---------
 
-Apart from the standard `firebird_fdw_handler()` and `firebird_fdw_validator()`
+ Apart from the standard `firebird_fdw_handler()` and `firebird_fdw_validator()`
 functions, `firebird_fdw` provides the following user-callable utility functions:
 
  - `firebird_fdw_version()`: returns the version number as an integer
