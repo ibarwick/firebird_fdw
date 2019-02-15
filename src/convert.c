@@ -2066,7 +2066,7 @@ _dataTypeSQL(char *table_name)
 "            WHEN 14  THEN 'CHAR(' || f.rdb$field_length|| ')'\n"
 "            WHEN 40  THEN 'CSTRING'\n"
 "            WHEN 11  THEN 'D_FLOAT'\n"
-"            WHEN 27  THEN 'DOUBLE'\n"
+"            WHEN 27  THEN 'DOUBLE PRECISION'\n"
 "            WHEN 10  THEN 'FLOAT'\n"
 "            WHEN 16  THEN \n"
 "              CASE f.rdb$field_sub_type \n"
