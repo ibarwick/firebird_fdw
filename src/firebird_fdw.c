@@ -550,7 +550,7 @@ firebirdEstimateCosts(PlannerInfo *root, RelOptInfo *baserel, Oid foreigntableid
 		- is there an equivalent of socket connections?
 		- other way of detecting local-hostedness, incluing IPv6
 	*/
-	if (strcmp(svr_address, "127.0.0.1") == 0 || strcmp(svr_address, "localhost") == 0)
+	if (svr_address && (strcmp(svr_address, "127.0.0.1") == 0 || strcmp(svr_address, "localhost") == 0))
 		fdw_state->startup_cost = 10;
 	else
 		fdw_state->startup_cost = 25;
@@ -1996,6 +1996,8 @@ firebirdExecForeignInsert(EState *estate,
 		case FBRES_NONFATAL_ERROR:
 		case FBRES_FATAL_ERROR:
 			fbfdw_report_error(ERROR, ERRCODE_FDW_UNABLE_TO_CREATE_EXECUTION, result, fmstate->conn);
+			/* fbfdw_report_error() will never return here, but break anyway */
+			break;
 		default:
 			elog(DEBUG1, "Query OK");
 	}
@@ -2101,6 +2103,8 @@ firebirdExecForeignUpdate(EState *estate,
 		case FBRES_NONFATAL_ERROR:
 		case FBRES_FATAL_ERROR:
 			fbfdw_report_error(ERROR, ERRCODE_FDW_UNABLE_TO_CREATE_EXECUTION, result, fmstate->conn);
+			/* fbfdw_report_error() will never return here, but break anyway */
+			break;
 		default:
 			elog(DEBUG1, "Query OK");
 	}
@@ -2205,6 +2209,8 @@ firebirdExecForeignDelete(EState *estate,
 		case FBRES_NONFATAL_ERROR:
 		case FBRES_FATAL_ERROR:
 			fbfdw_report_error(ERROR, ERRCODE_FDW_UNABLE_TO_CREATE_EXECUTION, result, fmstate->conn);
+			/* fbfdw_report_error() will never return here, but break anyway */
+			break;
 		default:
 			elog(DEBUG2, "Query OK");
 			if (fmstate->has_returning)
@@ -2773,7 +2779,7 @@ get_stmt_param_formats(FirebirdFdwModifyState *fmstate,
 
 	oldcontext = MemoryContextSwitchTo(fmstate->temp_cxt);
 
-	paramFormats = (int *) palloc0(sizeof(int *) * fmstate->p_nums);
+	paramFormats = (int *) palloc0(sizeof(int) * fmstate->p_nums);
 
 	/* get parameters from slot */
 	if (slot != NULL && fmstate->target_attrs != NIL)
