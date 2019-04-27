@@ -24,6 +24,9 @@
 #include "funcapi.h"
 #include "access/reloptions.h"
 #include "access/sysattr.h"
+#if (PG_VERSION_NUM >= 120000)
+#include "access/table.h"
+#endif
 #include "catalog/pg_foreign_server.h"
 #include "catalog/pg_foreign_table.h"
 #include "catalog/pg_user_mapping.h"
@@ -35,12 +38,15 @@
 #include "miscadmin.h"
 #include "mb/pg_wchar.h"
 #include "nodes/makefuncs.h"
-#include "nodes/relation.h"
 #include "optimizer/cost.h"
 #include "optimizer/pathnode.h"
 #include "optimizer/planmain.h"
 #include "optimizer/restrictinfo.h"
+#if (PG_VERSION_NUM >= 120000)
+#include "optimizer/optimizer.h"
+#else
 #include "optimizer/var.h"
+#endif
 #include "parser/parsetree.h"
 #include "storage/fd.h"
 #include "storage/ipc.h"
@@ -1062,7 +1068,11 @@ firebirdBeginForeignScan(ForeignScanState *node,
 
 	/* Get column information */
 
+#if (PG_VERSION_NUM >= 120000)
+	rel = table_open(rte->relid, NoLock);
+#else
 	rel = heap_open(foreigntableid, NoLock);
+#endif
 
 	tupdesc = rel->rd_att;
 	fdw_state->table->pg_column_total = 0;
@@ -1104,7 +1114,11 @@ firebirdBeginForeignScan(ForeignScanState *node,
 		fdw_state->table->pg_column_total++;
 	}
 
+#if (PG_VERSION_NUM >= 120000)
+	table_close(rel, NoLock);
+#else
 	heap_close(rel, NoLock);
+#endif
 
 	/* Check if table definition contains at least one column */
 	if (!fdw_state->table->pg_column_total)
@@ -1591,19 +1605,12 @@ firebirdPlanForeignModify(PlannerInfo *root,
 	 * Core code already has some lock on each rel being planned, so we can
 	 * use NoLock here.
 	 */
-	/* access/heapam.h
-	   backend/access/heapam.c
-	   heap_open		- open a heap relation by relation OID
 
-	   *		heap_open - open a heap relation by relation OID
-	   *
-	   *		This is essentially relation_open plus check that the relation
-	   *		is not an index nor a composite type.  (The caller should also
-	   *		check that it's not a view or foreign table before assuming it has
-	   *		storage.)
-	 */
-
+#if (PG_VERSION_NUM >= 120000)
+	rel = table_open(rte->relid, NoLock);
+#else
 	rel = heap_open(rte->relid, NoLock);
+#endif
 
 	relid = RelationGetRelid(rel);
 	fdw_state = getFdwState(relid);
@@ -1697,7 +1704,12 @@ firebirdPlanForeignModify(PlannerInfo *root,
 			break;
 	}
 
+#if (PG_VERSION_NUM >= 120000)
+	rel = table_open(rte->relid, NoLock);
+#else
 	heap_close(rel, NoLock);
+#endif
+
 	elog(DEBUG1, "Constructed the SQL command string ");
 
 	/*

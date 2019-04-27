@@ -28,7 +28,11 @@
 #include "commands/defrem.h"
 #include "nodes/nodeFuncs.h"
 #include "optimizer/clauses.h"
+#if (PG_VERSION_NUM >= 120000)
+#include "optimizer/optimizer.h"
+#else
 #include "optimizer/var.h"
+#endif
 #include "parser/parsetree.h"
 #include "utils/builtins.h"
 #include "utils/lsyscache.h"
@@ -127,8 +131,11 @@ buildSelectSql(StringInfo buf,
 	 * Core code already has some lock on each rel being planned, so we can
 	 * use NoLock here.
 	 */
+#if (PG_VERSION_NUM >= 120000)
+	rel = table_open(rte->relid, NoLock);
+#else
 	rel = heap_open(rte->relid, NoLock);
-
+#endif
 	/* Construct SELECT list */
 	appendStringInfoString(buf, "SELECT ");
 	convertTargetList(buf, root, baserel->relid, rel, attrs_used,

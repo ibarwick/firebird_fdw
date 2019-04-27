@@ -15,7 +15,11 @@
 #include "miscadmin.h"
 #include "mb/pg_wchar.h"
 #include "nodes/makefuncs.h"
+#if (PG_VERSION_NUM >= 120000)
+#include "nodes/pathnodes.h"
+#else
 #include "nodes/relation.h"
+#endif
 #include "optimizer/cost.h"
 #include "optimizer/pathnode.h"
 #include "optimizer/planmain.h"
