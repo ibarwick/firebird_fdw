@@ -352,9 +352,7 @@ firebird_fdw_diag(PG_FUNCTION_ARGS)
 
 	tuplestore_putvalues(tupstore, tupdesc, values, nulls);
 
-
 	/* libfq version */
-
 	memset(values, 0, sizeof(values));
 	memset(nulls, 0, sizeof(nulls));
 
@@ -376,6 +374,20 @@ firebird_fdw_diag(PG_FUNCTION_ARGS)
 	values[1] = CStringGetTextDatum(FQlibVersionString());
 
 	tuplestore_putvalues(tupstore, tupdesc, values, nulls);
+
+	/* number of cached connections */
+	memset(values, 0, sizeof(values));
+	memset(nulls, 0, sizeof(nulls));
+
+	initStringInfo(&setting);
+	appendStringInfo(&setting,
+					 "%i", firebirdCachedConnectionsCount());
+
+	values[0] = CStringGetTextDatum("cached_connection_count");
+	values[1] = CStringGetTextDatum(setting.data);
+
+	tuplestore_putvalues(tupstore, tupdesc, values, nulls);
+	pfree(setting.data);
 
 	/* no more rows */
 	tuplestore_donestoring(tupstore);

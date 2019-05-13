@@ -551,6 +551,32 @@ firebirdCloseConnections(bool verbose)
 			 closed);
 }
 
+/**
+ * firebirdCachedConnectionsCount()
+ */
+int
+firebirdCachedConnectionsCount(void)
+{
+	HASH_SEQ_STATUS fstat;
+	ConnCacheEntry *entry;
+	int entry_count = 0;
+
+	elog(DEBUG3, "entering function %s", __func__);
+
+	if (ConnectionHash != NULL)
+	{
+		hash_seq_init(&fstat, ConnectionHash);
+		while ((entry = (ConnCacheEntry *)hash_seq_search(&fstat)) != NULL)
+		{
+			if (entry->conn == NULL)
+				continue;
+			entry_count++;
+		}
+	}
+
+	return entry_count;
+}
+
 
 /**
  * firebirdDbPath()

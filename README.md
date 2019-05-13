@@ -160,6 +160,29 @@ are carried out on it.
     'verbose':
         Logs the name of each table or view being imported at log level `INFO`.
 
+Functions
+---------
+
+ Apart from the standard `firebird_fdw_handler()` and `firebird_fdw_validator()`
+functions, `firebird_fdw` provides the following user-callable utility functions:
+
+ - `firebird_fdw_version()`: returns the version number as an integer
+ - `firebird_fdw_close_connections()`: closes all cached connections from
+      PostgreSQL and Firebird
+ - `firebird_fdw_diag()`: returns ad-hoc information about the Firebird FDW in key/value
+      form, example:
+
+```
+    repmgr=# SELECT * FROM firebird_fdw_diag();
+                name             | setting
+    -----------------------------+---------
+     firebird_fdw_version        | 10100
+     firebird_fdw_version_string | 1.1.0
+     libfq_version               | 400
+     libfq_version_string        | 0.4.0
+     cached_connection_count     | 1
+    (5 rows)
+```
 
 Examples
 --------
@@ -226,17 +249,6 @@ Import a Firebird schema:
       INTO public;
 
 Note: `someschema` has no particular meaning and can be set to an arbitrary value.
-
-
-Functions
----------
-
- Apart from the standard `firebird_fdw_handler()` and `firebird_fdw_validator()`
-functions, `firebird_fdw` provides the following user-callable utility functions:
-
- - `firebird_fdw_version()`: returns the version number as an integer
- - `firebird_fdw_close_connections()`: closes all cached connections from
-      PostgreSQL and Firebird
 
 
 Limitations
