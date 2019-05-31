@@ -7,15 +7,16 @@ support, as well as pushdown of some operations. While it appears to be
 working reliably, please be aware this is still very much work-in-progress;
 *USE AT YOUR OWN RISK*.
 
-`firebird_fdw` is designed to be compatible with PostgreSQL 9.2 ~ 11.
-Write support is only available in PostgreSQL 9.3 and later. It is not
+`firebird_fdw` is designed to be compatible with PostgreSQL 9.2 ~ 11,
+and the latest release (1.1.0) works with PostgreSQL 12 (currently in beta).
+Write support is available in PostgreSQL 9.3 and later. It is not
 designed to work with forks of the main PostgreSQL community version.
 
 `firebird_fdw` was written for Firebird 2.5 and will probably work with
 Firebird 2.0 or later. It should work with earlier versions if the
 `disable_pushdowns` option is set (see below). It works with Firebird 3.0.x
 but has not yet been extensively tested with that version, and does not take
-advantage of all new Firebird 3 features. This will  be addressed in future
+advantage of all new Firebird 3 features. This will be addressed in future
 releases.
 
 Features
@@ -55,7 +56,7 @@ build system; for details see here:
 Prerequisites:
 
 - Firebird client library (`libfbclient`) and API header file (`ibase.h`)
-- `libfq`, a slightly saner API wrapper for the Firebird C API; see:
+- `libfq`, a `libpq`-like API wrapper for the Firebird C API; see:
 
     https://github.com/ibarwick/libfq
 
@@ -304,7 +305,7 @@ Useful links
 
 * Source
  - https://github.com/ibarwick/firebird_fdw (public mirror)
- - http://pgxn.org/dist/firebird_fdw/
+ - https://pgxn.org/dist/firebird_fdw/
 
 * Blog (including release notes)
  - http://sql-info.de/postgresql/firebird-fdw/index.html
