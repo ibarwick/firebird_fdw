@@ -2808,12 +2808,9 @@ get_stmt_param_formats(FirebirdFdwModifyState *fmstate,
 	/* get parameters from slot */
 	if (slot != NULL && fmstate->target_attrs != NIL)
 	{
-		ListCell   *lc;
-
-		foreach (lc, fmstate->target_attrs)
+		for (; pindex < list_length(fmstate->target_attrs); pindex++)
 		{
 			paramFormats[pindex] = 0;
-			pindex++;
 		}
 	}
 
