@@ -1279,7 +1279,11 @@ convertFunctionPosition(FuncExpr *node, convert_expr_cxt *context)
 	lc = list_head(node->args);
 	convertExprRecursor(lfirst(lc), context, &string);
 
+#if (PG_VERSION_NUM >= 130000)
+	lc = lnext(node->args, lc);
+#else
 	lc = lnext(lc);
+#endif
 	convertExprRecursor(lfirst(lc), context, &substring);
 
 	initStringInfo(&buf);
@@ -1311,13 +1315,21 @@ convertFunctionSubstring(FuncExpr *node, convert_expr_cxt *context)
 	convertExprRecursor(lfirst(lc), context, &local_result);
 	appendStringInfoString(&buf, local_result);
 
+#if (PG_VERSION_NUM >= 130000)
+	lc = lnext(node->args, lc);
+#else
 	lc = lnext(lc);
+#endif
 	convertExprRecursor(lfirst(lc), context, &local_result);
 	appendStringInfo(&buf, " FROM %s", local_result);
 
 	if (list_length(node->args) == 3)
 	{
+#if (PG_VERSION_NUM >= 130000)
+		lc = lnext(node->args, lc);
+#else
 		lc = lnext(lc);
+#endif
 		convertExprRecursor(lfirst(lc), context, &local_result);
 		appendStringInfo(&buf, " FOR %s", local_result);
 	}
@@ -1353,7 +1365,11 @@ convertFunctionTrim(FuncExpr *node, convert_expr_cxt *context, char *where)
 
 	if (list_length(node->args) == 2)
 	{
+#if (PG_VERSION_NUM >= 130000)
+		lc = lnext(node->args, lc);
+#else
 		lc = lnext(lc);
+#endif
 		convertExprRecursor(lfirst(lc), context, &what);
 		appendStringInfo(&buf, " %s", what);
 	}
@@ -1825,14 +1841,23 @@ foreign_expr_walker(Node *node,
 					bool can_handle = false;
 
 					lc = list_head(func->args);
+
+#if (PG_VERSION_NUM >= 130000)
+					lc = lnext(func->args, lc);
+#else
 					lc = lnext(lc);
+#endif
 					arg = lfirst(lc);
 					if (arg->consttype == INT4OID)
 						can_handle = true;
 
 					if (list_length(func->args) == 3)
 					{
+#if (PG_VERSION_NUM >= 130000)
+						lc = lnext(func->args, lc);
+#else
 						lc = lnext(lc);
+#endif
 						arg = lfirst(lc);
 						if (arg->consttype == INT4OID)
 							can_handle = true;
