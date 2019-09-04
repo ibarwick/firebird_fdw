@@ -70,6 +70,9 @@ For OS X they would look something like this:
     export PG_CPPFLAGS="-I /Library/Frameworks/Firebird.framework/Versions/A/Headers/"
     export SHLIB_LINK="-L/Library/Frameworks/Firebird.framework/Versions/A/Libraries/"
 
+The Firebird utility [fb_config](https://firebirdsql.org/manual/fbscripts-fb-config.html)
+can assist with locating the appropriate locations.
+
 `firebird_fdw` is installed as a PostgreSQL extension; it requires the
 `pg_config` binary for the target installation to be in the shell path.
 
