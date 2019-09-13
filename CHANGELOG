@@ -1,5 +1,8 @@
 Revision history for firebird_fdw
 
+1.1.1	2019-09-??
+	- Prevent crash on attempted COPY operation (PostgreSQL 11 and later)
+
 1.1.0	2019-05-31
 	- Add utility function "firebird_fdw_close_connections()"
 	- Add utility function "firebird_fdw_diag()"

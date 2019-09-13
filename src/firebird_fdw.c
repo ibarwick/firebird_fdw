@@ -214,6 +214,12 @@ static List *firebirdImportForeignSchema(ImportForeignSchemaStmt *stmt,
 										 Oid serverOid);
 #endif
 
+#if (PG_VERSION_NUM >= 110000)
+static void
+firebirdBeginForeignInsert(ModifyTableState *mtstate,
+						   ResultRelInfo *resultRelInfo);
+#endif
+
 /* Internal functions */
 
 static void exitHook(int code, Datum arg);
@@ -440,6 +446,12 @@ firebird_fdw_handler(PG_FUNCTION_ARGS)
 #if (PG_VERSION_NUM >= 90500)
 	/* support for IMPORT FOREIGN SCHEMA */
 	fdwroutine->ImportForeignSchema = firebirdImportForeignSchema;
+#endif
+
+#if (PG_VERSION_NUM >= 110000)
+	/* Handle COPY */
+	fdwroutine->BeginForeignInsert = firebirdBeginForeignInsert;
+	fdwroutine->EndForeignInsert = NULL;
 #endif
 
 	PG_RETURN_POINTER(fdwroutine);
@@ -2296,6 +2308,24 @@ firebirdExplainForeignModify(ModifyTableState *mtstate,
 							 struct ExplainState *es)
 {
 	elog(DEBUG2, "entering function %s", __func__);
+}
+#endif
+
+#if (PG_VERSION_NUM >= 110000)
+/*
+ * firebidBeginForeignInsert
+ *
+ * Begin an insert operation on a foreign table.
+ * This is not yet supported, so raise an error.
+ */
+
+static void
+firebirdBeginForeignInsert(ModifyTableState *mtstate,
+						   ResultRelInfo *resultRelInfo)
+{
+	ereport(ERROR,
+			(errcode(ERRCODE_FDW_UNABLE_TO_CREATE_EXECUTION),
+			 errmsg("COPY and foreign partition routing not supported")));
 }
 #endif
 
