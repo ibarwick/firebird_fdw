@@ -300,7 +300,7 @@ Having said that, things I would like to do are:
 
  - improve support for Firebird 3.0 features
  - add support for missing data types
- - improve support for recent features to the PostgreSQL FDW API.
+ - improve support for recent features added to the PostgreSQL FDW API.
 
 
 Useful links
@@ -314,12 +314,12 @@ Useful links
  - https://sql-info.de/postgresql/firebird-fdw/index.html
 
 * General FDW Documentation
- - https://www.postgresql.org/docs/current/static/ddl-foreign-data.html
- - https://www.postgresql.org/docs/current/static/sql-createforeigndatawrapper.html
- - https://www.postgresql.org/docs/current/static/sql-createforeigntable.html
- - https://www.postgresql.org/docs/current/static/sql-importforeignschema.html
- - https://www.postgresql.org/docs/current/static/fdwhandler.html
- - https://www.postgresql.org/docs/current/static/postgres-fdw.html
+ - https://www.postgresql.org/docs/current/ddl-foreign-data.html
+ - https://www.postgresql.org/docs/current/sql-createforeigndatawrapper.html
+ - https://www.postgresql.org/docs/current/sql-createforeigntable.html
+ - https://www.postgresql.org/docs/current/sql-importforeignschema.html
+ - https://www.postgresql.org/docs/current/fdwhandler.html
+ - https://www.postgresql.org/docs/current/postgres-fdw.html
 
 * Other FDWs
  - https://wiki.postgresql.org/wiki/Fdw
