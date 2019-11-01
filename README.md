@@ -311,7 +311,7 @@ Useful links
  - https://pgxn.org/dist/firebird_fdw/
 
 * Blog (including release notes)
- - http://sql-info.de/postgresql/firebird-fdw/index.html
+ - https://sql-info.de/postgresql/firebird-fdw/index.html
 
 * General FDW Documentation
  - https://www.postgresql.org/docs/current/static/ddl-foreign-data.html
