@@ -1092,11 +1092,7 @@ firebirdBeginForeignScan(ForeignScanState *node,
 
 	/* Get column information */
 
-#if (PG_VERSION_NUM >= 120000)
 	rel = table_open(rte->relid, NoLock);
-#else
-	rel = heap_open(foreigntableid, NoLock);
-#endif
 
 	tupdesc = rel->rd_att;
 	fdw_state->table->pg_column_total = 0;
@@ -1138,11 +1134,7 @@ firebirdBeginForeignScan(ForeignScanState *node,
 		fdw_state->table->pg_column_total++;
 	}
 
-#if (PG_VERSION_NUM >= 120000)
 	table_close(rel, NoLock);
-#else
-	heap_close(rel, NoLock);
-#endif
 
 	/* Check if table definition contains at least one column */
 	if (!fdw_state->table->pg_column_total)
@@ -1728,11 +1720,7 @@ firebirdPlanForeignModify(PlannerInfo *root,
 			break;
 	}
 
-#if (PG_VERSION_NUM >= 120000)
-	rel = table_open(rte->relid, NoLock);
-#else
-	heap_close(rel, NoLock);
-#endif
+	table_close(rel, NoLock);
 
 	elog(DEBUG1, "Constructed the SQL command string ");
 

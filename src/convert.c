@@ -131,11 +131,8 @@ buildSelectSql(StringInfo buf,
 	 * Core code already has some lock on each rel being planned, so we can
 	 * use NoLock here.
 	 */
-#if (PG_VERSION_NUM >= 120000)
 	rel = table_open(rte->relid, NoLock);
-#else
-	rel = heap_open(rte->relid, NoLock);
-#endif
+
 	/* Construct SELECT list */
 	appendStringInfoString(buf, "SELECT ");
 	convertTargetList(buf, root, baserel->relid, rel, attrs_used,
@@ -145,7 +142,7 @@ buildSelectSql(StringInfo buf,
 	appendStringInfoString(buf, " FROM ");
 	convertRelation(buf, rel);
 
-	heap_close(rel, NoLock);
+	table_close(rel, NoLock);
 }
 
 

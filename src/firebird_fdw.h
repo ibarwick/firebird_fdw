@@ -42,6 +42,15 @@
 #define FB_FDW_LOGPREFIX_LEN strlen(FB_FDW_LOGPREFIX)
 
 /*
+ * In PostgreSQL 12 and earlier, "table_open|close()" were "heap_open|close()";
+ * see core commits 4b21acf5 and f25968c4.
+ */
+#if PG_VERSION_NUM < 120000
+#define table_open(x, y) heap_open(x, y)
+#define table_close(x, y) heap_close(x, y)
+#endif
+
+/*
  * Macro to indicate if a given PostgreSQL datatype can be
  * converted to a Firebird type
  */
