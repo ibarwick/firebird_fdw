@@ -70,16 +70,17 @@ typedef struct convert_expr_cxt
 static char *convertDatum(Datum datum, Oid type);
 
 static void convertColumnRef(StringInfo buf, int varno, int varattno,
-                 PlannerInfo *root);
+							 RangeTblEntry *rte);
 static void convertRelation(StringInfo buf, Relation rel);
 static void convertStringLiteral(StringInfo buf, const char *val);
 static void convertOperatorName(StringInfo buf, Form_pg_operator opform, char *left, char *right);
-static void convertReturningList(StringInfo buf, PlannerInfo *root,
+static void convertReturningList(StringInfo buf,
+								 RangeTblEntry *rte,
 								 Index rtindex, Relation rel,
 								 List *returningList,
 								 List **retrieved_attrs);
 static void convertTargetList(StringInfo buf,
-							  PlannerInfo *root,
+							  RangeTblEntry *rte,
 							  Index rtindex,
 							  Relation rel,
 							  Bitmapset *attrs_used,
@@ -118,13 +119,12 @@ static bool is_builtin(Oid procid);
  */
 void
 buildSelectSql(StringInfo buf,
-			   PlannerInfo *root,
+			   RangeTblEntry *rte,
 			   RelOptInfo *baserel,
 			   Bitmapset *attrs_used,
 			   List **retrieved_attrs,
 			   bool *db_key_used)
 {
-	RangeTblEntry *rte = planner_rt_fetch(baserel->relid, root);
 	Relation	rel;
 
 	/*
@@ -135,7 +135,7 @@ buildSelectSql(StringInfo buf,
 
 	/* Construct SELECT list */
 	appendStringInfoString(buf, "SELECT ");
-	convertTargetList(buf, root, baserel->relid, rel, attrs_used,
+	convertTargetList(buf, rte, baserel->relid, rel, attrs_used,
 					  retrieved_attrs, db_key_used);
 
 	/* Construct FROM clause */
@@ -152,7 +152,8 @@ buildSelectSql(StringInfo buf,
  * Build Firebird INSERT statement
  */
 void
-buildInsertSql(StringInfo buf, PlannerInfo *root,
+buildInsertSql(StringInfo buf,
+			   RangeTblEntry *rte,
 			   Index rtindex, Relation rel,
 			   List *targetAttrs, List *returningList,
 			   List **retrieved_attrs)
@@ -173,7 +174,7 @@ buildInsertSql(StringInfo buf, PlannerInfo *root,
 		else
 			first = false;
 
-		convertColumnRef(buf, rtindex, attnum, root);
+		convertColumnRef(buf, rtindex, attnum, rte);
 	}
 
 	appendStringInfoString(buf, ")\n VALUES (");
@@ -191,7 +192,7 @@ buildInsertSql(StringInfo buf, PlannerInfo *root,
 
 	appendStringInfoString(buf, ")");
 
-	convertReturningList(buf, root, rtindex, rel,
+	convertReturningList(buf, rte, rtindex, rel,
 						 returningList, retrieved_attrs);
 }
 
@@ -202,7 +203,8 @@ buildInsertSql(StringInfo buf, PlannerInfo *root,
  * Build Firebird UPDATE statement
  */
 void
-buildUpdateSql(StringInfo buf, PlannerInfo *root,
+buildUpdateSql(StringInfo buf,
+			   RangeTblEntry *rte,
                Index rtindex, Relation rel,
                List *targetAttrs, List *returningList,
                List **retrieved_attrs)
@@ -224,13 +226,13 @@ buildUpdateSql(StringInfo buf, PlannerInfo *root,
 		else
 			first = false;
 
-		convertColumnRef(buf, rtindex, attnum, root);
+		convertColumnRef(buf, rtindex, attnum, rte);
 		appendStringInfo(buf, " = ?");
 	}
 
 	appendStringInfoString(buf, " WHERE rdb$db_key = ?");
 
-	convertReturningList(buf, root, rtindex, rel,
+	convertReturningList(buf, rte, rtindex, rel,
 						 returningList, retrieved_attrs);
 }
 
@@ -256,17 +258,18 @@ buildUpdateSql(StringInfo buf, PlannerInfo *root,
  */
 
 void
-buildDeleteSql(StringInfo buf, PlannerInfo *root,
-				 Index rtindex, Relation rel,
-				 List *returningList,
-				 List **retrieved_attrs)
+buildDeleteSql(StringInfo buf,
+			   RangeTblEntry *rte,
+			   Index rtindex, Relation rel,
+			   List *returningList,
+			   List **retrieved_attrs)
 {
 
 	appendStringInfoString(buf, "DELETE FROM ");
 	convertRelation(buf, rel);
 	appendStringInfoString(buf, " WHERE rdb$db_key = ?");
 
-	convertReturningList(buf, root, rtindex, rel,
+	convertReturningList(buf, rte, rtindex, rel,
 						 returningList, retrieved_attrs);
 }
 
@@ -496,18 +499,14 @@ convertDatum(Datum datum, Oid type)
  * If it has a column_name FDW option, use that instead of attribute name.
  */
 static void
-convertColumnRef(StringInfo buf, int varno, int varattno, PlannerInfo *root)
+convertColumnRef(StringInfo buf, int varno, int varattno, RangeTblEntry *rte)
 {
-	RangeTblEntry *rte;
 	char	   *colname = NULL;
 
 	/* varno must not be any of OUTER_VAR, INNER_VAR and INDEX_VAR. */
 	Assert(!IS_SPECIAL_VARNO(varno));
 
 	elog(DEBUG2, "entering function %s", __func__);
-
-	/* Get RangeTblEntry from array in PlannerInfo. */
-	rte = planner_rt_fetch(varno, root);
 
 	/* Use Firebird column name if defined */
 	colname = getFirebirdColumnName(rte->relid, varattno);
@@ -685,10 +684,16 @@ convertVar(Var *node, convert_expr_cxt *context, char **result)
 
 	if (node->varno == context->foreignrel->relid &&
 		node->varlevelsup == 0)
+	{
 		/* Var belongs to foreign table */
-		convertColumnRef(&buf, node->varno, node->varattno, context->root);
+		 RangeTblEntry *rte = planner_rt_fetch(node->varno, context->root);
+
+		convertColumnRef(&buf, node->varno, node->varattno, rte);
+	}
 	else
+	{
 		elog(ERROR, "%s: var does not belong to foreign table", __func__);
+	}
 
 	*result = pstrdup(buf.data);
 }
@@ -1384,7 +1389,7 @@ convertFunctionTrim(FuncExpr *node, convert_expr_cxt *context, char *where)
  * statement.
  */
 static void
-convertReturningList(StringInfo buf, PlannerInfo *root,
+convertReturningList(StringInfo buf, RangeTblEntry *rte,
 					 Index rtindex, Relation rel,
 					 List *returningList,
 					 List **retrieved_attrs)
@@ -1414,7 +1419,7 @@ convertReturningList(StringInfo buf, PlannerInfo *root,
 		/* Insert column names into the local query's RETURNING list */
 
 		appendStringInfoString(buf, " RETURNING ");
-		convertTargetList(buf, root, rtindex, rel, attrs_used,
+		convertTargetList(buf, rte, rtindex, rel, attrs_used,
 						  retrieved_attrs, &db_key_used);
 	}
 	else
@@ -1435,7 +1440,7 @@ convertReturningList(StringInfo buf, PlannerInfo *root,
  */
 static void
 convertTargetList(StringInfo buf,
-				  PlannerInfo *root,
+				  RangeTblEntry *rte,
 				  Index rtindex,
 				  Relation rel,
 				  Bitmapset *attrs_used,
@@ -1474,7 +1479,7 @@ convertTargetList(StringInfo buf,
 				appendStringInfoString(buf, ", ");
 			first = false;
 
-			convertColumnRef(buf, rtindex, i, root);
+			convertColumnRef(buf, rtindex, i, rte);
 
 			*retrieved_attrs = lappend_int(*retrieved_attrs, i);
 		}

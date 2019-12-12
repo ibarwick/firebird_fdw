@@ -889,7 +889,7 @@ firebirdGetForeignPlan(PlannerInfo *root,
 {
 	Index		scan_relid = baserel->relid;
 	FirebirdFdwState *fdw_state = (FirebirdFdwState *)baserel->fdw_private;
-
+	RangeTblEntry *rte;
 	StringInfoData sql;
 	List	   *fdw_private;
 	List	   *local_exprs = NIL;
@@ -931,9 +931,10 @@ firebirdGetForeignPlan(PlannerInfo *root,
 		}
 	}
 
+	rte = planner_rt_fetch(baserel->relid, root);
 	/* Build query */
 	initStringInfo(&sql);
-	buildSelectSql(&sql, root, baserel, fdw_state->attrs_used,
+	buildSelectSql(&sql, rte, baserel, fdw_state->attrs_used,
 				   &retrieved_attrs, &db_key_used);
 
 	if (remote_conds)
@@ -1698,19 +1699,19 @@ firebirdPlanForeignModify(PlannerInfo *root,
 	switch (operation)
 	{
 		case CMD_INSERT:
-			buildInsertSql(&sql, root, resultRelation, rel,
+			buildInsertSql(&sql, rte, resultRelation, rel,
 						   targetAttrs, returningList,
 						   &retrieved_attrs);
 			break;
 
 		case CMD_UPDATE:
-			buildUpdateSql(&sql, root, resultRelation, rel,
+			buildUpdateSql(&sql, rte, resultRelation, rel,
 						   targetAttrs, returningList,
 						   &retrieved_attrs);
 			break;
 
 		case CMD_DELETE:
-			buildDeleteSql(&sql, root, resultRelation, rel,
+			buildDeleteSql(&sql, rte, resultRelation, rel,
 						   returningList,
 						   &retrieved_attrs);
 			break;

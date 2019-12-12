@@ -177,23 +177,22 @@ extern void firebirdGetOptions(Oid foreigntableid, char **query, char **table, b
 
 /* query-building functions (in convert.c) */
 
-extern void buildInsertSql(StringInfo buf, PlannerInfo *root,
+extern void buildInsertSql(StringInfo buf, RangeTblEntry *rte,
 				 Index rtindex, Relation rel,
 				 List *targetAttrs, List *returningList,
 				 List **retrieved_attrs);
 
-extern void buildUpdateSql(StringInfo buf, PlannerInfo *root,
+extern void buildUpdateSql(StringInfo buf, RangeTblEntry *rte,
 				 Index rtindex, Relation rel,
 				 List *targetAttrs, List *returningList,
 				 List **retrieved_attrs);
 
-extern void buildDeleteSql(StringInfo buf, PlannerInfo *root,
+extern void buildDeleteSql(StringInfo buf, RangeTblEntry *rte,
 						   Index rtindex, Relation rel,
 						   List *returningList,
 						   List **retrieved_attrs);
 
-extern void buildSelectSql(StringInfo buf,
-			   PlannerInfo *root,
+extern void buildSelectSql(StringInfo buf, RangeTblEntry *rte,
 			   RelOptInfo *baserel,
 			   Bitmapset *attrs_used,
 			   List **retrieved_attrs,
