@@ -79,6 +79,8 @@ can assist with locating the appropriate locations.
 `USE_PGXS=1 make install` should take care of the actual compilation and
 installation.
 
+*IMPORTANT*: you *must* build `firebird_fdw` against the PostgreSQL version
+it will be installed on.
 
 Usage
 -----
