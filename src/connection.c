@@ -136,12 +136,19 @@ firebirdInstantiateConnection(ForeignServer *server, UserMapping *user)
 		MemSet(&ctl, 0, sizeof(ctl));
 		ctl.keysize = sizeof(ConnCacheKey);
 		ctl.entrysize = sizeof(ConnCacheEntry);
-		ctl.hash = tag_hash;
 
 		ctl.hcxt = CacheMemoryContext;
+
+#if (PG_VERSION_NUM < 90500)
+		ctl.hash = tag_hash;
 		ConnectionHash = hash_create("firebird_fdw connections", 8,
 									 &ctl,
 									 HASH_ELEM | HASH_FUNCTION | HASH_CONTEXT);
+#else
+		ConnectionHash = hash_create("firebird_fdw connections", 8,
+									 &ctl,
+									 HASH_ELEM | HASH_BLOBS | HASH_CONTEXT);
+#endif
 
 		/* Set up transaction callbacks */
 		RegisterXactCallback(fb_xact_callback, NULL);
