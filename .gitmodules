@@ -1,0 +1,3 @@
+[submodule "libfq"]
+	path = libfq
+	url = git@github.com:ibarwick/libfq.git
