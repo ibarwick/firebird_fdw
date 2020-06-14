@@ -318,14 +318,17 @@ Having said that, things I would like to do are:
 Useful links
 ------------
 
-* Source
+### Source
+
  - https://github.com/ibarwick/firebird_fdw (public mirror)
  - https://pgxn.org/dist/firebird_fdw/
 
-* Blog (including release notes)
+### Blog (including release notes)
+
  - https://sql-info.de/postgresql/firebird-fdw/index.html
 
-* General FDW Documentation
+### General FDW Documentation
+
  - https://www.postgresql.org/docs/current/ddl-foreign-data.html
  - https://www.postgresql.org/docs/current/sql-createforeigndatawrapper.html
  - https://www.postgresql.org/docs/current/sql-createforeigntable.html
@@ -333,7 +336,8 @@ Useful links
  - https://www.postgresql.org/docs/current/fdwhandler.html
  - https://www.postgresql.org/docs/current/postgres-fdw.html
 
-* Other FDWs
+### Other FDWs
+
  - https://wiki.postgresql.org/wiki/Fdw
  - https://pgxn.org/tag/fdw/
 
