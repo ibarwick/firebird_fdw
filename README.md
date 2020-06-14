@@ -117,6 +117,10 @@ Usage
         is updatable. Default is true. Note that this can be overridden
         by table-level settings.
 
+    'disable_pushdowns':
+        Turns off pushdowns of WHERE clause elements to Firebird. Useful
+        mainly for debugging and benchmarking.
+
 
 ### CREATE FOREIGN TABLE options
 
@@ -130,10 +134,6 @@ Usage
     'query':
         A Firebird SQL statement producing a result set which can be treated
         like a table. Cannot be used together with the 'table_name' option.
-
-    'disable_pushdowns':
-        Turns off pushdowns of WHERE clause elements to Firebird. Useful
-        mainly for debugging and benchmarking.
 
     'updatable':
         Boolean value indicating whether the table is updatable. Default is `true`.
