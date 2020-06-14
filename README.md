@@ -19,6 +19,17 @@ but has not yet been extensively tested with that version, and does not take
 advantage of all new Firebird 3 features. This will be addressed in future
 releases.
 
+1. [Features](#features)
+2. [Supported platforms](#supported-platforms)
+3. [Installation](#installation)
+4. [Usage](#usage)
+5. [Functions](#functions)
+6. [Examples](#examples)
+7. [Limitations](#limitations)
+8. [TAP tests](#tap-tests)
+9. [Development roadmap](#development-roadmap)
+10. [Useful links](#useful-links)
+
 Features
 --------
 
