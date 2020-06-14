@@ -547,6 +547,16 @@ convertRelation(StringInfo buf, FirebirdFdwState *fdw_state)
 	{
 		appendStringInfoString(buf, quote_identifier(fdw_state->svr_table));
 	}
+	else if (fdw_state->svr_query != NULL)
+	{
+		appendStringInfo(buf, "( %s )",
+						 fdw_state->svr_query);
+	}
+	else
+	{
+		/* should never reach here */
+	}
+
 }
 
 

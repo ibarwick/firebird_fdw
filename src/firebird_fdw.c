@@ -1152,17 +1152,16 @@ firebirdBeginForeignScan(ForeignScanState *node,
 
 	if (svr_query)
 	{
-		fdw_state->query = svr_query;
 		fdw_state->db_key_used = false;
 	}
 	else
 	{
-		fdw_state->query = strVal(list_nth(fsplan->fdw_private,
-										   FdwScanPrivateSelectSql));
-
 		fdw_state->db_key_used = (bool)intVal(list_nth(fsplan->fdw_private,
 													   FdwScanDbKeyUsed));
 	}
+
+	fdw_state->query = strVal(list_nth(fsplan->fdw_private,
+									   FdwScanPrivateSelectSql));
 
 	fdw_state->retrieved_attrs = (List *) list_nth(fsplan->fdw_private,
 												   FdwScanPrivateRetrievedAttrs);
