@@ -917,6 +917,8 @@ firebirdGetForeignPlan(PlannerInfo *root,
 		{
 			elog(DEBUG1, " - remote");
 			remote_conds = lappend(remote_conds, rinfo);
+
+			elog(DEBUG2, " - remote_conds ? %c", remote_conds ? 'Y' : 'N');
 		}
 		else if (list_member_ptr(fdw_state->local_conds, rinfo))
 		{
@@ -934,7 +936,7 @@ firebirdGetForeignPlan(PlannerInfo *root,
 	rte = planner_rt_fetch(baserel->relid, root);
 	/* Build query */
 	initStringInfo(&sql);
-	buildSelectSql(&sql, rte, baserel, fdw_state->attrs_used,
+	buildSelectSql(&sql, rte, fdw_state, baserel, fdw_state->attrs_used,
 				   &retrieved_attrs, &db_key_used);
 
 	if (remote_conds)
@@ -1699,19 +1701,19 @@ firebirdPlanForeignModify(PlannerInfo *root,
 	switch (operation)
 	{
 		case CMD_INSERT:
-			buildInsertSql(&sql, rte, resultRelation, rel,
+			buildInsertSql(&sql, rte, fdw_state, resultRelation, rel,
 						   targetAttrs, returningList,
 						   &retrieved_attrs);
 			break;
 
 		case CMD_UPDATE:
-			buildUpdateSql(&sql, rte, resultRelation, rel,
+			buildUpdateSql(&sql, rte, fdw_state, resultRelation, rel,
 						   targetAttrs, returningList,
 						   &retrieved_attrs);
 			break;
 
 		case CMD_DELETE:
-			buildDeleteSql(&sql, rte, resultRelation, rel,
+			buildDeleteSql(&sql, rte, fdw_state, resultRelation, rel,
 						   returningList,
 						   &retrieved_attrs);
 			break;

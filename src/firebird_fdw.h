@@ -178,25 +178,29 @@ extern void firebirdGetOptions(Oid foreigntableid, char **query, char **table, b
 /* query-building functions (in convert.c) */
 
 extern void buildInsertSql(StringInfo buf, RangeTblEntry *rte,
-				 Index rtindex, Relation rel,
-				 List *targetAttrs, List *returningList,
-				 List **retrieved_attrs);
+						   FirebirdFdwState *fdw_state,
+						   Index rtindex, Relation rel,
+						   List *targetAttrs, List *returningList,
+						   List **retrieved_attrs);
 
 extern void buildUpdateSql(StringInfo buf, RangeTblEntry *rte,
-				 Index rtindex, Relation rel,
-				 List *targetAttrs, List *returningList,
-				 List **retrieved_attrs);
+						   FirebirdFdwState *fdw_state,
+						   Index rtindex, Relation rel,
+						   List *targetAttrs, List *returningList,
+						   List **retrieved_attrs);
 
 extern void buildDeleteSql(StringInfo buf, RangeTblEntry *rte,
+						   FirebirdFdwState *fdw_state,
 						   Index rtindex, Relation rel,
 						   List *returningList,
 						   List **retrieved_attrs);
 
 extern void buildSelectSql(StringInfo buf, RangeTblEntry *rte,
-			   RelOptInfo *baserel,
-			   Bitmapset *attrs_used,
-			   List **retrieved_attrs,
-			   bool *db_key_used);
+						   FirebirdFdwState *fdw_state,
+						   RelOptInfo *baserel,
+						   Bitmapset *attrs_used,
+						   List **retrieved_attrs,
+						   bool *db_key_used);
 
 extern void buildWhereClause(StringInfo buf,
 				 PlannerInfo *root,

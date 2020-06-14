@@ -71,7 +71,7 @@ static char *convertDatum(Datum datum, Oid type);
 
 static void convertColumnRef(StringInfo buf, int varno, int varattno,
 							 RangeTblEntry *rte);
-static void convertRelation(StringInfo buf, Relation rel);
+static void convertRelation(StringInfo buf, FirebirdFdwState *fdw_state);
 static void convertStringLiteral(StringInfo buf, const char *val);
 static void convertOperatorName(StringInfo buf, Form_pg_operator opform, char *left, char *right);
 static void convertReturningList(StringInfo buf,
@@ -120,6 +120,7 @@ static bool is_builtin(Oid procid);
 void
 buildSelectSql(StringInfo buf,
 			   RangeTblEntry *rte,
+			   FirebirdFdwState *fdw_state,
 			   RelOptInfo *baserel,
 			   Bitmapset *attrs_used,
 			   List **retrieved_attrs,
@@ -140,7 +141,7 @@ buildSelectSql(StringInfo buf,
 
 	/* Construct FROM clause */
 	appendStringInfoString(buf, " FROM ");
-	convertRelation(buf, rel);
+	convertRelation(buf, fdw_state);
 
 	table_close(rel, NoLock);
 }
@@ -154,6 +155,7 @@ buildSelectSql(StringInfo buf,
 void
 buildInsertSql(StringInfo buf,
 			   RangeTblEntry *rte,
+			   FirebirdFdwState *fdw_state,
 			   Index rtindex, Relation rel,
 			   List *targetAttrs, List *returningList,
 			   List **retrieved_attrs)
@@ -162,7 +164,7 @@ buildInsertSql(StringInfo buf,
 	ListCell   *lc;
 
 	appendStringInfoString(buf, "INSERT INTO ");
-	convertRelation(buf, rel);
+	convertRelation(buf, fdw_state);
 	appendStringInfoString(buf, " (");
 	first = true;
 	foreach (lc, targetAttrs)
@@ -205,6 +207,7 @@ buildInsertSql(StringInfo buf,
 void
 buildUpdateSql(StringInfo buf,
 			   RangeTblEntry *rte,
+			   FirebirdFdwState *fdw_state,
                Index rtindex, Relation rel,
                List *targetAttrs, List *returningList,
                List **retrieved_attrs)
@@ -213,7 +216,7 @@ buildUpdateSql(StringInfo buf,
 	ListCell   *lc;
 
 	appendStringInfoString(buf, "UPDATE ");
-	convertRelation(buf, rel);
+	convertRelation(buf, fdw_state);
 	appendStringInfoString(buf, " SET ");
 
 	first = true;
@@ -260,13 +263,14 @@ buildUpdateSql(StringInfo buf,
 void
 buildDeleteSql(StringInfo buf,
 			   RangeTblEntry *rte,
+			   FirebirdFdwState *fdw_state,
 			   Index rtindex, Relation rel,
 			   List *returningList,
 			   List **retrieved_attrs)
 {
 
 	appendStringInfoString(buf, "DELETE FROM ");
-	convertRelation(buf, rel);
+	convertRelation(buf, fdw_state);
 	appendStringInfoString(buf, " WHERE rdb$db_key = ?");
 
 	convertReturningList(buf, rte, rtindex, rel,
@@ -302,6 +306,8 @@ buildWhereClause(StringInfo output,
 	convert_expr_cxt context;
 	ListCell   *lc;
 
+	elog(DEBUG2, "entering function %s", __func__);
+
 	if (params)
 		*params = NIL;			/* initialize result list to empty */
 
@@ -329,6 +335,8 @@ buildWhereClause(StringInfo output,
 		convertExpr(ri->clause, &context);
 		appendStringInfoChar(output, ')');
 	}
+
+	elog(DEBUG3, "WHERE clause: '%s'", output->data);
 }
 
 
@@ -531,31 +539,14 @@ convertColumnRef(StringInfo buf, int varno, int varattno, RangeTblEntry *rte)
  * name itself.
  */
 static void
-convertRelation(StringInfo buf, Relation rel)
+convertRelation(StringInfo buf, FirebirdFdwState *fdw_state)
 {
-	ForeignTable *table;
-	const char *relname = NULL;
-	ListCell   *lc;
-
 	elog(DEBUG2, "entering function %s", __func__);
 
-	/* If remote table name defined in the 'table' option provided, use this
-	 * instead of the PostgreSQL name
-	 */
-
-	table = GetForeignTable(RelationGetRelid(rel));
-
-	foreach (lc, table->options)
+	if (fdw_state->svr_table != NULL)
 	{
-		DefElem	   *def = (DefElem *) lfirst(lc);
-		if (strcmp(def->defname, "table_name") == 0)
-			relname = defGetString(def);
+		appendStringInfoString(buf, quote_identifier(fdw_state->svr_table));
 	}
-
-	if (relname == NULL)
-		relname = RelationGetRelationName(rel);
-
-	appendStringInfoString(buf, quote_identifier(relname));
 }
 
 
