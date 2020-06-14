@@ -7,8 +7,7 @@ support, as well as pushdown of some operations. While it appears to be
 working reliably, please be aware this is still very much work-in-progress;
 *USE AT YOUR OWN RISK*.
 
-`firebird_fdw` is designed to be compatible with PostgreSQL 9.2 ~ 11,
-and the latest release (1.1.0) works with PostgreSQL 12 (currently in beta).
+`firebird_fdw` is designed to be compatible with PostgreSQL 9.2 ~ 12.
 Write support is available in PostgreSQL 9.3 and later. It is not
 designed to work with forks of the main PostgreSQL community version.
 
@@ -180,7 +179,7 @@ are carried out on it.
 Functions
 ---------
 
- Apart from the standard `firebird_fdw_handler()` and `firebird_fdw_validator()`
+As well as the standard `firebird_fdw_handler()` and `firebird_fdw_validator()`
 functions, `firebird_fdw` provides the following user-callable utility functions:
 
  - `firebird_fdw_version()`: returns the version number as an integer
