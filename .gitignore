@@ -4,4 +4,6 @@ tmp_check/
 *~
 .#*
 *dSYM*
-libfq
+*.tgz
+*.tar.gz
+cov-int
