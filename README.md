@@ -92,6 +92,15 @@ installation.
 *IMPORTANT*: you *must* build `firebird_fdw` against the PostgreSQL version
 it will be installed on.
 
+#### Necessary build environment for Ubuntu/Debian
+Packages as prerequisites
+`libfbclient2
+firebird-dev
+postgresql-server-dev-{VERSION}`
+
+Command for visability of library libfq
+`ln -s '/usr/local/lib/libfq.so' '/usr/local/lib/libfq-0.4.1.so' '/usr/lib'`
+
 Usage
 -----
 
