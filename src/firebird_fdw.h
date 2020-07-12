@@ -41,6 +41,8 @@
 #define FB_FDW_LOGPREFIX "[firebird_fdw] "
 #define FB_FDW_LOGPREFIX_LEN strlen(FB_FDW_LOGPREFIX)
 
+#define ForeignTableOrAttributeRelationId -1
+
 /*
  * In PostgreSQL 12 and earlier, "table_open|close()" were "heap_open|close()";
  * see core commits 4b21acf5 and f25968c4.
@@ -101,7 +103,8 @@ typedef struct FirebirdFdwState
 	char	   *svr_query;
 	char	   *svr_table;
 	bool		disable_pushdowns;	/* true if server option "disable_pushdowns" supplied */
-	int			estimated_row_count; /* set if server option "estimated_row_count" provided  */
+	int 		estimated_row_count; /* set if server option "estimated_row_count" provided  */
+	bool		quote_identifier;
 
 	FBconn	   *conn;
 	List	   *remote_conds;
@@ -173,7 +176,12 @@ extern void fbfdw_report_error(int errlevel, int pg_errcode, FBresult *res, FBco
 
 
 /* option functions (in options.c) */
-extern void firebirdGetOptions(Oid foreigntableid, char **query, char **table, bool *disable_pushdowns, int *estimated_row_count);
+extern void firebirdGetTableOptions(Oid foreigntableid,
+									char **query,
+									char **table,
+									bool *disable_pushdowns,
+									int *estimated_row_count,
+									bool *quote_identifier);
 
 /* query-building functions (in convert.c) */
 
@@ -226,7 +234,10 @@ isFirebirdExpr(PlannerInfo *root,
 
 
 extern char *
-getFirebirdColumnName(Oid foreigntableid, int varattno);
+getFirebirdColumnName(Oid foreigntableid, int varattno, bool *quote_col_identifier);
+
+const char *
+quote_fb_identifier(const char *ident, bool quote_ident);
 
 #if (PG_VERSION_NUM >= 90500)
 extern char *

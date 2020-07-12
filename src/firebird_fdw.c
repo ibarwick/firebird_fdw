@@ -535,12 +535,13 @@ getFdwState(Oid foreigntableid)
 	fdw_state->disable_pushdowns = false;
 	fdw_state->estimated_row_count = -1;
 
-	firebirdGetOptions(
+	firebirdGetTableOptions(
 		foreigntableid,
 		&fdw_state->svr_query,
 		&fdw_state->svr_table,
 		&fdw_state->disable_pushdowns,
-		&fdw_state->estimated_row_count);
+		&fdw_state->estimated_row_count,
+		&fdw_state->quote_identifier);
 
 	return fdw_state;
 }
@@ -699,7 +700,9 @@ firebirdGetForeignRelSize(PlannerInfo *root,
 		}
 		else
 		{
-			appendStringInfo(&query, "SELECT COUNT(*) FROM %s", quote_identifier(fdw_state->svr_table));
+			appendStringInfo(&query,
+							 "SELECT COUNT(*) FROM %s",
+							 quote_fb_identifier(fdw_state->svr_table, fdw_state->quote_identifier));
 		}
 
 		fdw_state->query = pstrdup(query.data);
@@ -734,7 +737,7 @@ firebirdGetForeignRelSize(PlannerInfo *root,
 			{
 				ereport(ERROR,
 						(errcode(ERRCODE_FDW_UNABLE_TO_CREATE_EXECUTION),
-						 errmsg("unable to establish size of foreign table %s", fdw_state->svr_table),
+						 errmsg("unable to establish size of foreign table \"%s\"", fdw_state->svr_table),
 						 errdetail("%s", detail.data)));
 			}
 		}
@@ -1069,11 +1072,12 @@ firebirdBeginForeignScan(ForeignScanState *node,
 	user = GetUserMapping(userid, server->serverid);
 
 	/* needed for svr_query */
-	firebirdGetOptions(foreigntableid,
-					   &svr_query,
-					   &svr_table,
-					   NULL,
-					   NULL);
+	firebirdGetTableOptions(foreigntableid,
+							&svr_query,
+							&svr_table,
+							NULL,
+							NULL,
+							NULL);
 
 	/* Initialise FDW state */
 	fdw_state = (FirebirdFdwScanState *) palloc0(sizeof(FirebirdFdwScanState));
@@ -1117,7 +1121,7 @@ firebirdBeginForeignScan(ForeignScanState *node,
 		pg_colname = NameStr(att_tuple->attname);
 		elog(DEBUG2, "PG column: %s", pg_colname);
 
-		fb_colname = getFirebirdColumnName(foreigntableid, i + 1);
+		fb_colname = getFirebirdColumnName(foreigntableid, i + 1, NULL);
 
 		if (fb_colname == NULL)
 			fb_colname = pg_colname;
@@ -1447,7 +1451,9 @@ firebirdIsForeignRelUpdatable(Relation rel)
 
 	table = GetForeignTable(RelationGetRelid(rel));
 	server = GetForeignServer(table->serverid);
+
 	/* Get server setting, if available */
+
 	foreach (lc, server->options)
 	{
 		DefElem	   *def = (DefElem *) lfirst(lc);
@@ -2406,7 +2412,10 @@ fbAcquireSampleRowsFunc(Relation relation, int elevel,
 	initStringInfo(&analyze_query);
 
 	/* XXX explicitly select known columns */
-	appendStringInfo(&analyze_query, "SELECT * FROM %s", quote_identifier(fdw_state->svr_table));
+	appendStringInfo(&analyze_query,
+					 "SELECT * FROM %s",
+					 quote_fb_identifier(fdw_state->svr_table, fdw_state->quote_identifier));
+
 	fdw_state->query = analyze_query.data;
 	elog(DEBUG1, "Analyze query is: %s", fdw_state->query);
 	elog(DEBUG1, "%s", FQserverVersionString(fdw_state->conn));
@@ -2417,7 +2426,7 @@ fbAcquireSampleRowsFunc(Relation relation, int elevel,
 		FQclear(res);
 		ereport(ERROR,
 				(errcode(ERRCODE_FDW_UNABLE_TO_CREATE_EXECUTION),
-				 errmsg("unable to analyze foreign table %s", fdw_state->svr_table)));
+				 errmsg("unable to analyze remote table \"%s\"", fdw_state->svr_table)));
 	}
 
 	result_rows = FQntuples(res);

@@ -29,8 +29,10 @@ static struct FirebirdFdwOption valid_options[] =
 	{ "table_name",		   ForeignTableRelationId  },
 	{ "updatable",		   ForeignTableRelationId  },
 	{ "estimated_row_count", ForeignTableRelationId },
-	/* Table column options */
+	/* Column options */
 	{ "column_name",	   AttributeRelationId	   },
+	/* Table / column options */
+	{ "quote_identifier",  ForeignTableOrAttributeRelationId },
 	{ NULL,				   InvalidOid }
 };
 
@@ -84,9 +86,26 @@ firebird_fdw_validator(PG_FUNCTION_ARGS)
 			initStringInfo(&buf);
 			for (opt = valid_options; opt->optname; opt++)
 			{
-				if (catalog == opt->optcontext)
+				bool optcontext_matches = false;
+
+				if (opt->optcontext == ForeignTableOrAttributeRelationId)
+				{
+					switch (catalog)
+					{
+						case ForeignTableRelationId:
+						case AttributeRelationId:
+							optcontext_matches = true;
+							break;
+					}
+				}
+				else if (catalog == opt->optcontext)
+				{
+					optcontext_matches = true;
+				}
+
+				if (optcontext_matches == true)
 					appendStringInfo(&buf, "%s%s", (buf.len > 0) ? ", " : "",
-							 opt->optname);
+									 opt->optname);
 			}
 
 			ereport(ERROR,
@@ -208,14 +227,18 @@ firebird_fdw_validator(PG_FUNCTION_ARGS)
 }
 
 
-
 /**
- * firebirdGetOptions()
+ * firebirdGetTableOptions()
  *
  * Fetch the options for a firebird_fdw foreign table.
  */
 void
-firebirdGetOptions(Oid foreigntableid, char **query, char **table, bool *disable_pushdowns, int *estimated_row_count)
+firebirdGetTableOptions(Oid foreigntableid,
+						char **query,
+						char **table,
+						bool *disable_pushdowns,
+						int *estimated_row_count,
+						bool *quote_identifier)
 {
 	ForeignTable  *f_table;
 	ListCell	  *lc;
@@ -228,16 +251,25 @@ firebirdGetOptions(Oid foreigntableid, char **query, char **table, bool *disable
 
 		elog(DEBUG2, "option: %s", def->defname);
 		if (strcmp(def->defname, "query") == 0)
+		{
 			*query = defGetString(def);
-
+		}
 		else if (strcmp(def->defname, "table_name") == 0)
+		{
 			*table = defGetString(def);
-
+		}
 		else if (strcmp(def->defname, "disable_pushdowns") == 0 && disable_pushdowns != NULL)
+		{
 			*disable_pushdowns = defGetBoolean(def);
-
+		}
 		else if (strcmp(def->defname, "estimated_row_count") == 0 && estimated_row_count != NULL)
+		{
 			*estimated_row_count = strtod(defGetString(def), NULL);
+		}
+		else if (strcmp(def->defname, "quote_identifier") == 0 && quote_identifier != NULL)
+		{
+			*quote_identifier = defGetBoolean(def);
+		}
 	}
 
 	/*
@@ -262,7 +294,25 @@ firebirdIsValidOption(const char *option, Oid context)
 
 	for (opt = valid_options; opt->optname; opt++)
 	{
-		if (context == opt->optcontext && strcmp(opt->optname, option) == 0)
+		bool optcontext_matches = false;
+
+		if (opt->optcontext == ForeignTableOrAttributeRelationId)
+		{
+
+			switch (context)
+			{
+				case ForeignTableRelationId:
+				case AttributeRelationId:
+					optcontext_matches = true;
+					break;
+			}
+		}
+		else if (context == opt->optcontext)
+		{
+			optcontext_matches = true;
+		}
+
+		if (optcontext_matches == true && strcmp(opt->optname, option) == 0)
 			return true;
 	}
 

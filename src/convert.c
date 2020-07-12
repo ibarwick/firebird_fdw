@@ -510,6 +510,7 @@ static void
 convertColumnRef(StringInfo buf, int varno, int varattno, RangeTblEntry *rte)
 {
 	char	   *colname = NULL;
+	bool		quote_col_identifier = false;
 
 	/* varno must not be any of OUTER_VAR, INNER_VAR and INDEX_VAR. */
 	Assert(!IS_SPECIAL_VARNO(varno));
@@ -517,17 +518,20 @@ convertColumnRef(StringInfo buf, int varno, int varattno, RangeTblEntry *rte)
 	elog(DEBUG2, "entering function %s", __func__);
 
 	/* Use Firebird column name if defined */
-	colname = getFirebirdColumnName(rte->relid, varattno);
+	colname = getFirebirdColumnName(rte->relid, varattno, &quote_col_identifier);
 
 	/* otherwise use Postgres column name */
 	if (colname == NULL)
+	{
 #if (PG_VERSION_NUM >= 110000)
 		colname = get_attname(rte->relid, varattno, false);
 #else
 		colname = get_relid_attribute_name(rte->relid, varattno);
 #endif
+	}
 
-	appendStringInfoString(buf, quote_identifier(colname));
+	appendStringInfoString(buf,
+						   quote_fb_identifier(colname, quote_col_identifier));
 }
 
 
@@ -545,7 +549,11 @@ convertRelation(StringInfo buf, FirebirdFdwState *fdw_state)
 
 	if (fdw_state->svr_table != NULL)
 	{
-		appendStringInfoString(buf, quote_identifier(fdw_state->svr_table));
+
+
+		appendStringInfoString(buf,
+							   quote_fb_identifier(fdw_state->svr_table,
+												   fdw_state->quote_identifier));
 	}
 	else if (fdw_state->svr_query != NULL)
 	{
@@ -556,7 +564,24 @@ convertRelation(StringInfo buf, FirebirdFdwState *fdw_state)
 	{
 		/* should never reach here */
 	}
+}
 
+
+const char *
+quote_fb_identifier(const char *ident, bool quote_ident)
+{
+	bool		quote_all_identifiers_orig = quote_all_identifiers;
+	const char *quoted_ident;
+
+	if (quote_ident == true)
+		quote_all_identifiers = true;
+
+	quoted_ident = quote_identifier(ident);
+
+	if (quote_ident == true)
+		quote_all_identifiers = quote_all_identifiers_orig;
+
+	return quoted_ident;
 }
 
 
@@ -2054,7 +2079,7 @@ canConvertOp(OpExpr *oe, int firebird_version)
  * otherwise NULL.
  */
 char *
-getFirebirdColumnName(Oid foreigntableid, int varattno)
+getFirebirdColumnName(Oid foreigntableid, int varattno, bool *quote_col_identifier)
 {
 	List	   *options;
 	ListCell   *lc;
@@ -2069,6 +2094,20 @@ getFirebirdColumnName(Oid foreigntableid, int varattno)
 		{
 			colname = defGetString(def);
 			break;
+		}
+	}
+
+	if (quote_col_identifier != NULL)
+	{
+		foreach (lc, options)
+		{
+			DefElem	   *def = (DefElem *) lfirst(lc);
+
+			if (strcmp(def->defname, "quote_identifier") == 0)
+			{
+				*quote_col_identifier = defGetBoolean(def);
+				break;
+			}
 		}
 	}
 

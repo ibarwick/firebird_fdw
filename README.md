@@ -23,11 +23,12 @@ releases.
 3. [Installation](#installation)
 4. [Usage](#usage)
 5. [Functions](#functions)
-6. [Examples](#examples)
-7. [Limitations](#limitations)
-8. [TAP tests](#tap-tests)
-9. [Development roadmap](#development-roadmap)
-10. [Useful links](#useful-links)
+6. [Identifier case handling](#identifier_case_handling)
+7. [Examples](#examples)
+8. [Limitations](#limitations)
+9. [TAP tests](#tap-tests)
+10. [Development roadmap](#development-roadmap)
+11. [Useful links](#useful-links)
 
 Features
 --------
@@ -128,8 +129,13 @@ Usage
 `CREATE FOREIGN TABLE` command:
 
     'table_name':
-        The Firebird table name (not case-sensitive). Cannot be used together
-        with the 'query' option.
+        The Firebird table name, if different to the PostgreSQL foreign table
+        name. Cannot be used together with the 'query' option.
+
+    'quote_identifier':
+        Pass the table name to Firebird as a quoted identifier.
+        "[Identifier case handling](#identifier_case_handling)" for details.
+        firebird_fdw 1.2.0 and later.
 
     'query':
         A Firebird SQL statement producing a result set which can be treated
@@ -147,12 +153,17 @@ Usage
         "SELECT COUNT(*) FROM ...", which can be inefficient, particularly for
         queries.
 
-The following column-level option is available:
+The following column-level options are available:
 
     'column_name':
-        The Firebird column name (not case-sensitive), if different to the column
-        name defined in the foreign table. This can also be used for foreign
-        tables defined with the `query` option.
+        The Firebird column name, if different to the column name defined in the
+        foreign table. This can also be used for foreign tables defined with the
+        `query` option.
+
+    'quote_identifier':
+        Pass the column name to Firebird as a quoted identifier. See section
+        "[Identifier case handling](#identifier_case_handling)" for details.
+        firebird_fdw 1.2.0 and later.
 
 Note that while PostgreSQL allows a foreign table to be defined without
 any columns, `firebird_fdw` will raise an error as soon as any operations
@@ -200,6 +211,104 @@ functions, `firebird_fdw` provides the following user-callable utility functions
      cached_connection_count     | 1
     (5 rows)
 ```
+
+Identifier case handling
+------------------------
+
+As PostgreSQL and Firebird take opposite approaches to case folding (PostgreSQL
+folds identifiers to lower case by default, Firebird to upper case), it's important
+to be aware of potential issues with table and column names.
+
+When defining foreign tables, PostgreSQL will pass any identifiers which do not
+require quoting to Firebird as-is, defaulting to lower-case. Firebird will then
+implictly fold thes to upper case. For example, given the following table
+definitions in Firebird and PostgreSQL:
+
+    CREATE TABLE CASETEST1 (
+      COL1 INT
+    )
+
+    CREATE FOREIGN TABLE casetest1 (
+      col1 INT
+    )
+    SERVER fb_test
+
+Given the PostgreSQL query:
+
+    SELECT col1 FROM casetest1
+
+`firebird_fdw` will generate the following Firebird query:
+
+    SELECT col1 FROM casetest1
+
+which is valid in both PostgreSQL and Firebird.
+
+By default, PostgreSQL will pass any identifiers which do require quoting
+according to PostgreSQL's definition as quoted identifiers to Firebird. For
+example, given the following table definitions in Firebird and PostgreSQL:
+
+    CREATE TABLE "CASEtest2" (
+      "Col1" INT
+    )
+
+    CREATE FOREIGN TABLE "CASEtest2" (
+      "Col1" INT
+    )
+    SERVER fb_test
+
+Given the PostgreSQL query:
+
+    SELECT "Col1" FROM "CASEtest2"
+
+`firebird_fdw` will generate the following Firebird query:
+
+    SELECT "Col1" FROM "CASEtest2"
+
+which is also valid in both PostgreSQL and Firebird.
+
+The same query will also be generated if the Firebird table and column names
+are specified as options:
+
+    CREATE FOREIGN TABLE casetest2a (
+      col1 INT OPTIONS (column_name 'Col1')
+    )
+    SERVER fb_test
+    OPTIONS (table_name 'CASEtest2')
+
+However PostgreSQL will not quote lower-case identifiers. With the following
+Firebird and PostgreSQL table definitions:
+
+    CREATE TABLE "casetest3" (
+      "col1" INT
+    )
+
+    CREATE FOREIGN TABLE "casetest3" (
+      "col1" INT
+    )
+    SERVER fb_test
+
+any attempt to access the foreign table `casetest3` will result in the Firebird
+error `Table unknown: CASETEST3`, as Firebird is receiving the unquoted table
+name and folding it to upper case.
+
+To ensure the correct table or column name is included in queries sent to Firebird,
+from `firebird_fdw` 1.2.0 the table or column-level option `quote_identifier` can
+be provided, which will force the table or column name to be passed as a quoted
+identifier. The preceding foreign table should be defined like this:
+
+    CREATE FOREIGN TABLE casetest3 (
+      col1 INT OPTIONS (quote_identifier 'true')
+    )
+    SERVER fb_test
+    OPTIONS (quote_identifier 'true')
+
+Given the PostgreSQL query:
+
+    SELECT col1 FROM casetest3
+
+`firebird_fdw` will generate the following Firebird query:
+
+    SELECT "col1" FROM "casetest3"
 
 Examples
 --------
@@ -273,10 +382,9 @@ Limitations
 
 - Works with Firebird 3.x, but does not yet support all 3.x features
 - No support for Firebird `ARRAY` datatype
-- No consideration given to object names which may require
-  quoting when passed between PostgreSQL and Firebird
+- `IMPORT SCHEMA` does not correctly handle quoted identifiers
 - The result of the Firebird query is copied into memory before being
-  processed by PostgreSQL; this can be improved by using Firebird cursors
+  processed by PostgreSQL; this could be improved by using Firebird cursors
 
 TAP tests
 ---------
