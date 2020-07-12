@@ -1,5 +1,8 @@
 Revision history for firebird_fdw
 
+1.2.0	2020-??-??
+	- Prevent tables defined as queries from being set as "updatable = 'true'"
+
 1.1.1	2019-09-??
 	- Prevent crash on attempted COPY operation (PostgreSQL 11 and later)
 

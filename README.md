@@ -137,7 +137,8 @@ Usage
 
     'updatable':
         Boolean value indicating whether the table is updatable. Default is `true`.
-        Note that this overrides the server-level setting.
+        Note that this overrides the server-level setting. Cannot be set for the
+        `query` option.
 
     'estimated_row_count':
         Integer indicating the expected number of rows in the Firebird table, or

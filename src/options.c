@@ -41,7 +41,8 @@ static bool firebirdIsValidOption(const char *option, Oid context);
 /**
  * firebird_fdw_validator()
  *
- * Validates the options provided in a "CREATE FOREIGN ..." command
+ * Validates the options provided in a "CREATE FOREIGN ..." command.
+ * It does not store the values anywhere.
  */
 Datum
 firebird_fdw_validator(PG_FUNCTION_ARGS)
@@ -185,12 +186,21 @@ firebird_fdw_validator(PG_FUNCTION_ARGS)
 		}
 		else if (strcmp(def->defname, "updatable") == 0)
 		{
+			bool updatable;
+
 			if (updatable_set)
 				ereport(ERROR,
 						(errcode(ERRCODE_SYNTAX_ERROR),
 						 errmsg("redundant option: 'updatable' set more than once")));
-			(void) defGetBoolean(def);
+
+			updatable = defGetBoolean(def);
 			updatable_set = true;
+
+			/* "updatable" not relevant for tables defined as queries */
+			if (svr_query && updatable == true)
+				ereport(ERROR,
+						(errcode(ERRCODE_SYNTAX_ERROR),
+						 errmsg("foreign tables defined with the \"query\" option cannot be set as \"updatable\"")));
 		}
 	}
 
