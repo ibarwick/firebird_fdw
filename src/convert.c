@@ -26,6 +26,7 @@
 #include "catalog/pg_proc.h"
 #include "catalog/pg_type.h"
 #include "commands/defrem.h"
+#include "common/keywords.h"
 #include "nodes/nodeFuncs.h"
 #include "optimizer/clauses.h"
 #if (PG_VERSION_NUM >= 120000)
@@ -113,6 +114,7 @@ static bool foreign_expr_walker(Node *node,
 static bool canConvertOp(OpExpr *oe, int firebird_version);
 static bool is_builtin(Oid procid);
 
+static const char *quote_fb_identifier_for_import(const char *ident);
 
 /**
  * buildSelectSql()
@@ -362,7 +364,7 @@ convertFirebirdObject(char *server_name, char *schema, char *object_name, char o
 	appendStringInfo(&create_table,
 					 "CREATE FOREIGN TABLE %s.%s (\n",
 					 schema,
-					 object_name);
+					 quote_fb_identifier_for_import(object_name));
 
 	coltotal = FQntuples(colres);
 	for (colnr = 0; colnr < coltotal; colnr++)
@@ -585,6 +587,121 @@ quote_fb_identifier(const char *ident, bool quote_ident)
 		quote_all_identifiers = quote_all_identifiers_orig;
 
 	return quoted_ident;
+}
+
+
+/**
+ * quote_fb_identifier_for_import()
+ *
+ * Given a Firebird relation name, determine whether it would
+ * be quoted in Firebird, i.e. contains characters other than
+ * ASCII capital letters, digits and underscores.
+ */
+static const char *
+quote_fb_identifier_for_import(const char *ident)
+{
+	int			nquotes = 0;
+	bool		safe;
+	const char *ptr;
+	char	   *result;
+	char	   *optr;
+
+	safe = ((ident[0] >= 'A' && ident[0] <= 'Z') || ident[0] == '_');
+
+	for (ptr = ident; *ptr; ptr++)
+	{
+		char		ch = *ptr;
+
+		if ((ch >= 'A' && ch <= 'Z') ||
+			(ch >= '0' && ch <= '9') ||
+			(ch == '_'))
+		{
+			/* okay */
+		}
+		else
+		{
+			safe = false;
+			if (ch == '"')
+				nquotes++;
+		}
+	}
+
+
+	if (safe)
+	{
+		/*
+		 * Check for keyword.  We quote keywords except for unreserved ones.
+		 * (In some cases we could avoid quoting a col_name or type_func_name
+		 * keyword, but it seems much harder than it's worth to tell that.)
+		 *
+		 * Note: ScanKeywordLookup() does case-insensitive comparison, but
+		 * that's fine, since we already know we have all-lower-case.
+		 */
+
+		// XXX HEAD; 9.2 is different
+		int			kwnum = ScanKeywordLookup(ident, &ScanKeywords);
+
+		if (kwnum >= 0 && ScanKeywordCategories[kwnum] != UNRESERVED_KEYWORD)
+			safe = false;
+	}
+
+	if (safe)
+		return ident;			/* no change needed */
+
+
+	result = (char *) palloc(strlen(ident) + nquotes + 2 + 1);
+
+	optr = result;
+	*optr++ = '"';
+	for (ptr = ident; *ptr; ptr++)
+	{
+		char		ch = *ptr;
+
+		if (ch == '"')
+			*optr++ = '"';
+		*optr++ = ch;
+	}
+	*optr++ = '"';
+	*optr = '\0';
+
+	return result;
+}
+
+/**
+ * unquoted_ident_to_upper()
+ *
+ * If the provided identifier consists entirely of [a-z0-9_] (i.e. would be an
+ * unquoted PostgreSQL identifier), convert in-place to upper case.
+ */
+void
+unquoted_ident_to_upper(char *ident)
+{
+	bool		safe = true;
+	char	   *ptr;
+
+	for (ptr = ident; *ptr; ptr++)
+	{
+		char		ch = *ptr;
+
+		if ((ch >= 'a' && ch <= 'z') ||
+			(ch >= '0' && ch <= '9') ||
+			(ch == '_'))
+		{
+			/* okay */
+		}
+		else
+		{
+			safe = false;
+		}
+	}
+
+	if (safe == false)
+		return;
+
+	for (ptr = ident; *ptr; ptr++)
+		*ptr = toupper((unsigned char) *ptr);
+
+	return;
 }
 
 
@@ -2153,7 +2270,7 @@ _dataTypeSQL(char *table_name)
 
 	initStringInfo(&data_type_sql);
 	appendStringInfo(&data_type_sql,
-"   SELECT TRIM(LOWER(rf.rdb$field_name)) AS column_name,\n"
+"   SELECT TRIM(rf.rdb$field_name) AS column_name,\n"
 "          f.rdb$field_type, \n"
 "          CASE f.rdb$field_type\n"
 "            WHEN 261 THEN \n"
@@ -2200,7 +2317,7 @@ _dataTypeSQL(char *table_name)
 "      FROM rdb$relation_fields rf \n"
 " LEFT JOIN rdb$fields f \n"
 "        ON rf.rdb$field_source = f.rdb$field_name\n"
-"     WHERE TRIM(LOWER(rf.rdb$relation_name)) = LOWER('%s')\n"
+"     WHERE TRIM(rf.rdb$relation_name) = '%s'\n"
 "  ORDER BY rf.rdb$field_position\n",
 					 table_name
 		);

@@ -286,6 +286,9 @@ getFirebirdColumnName(Oid foreigntableid, int varattno, bool *quote_col_identifi
 const char *
 quote_fb_identifier(const char *ident, bool quote_ident);
 
+void
+unquoted_ident_to_upper(char *ident);
+
 #if (PG_VERSION_NUM >= 90500)
 extern char *
 convertFirebirdObject(char *server_name, char *schema, char *object_name, char object_type, bool import_not_null, bool updatable, FBresult *colres);

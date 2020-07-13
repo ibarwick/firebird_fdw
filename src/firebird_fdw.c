@@ -2697,11 +2697,11 @@ firebirdImportForeignSchema(ImportForeignSchemaStmt *stmt,
 	 * Query to list all non-system tables/views, potentially filtered by the values
 	 * specified in IMPORT FOREIGN SCHEMA's "LIMIT TO" or "EXCEPT" clauses. We won't
 	 * exclude views here so we can warn about any inclcded in "LIMIT TO"/"EXCEPT", which
-	 * will be excluded by "import_views = =false".
+	 * will be excluded by "import_views = false".
 	 */
 	initStringInfo(&table_query);
 	appendStringInfoString(&table_query,
-						   "   SELECT TRIM(LOWER(rdb$relation_name)) AS table_name,  \n"
+						   "   SELECT TRIM(rdb$relation_name) AS relname,  \n"
 						   "          CASE WHEN rdb$view_blr IS NULL THEN 'r' ELSE 'v' END AS type \n"
 						   "     FROM rdb$relations  \n"
 						   "    WHERE (rdb$system_flag IS NULL OR rdb$system_flag = 0) \n");
@@ -2714,7 +2714,7 @@ firebirdImportForeignSchema(ImportForeignSchemaStmt *stmt,
 		bool		first_item = true;
 		int			i = 0;
 
-		appendStringInfoString(&table_query, " AND TRIM(LOWER(rdb$relation_name)) ");
+		appendStringInfoString(&table_query, " AND TRIM(rdb$relation_name) ");
 
 		if (stmt->list_type == FDW_IMPORT_SCHEMA_EXCEPT)
 			appendStringInfoString(&table_query, "NOT ");
@@ -2739,8 +2739,11 @@ firebirdImportForeignSchema(ImportForeignSchemaStmt *stmt,
 		foreach(lc, stmt->table_list)
 		{
 			RangeVar   *rv = (RangeVar *) lfirst(lc);
+			char *relname = pstrdup(rv->relname);
 
-			p_values[i++] = pstrdup(rv->relname);
+			/* convert to UPPER if PostgreSQL would not quote this identifier */
+			unquoted_ident_to_upper(relname);
+			p_values[i++] = relname;
 		}
 
 		appendStringInfoChar(&table_query, ')');
