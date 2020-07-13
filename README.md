@@ -390,6 +390,11 @@ Import a Firebird schema:
       FROM SERVER firebird_server
       INTO public;
 
+    IMPORT FOREIGN SCHEMA someschema
+      FROM SERVER firebird_server
+      INTO public
+      OPTIONS (verbose 'true', import_views 'false');
+
 Note: `someschema` has no particular meaning and can be set to an arbitrary value.
 
 
