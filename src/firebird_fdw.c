@@ -2552,7 +2552,7 @@ firebirdImportForeignSchema(ImportForeignSchemaStmt *stmt,
 						   "   SELECT TRIM(LOWER(rdb$relation_name)) AS table_name,  \n"
 						   "          CASE WHEN rdb$view_blr IS NULL THEN 'r' ELSE 'v' END AS type \n"
 						   "     FROM rdb$relations  \n"
-						   "    WHERE rdb$system_flag = 0 \n");
+						   "    WHERE (rdb$system_flag IS NULL OR rdb$system_flag = 0) \n");
 
 
 	/* Apply restrictions for LIMIT TO and EXCEPT */
