@@ -41,8 +41,6 @@
 #define FB_FDW_LOGPREFIX "[firebird_fdw] "
 #define FB_FDW_LOGPREFIX_LEN strlen(FB_FDW_LOGPREFIX)
 
-#define ForeignTableOrAttributeRelationId -1
-
 /*
  * In PostgreSQL 12 and earlier, "table_open|close()" were "heap_open|close()";
  * see core commits 4b21acf5 and f25968c4.

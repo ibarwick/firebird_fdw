@@ -29,10 +29,10 @@ static struct FirebirdFdwOption valid_options[] =
 	{ "table_name",		   ForeignTableRelationId  },
 	{ "updatable",		   ForeignTableRelationId  },
 	{ "estimated_row_count", ForeignTableRelationId },
+	{ "quote_identifier",  ForeignTableRelationId  },
 	/* Column options */
 	{ "column_name",	   AttributeRelationId	   },
-	/* Table / column options */
-	{ "quote_identifier",  ForeignTableOrAttributeRelationId },
+	{ "quote_identifier",  AttributeRelationId     },
 	{ NULL,				   InvalidOid }
 };
 
@@ -87,18 +87,7 @@ firebird_fdw_validator(PG_FUNCTION_ARGS)
 			for (opt = valid_options; opt->optname; opt++)
 			{
 				bool optcontext_matches = false;
-
-				if (opt->optcontext == ForeignTableOrAttributeRelationId)
-				{
-					switch (catalog)
-					{
-						case ForeignTableRelationId:
-						case AttributeRelationId:
-							optcontext_matches = true;
-							break;
-					}
-				}
-				else if (catalog == opt->optcontext)
+				if (catalog == opt->optcontext)
 				{
 					optcontext_matches = true;
 				}
@@ -296,18 +285,7 @@ firebirdIsValidOption(const char *option, Oid context)
 	{
 		bool optcontext_matches = false;
 
-		if (opt->optcontext == ForeignTableOrAttributeRelationId)
-		{
-
-			switch (context)
-			{
-				case ForeignTableRelationId:
-				case AttributeRelationId:
-					optcontext_matches = true;
-					break;
-			}
-		}
-		else if (context == opt->optcontext)
+		if (context == opt->optcontext)
 		{
 			optcontext_matches = true;
 		}
