@@ -108,14 +108,6 @@ The Firebird server's address (default: `localhost`)
 
 The name of the Firebird database to connect to.
 
-`username`
-
-The Firebird username to connect as (not case-sensitive)
-
-`password`
-
-The Firebird user's password
-
 `updatable`
 
 a boolean value indicating whether the foreign server as a whole
@@ -126,6 +118,20 @@ by table-level settings.
 
 Turns off pushdowns of `WHERE` clause elements to Firebird. Useful
 mainly for debugging and benchmarking.
+
+
+## CREATE USER MAPPING options
+
+`firebird_fdw` accepts the following options via the `CREATE USER MAPPING`
+command:
+
+`username`
+
+The Firebird username to connect as (not case-sensitive)
+
+`password`
+
+The Firebird user's password
 
 
 ## CREATE FOREIGN TABLE options
