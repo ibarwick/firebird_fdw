@@ -686,9 +686,11 @@ getFdwState(Oid foreigntableid)
 	fdw_state->svr_query = NULL;
 	fdw_state->svr_table = NULL;
 	fdw_state->estimated_row_count = -1;
+	fdw_state->quote_identifier = false;
 
 	/* Retrieve server options */
 	server_options.disable_pushdowns.opt.boolptr = &fdw_state->disable_pushdowns;
+	server_options.quote_identifiers.opt.boolptr = &fdw_state->quote_identifier;
 
 	firebirdGetServerOptions(
 		server,

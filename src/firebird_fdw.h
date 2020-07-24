@@ -80,9 +80,11 @@ typedef struct fbServerOptions {
 	fbServerOpt database;
 	fbServerOpt disable_pushdowns;
 	fbServerOpt updatable;
+	fbServerOpt quote_identifiers;
 } fbServerOptions;
 
 #define fbServerOptions_init { \
+	{ { NULL }, false }, \
 	{ { NULL }, false }, \
 	{ { NULL }, false }, \
 	{ { NULL }, false }, \

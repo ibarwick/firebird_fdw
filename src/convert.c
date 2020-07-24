@@ -69,8 +69,10 @@ typedef struct convert_expr_cxt
 
 static char *convertDatum(Datum datum, Oid type);
 
-static void convertColumnRef(StringInfo buf, int varno, int varattno,
-							 RangeTblEntry *rte);
+static void convertColumnRef(StringInfo buf,
+							 int varno, int varattno,
+							 RangeTblEntry *rte,
+							 bool quote_identifier);
 static void convertRelation(StringInfo buf, FirebirdFdwState *fdw_state);
 static void convertStringLiteral(StringInfo buf, const char *val);
 static void convertOperatorName(StringInfo buf, Form_pg_operator opform, char *left, char *right);
@@ -160,13 +162,13 @@ buildInsertSql(StringInfo buf,
 			   List *targetAttrs, List *returningList,
 			   List **retrieved_attrs)
 {
-	bool		first;
+	bool		first = true;
 	ListCell   *lc;
 
 	appendStringInfoString(buf, "INSERT INTO ");
 	convertRelation(buf, fdw_state);
 	appendStringInfoString(buf, " (");
-	first = true;
+
 	foreach (lc, targetAttrs)
 	{
 		int			attnum = lfirst_int(lc);
@@ -176,7 +178,7 @@ buildInsertSql(StringInfo buf,
 		else
 			first = false;
 
-		convertColumnRef(buf, rtindex, attnum, rte);
+		convertColumnRef(buf, rtindex, attnum, rte, fdw_state->quote_identifier);
 	}
 
 	appendStringInfoString(buf, ")\n VALUES (");
@@ -229,7 +231,8 @@ buildUpdateSql(StringInfo buf,
 		else
 			first = false;
 
-		convertColumnRef(buf, rtindex, attnum, rte);
+		convertColumnRef(buf, rtindex, attnum, rte,
+						 fdw_state->quote_identifier);
 		appendStringInfo(buf, " = ?");
 	}
 
@@ -507,10 +510,10 @@ convertDatum(Datum datum, Oid type)
  * If it has a column_name FDW option, use that instead of attribute name.
  */
 static void
-convertColumnRef(StringInfo buf, int varno, int varattno, RangeTblEntry *rte)
+convertColumnRef(StringInfo buf, int varno, int varattno, RangeTblEntry *rte, bool quote_identifier)
 {
 	char	   *colname = NULL;
-	bool		quote_col_identifier = false;
+	bool		quote_col_identifier = quote_identifier;
 
 	/* varno must not be any of OUTER_VAR, INNER_VAR and INDEX_VAR. */
 	Assert(!IS_SPECIAL_VARNO(varno));
@@ -712,9 +715,18 @@ convertVar(Var *node, convert_expr_cxt *context, char **result)
 		node->varlevelsup == 0)
 	{
 		/* Var belongs to foreign table */
-		 RangeTblEntry *rte = planner_rt_fetch(node->varno, context->root);
+		RangeTblEntry *rte = planner_rt_fetch(node->varno, context->root);
+		ForeignServer *server = GetForeignServer(context->foreignrel->serverid);
+		fbServerOptions server_options = fbServerOptions_init;
+		bool		quote_identifier = false;
 
-		convertColumnRef(&buf, node->varno, node->varattno, rte);
+		server_options.quote_identifiers.opt.boolptr = &quote_identifier;
+
+		firebirdGetServerOptions(server, &server_options);
+
+		convertColumnRef(&buf,
+						 node->varno, node->varattno, rte,
+						 quote_identifier);
 	}
 	else
 	{
@@ -1478,6 +1490,14 @@ convertTargetList(StringInfo buf,
 	bool		first;
 	int			i;
 
+	ForeignTable  *table = GetForeignTable(rte->relid);
+	ForeignServer *server = GetForeignServer(table->serverid);
+	fbServerOptions server_options = fbServerOptions_init;
+	bool		quote_identifier = false;
+
+	server_options.quote_identifiers.opt.boolptr = &quote_identifier;
+	firebirdGetServerOptions(server, &server_options);
+
 	*retrieved_attrs = NIL;
 
 	/* If there's a whole-row reference, we'll need all the columns. */
@@ -1505,7 +1525,7 @@ convertTargetList(StringInfo buf,
 				appendStringInfoString(buf, ", ");
 			first = false;
 
-			convertColumnRef(buf, rtindex, i, rte);
+			convertColumnRef(buf, rtindex, i, rte, quote_identifier);
 
 			*retrieved_attrs = lappend_int(*retrieved_attrs, i);
 		}

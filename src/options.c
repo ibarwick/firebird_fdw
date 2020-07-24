@@ -22,6 +22,7 @@ static struct FirebirdFdwOption valid_options[] =
 	{ "database",		   ForeignServerRelationId },
 	{ "disable_pushdowns", ForeignServerRelationId },
 	{ "updatable",		   ForeignServerRelationId },
+	{ "quote_identifiers", ForeignServerRelationId },
 	/* User options */
 	{ "username",		   UserMappingRelationId   },
 	{ "password",		   UserMappingRelationId   },
@@ -296,6 +297,13 @@ firebirdGetServerOptions(ForeignServer *server,
 		{
 			*options->updatable.opt.boolptr = defGetBoolean(def);
 			options->updatable.provided = true;
+			continue;
+		}
+
+		if (options->quote_identifiers.opt.boolptr != NULL && strcmp(def->defname, "quote_identifiers") == 0)
+		{
+			*options->quote_identifiers.opt.boolptr = defGetBoolean(def);
+			options->quote_identifiers.provided = true;
 			continue;
 		}
 	}
