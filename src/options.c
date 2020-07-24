@@ -21,6 +21,7 @@ static struct FirebirdFdwOption valid_options[] =
 	{ "port",			   ForeignServerRelationId }, /* not implemented (!) */
 	{ "database",		   ForeignServerRelationId },
 	{ "disable_pushdowns", ForeignServerRelationId },
+	{ "updatable",		   ForeignServerRelationId },
 	/* User options */
 	{ "username",		   UserMappingRelationId   },
 	{ "password",		   UserMappingRelationId   },
@@ -217,60 +218,6 @@ firebird_fdw_validator(PG_FUNCTION_ARGS)
 
 
 /**
- * firebirdGetTableOptions()
- *
- * Fetch the options for a firebird_fdw foreign table.
- */
-void
-firebirdGetTableOptions(Oid foreigntableid,
-						char **query,
-						char **table,
-						bool *disable_pushdowns,
-						int *estimated_row_count,
-						bool *quote_identifier)
-{
-	ForeignTable  *f_table;
-	ListCell	  *lc;
-
-	f_table = GetForeignTable(foreigntableid);
-
-	foreach (lc, f_table->options)
-	{
-		DefElem *def = (DefElem *) lfirst(lc);
-
-		elog(DEBUG2, "option: %s", def->defname);
-		if (strcmp(def->defname, "query") == 0)
-		{
-			*query = defGetString(def);
-		}
-		else if (strcmp(def->defname, "table_name") == 0)
-		{
-			*table = defGetString(def);
-		}
-		else if (strcmp(def->defname, "disable_pushdowns") == 0 && disable_pushdowns != NULL)
-		{
-			*disable_pushdowns = defGetBoolean(def);
-		}
-		else if (strcmp(def->defname, "estimated_row_count") == 0 && estimated_row_count != NULL)
-		{
-			*estimated_row_count = strtod(defGetString(def), NULL);
-		}
-		else if (strcmp(def->defname, "quote_identifier") == 0 && quote_identifier != NULL)
-		{
-			*quote_identifier = defGetBoolean(def);
-		}
-	}
-
-	/*
-	 * If no query and no table name specified, default to the PostgreSQL
-	 * table name.
-	 */
-	if (!*table && !*query)
-		*table = get_rel_name(foreigntableid);
-}
-
-
-/**
  * firebirdIsValidOption()
  *
  * Check if the provided option is valid.
@@ -296,3 +243,81 @@ firebirdIsValidOption(const char *option, Oid context)
 
 	return false;
 }
+
+
+/**
+ * firebirdGetServerOptions()
+ *
+ * Fetch the options which apply to a firebird_fdw foreign server.
+ * These do not include the foreign server connection options, which are
+ * handled in connection.c.
+ *
+ * Note that "updatable" is handled in firebirdIsForeignRelUpdatable().
+ */
+void
+firebirdGetServerOptions(ForeignServer *server,
+						 bool *disable_pushdowns)
+{
+	ListCell   *lc;
+
+	foreach (lc, server->options)
+	{
+		DefElem	   *def = (DefElem *) lfirst(lc);
+
+		elog(DEBUG2, "server option: \"%s\"", def->defname);
+
+		if (strcmp(def->defname, "disable_pushdowns") == 0 && disable_pushdowns != NULL)
+			*disable_pushdowns = defGetBoolean(def);
+	}
+}
+
+
+/**
+ * firebirdGetTableOptions()
+ *
+ * Fetch the options which apply to a firebird_fdw foreign table.
+ *
+ * Note that "updatable" is handled in firebirdIsForeignRelUpdatable().
+ */
+void
+firebirdGetTableOptions(ForeignTable *table,
+						char **svr_query,
+						char **svr_table,
+						int *estimated_row_count,
+						bool *quote_identifier)
+{
+	ListCell	  *lc;
+
+	foreach (lc, table->options)
+	{
+		DefElem *def = (DefElem *) lfirst(lc);
+
+		elog(DEBUG2, "table option: \"%s\"", def->defname);
+
+		/* table-level options */
+		if (strcmp(def->defname, "query") == 0)
+		{
+			*svr_query = defGetString(def);
+		}
+		else if (strcmp(def->defname, "table_name") == 0)
+		{
+			*svr_table = defGetString(def);
+		}
+		else if (strcmp(def->defname, "estimated_row_count") == 0 && estimated_row_count != NULL)
+		{
+			*estimated_row_count = strtod(defGetString(def), NULL);
+		}
+		else if (strcmp(def->defname, "quote_identifier") == 0 && quote_identifier != NULL)
+		{
+			*quote_identifier = defGetBoolean(def);
+		}
+	}
+
+	/*
+	 * If no query and no table name specified, default to the PostgreSQL
+	 * table name.
+	 */
+	if (!*svr_table && !*svr_query)
+		*svr_table = get_rel_name(table->relid);
+}
+

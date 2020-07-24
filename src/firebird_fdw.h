@@ -174,10 +174,12 @@ extern void fbfdw_report_error(int errlevel, int pg_errcode, FBresult *res, FBco
 
 
 /* option functions (in options.c) */
-extern void firebirdGetTableOptions(Oid foreigntableid,
-									char **query,
-									char **table,
-									bool *disable_pushdowns,
+
+extern void firebirdGetServerOptions(ForeignServer *server,
+									 bool *disable_pushdowns);
+extern void firebirdGetTableOptions(ForeignTable *table,
+									char **svr_query,
+									char **svr_table,
 									int *estimated_row_count,
 									bool *quote_identifier);
 

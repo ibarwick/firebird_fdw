@@ -527,19 +527,27 @@ getFdwState(Oid foreigntableid)
 {
 	FirebirdFdwState *fdw_state = palloc0(sizeof(FirebirdFdwState));
 
+	ForeignTable  *table = GetForeignTable(foreigntableid);
+	ForeignServer *server = GetForeignServer(table->serverid);
+
 	elog(DEBUG2, "OID: %u", foreigntableid);
 
-	/* Initialise */
+	/* Server-level options which apply to the table */
+	fdw_state->disable_pushdowns = false;
+
+	/* Table-level options */
 	fdw_state->svr_query = NULL;
 	fdw_state->svr_table = NULL;
-	fdw_state->disable_pushdowns = false;
 	fdw_state->estimated_row_count = -1;
 
+	firebirdGetServerOptions(
+		server,
+		&fdw_state->disable_pushdowns);
+
 	firebirdGetTableOptions(
-		foreigntableid,
+		table,
 		&fdw_state->svr_query,
 		&fdw_state->svr_table,
-		&fdw_state->disable_pushdowns,
 		&fdw_state->estimated_row_count,
 		&fdw_state->quote_identifier);
 
@@ -1072,10 +1080,9 @@ firebirdBeginForeignScan(ForeignScanState *node,
 	user = GetUserMapping(userid, server->serverid);
 
 	/* needed for svr_query */
-	firebirdGetTableOptions(foreigntableid,
+	firebirdGetTableOptions(table,
 							&svr_query,
 							&svr_table,
-							NULL,
 							NULL,
 							NULL);
 
