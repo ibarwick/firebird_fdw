@@ -248,7 +248,8 @@ firebirdIsValidOption(const char *option, Oid context)
 /**
  * firebirdGetServerOptions()
  *
- * Fetch the requested server-level options.
+ * Fetch the requested server-level options, and record whether they
+ * were explicitly provided.
  */
 void
 firebirdGetServerOptions(ForeignServer *server,
@@ -262,34 +263,39 @@ firebirdGetServerOptions(ForeignServer *server,
 
 		elog(DEBUG2, "server option: \"%s\"", def->defname);
 
-		if (options->address != NULL && strcmp(def->defname, "address") == 0)
+		if (options->address.opt.strptr != NULL && strcmp(def->defname, "address") == 0)
 		{
-			*options->address = defGetString(def);
+			*options->address.opt.strptr = defGetString(def);
+			options->address.provided = true;
 			continue;
 		}
 
-		if (options->port != NULL && strcmp(def->defname, "port") == 0)
+		if (options->port.opt.intptr != NULL && strcmp(def->defname, "port") == 0)
 		{
-			*options->port = strtod(defGetString(def), NULL);
+			*options->port.opt.intptr = strtod(defGetString(def), NULL);
+			options->port.provided = true;
 			continue;
 		}
 
 
-		if (options->database != NULL && strcmp(def->defname, "database") == 0)
+		if (options->database.opt.strptr != NULL && strcmp(def->defname, "database") == 0)
 		{
-			*options->database = defGetString(def);
+			*options->database.opt.strptr = defGetString(def);
+			options->database.provided = true;
 			continue;
 		}
 
-		if (options->disable_pushdowns != NULL && strcmp(def->defname, "disable_pushdowns") == 0)
+		if (options->disable_pushdowns.opt.boolptr != NULL && strcmp(def->defname, "disable_pushdowns") == 0)
 		{
-			*options->disable_pushdowns = defGetBoolean(def);
+			*options->disable_pushdowns.opt.boolptr = defGetBoolean(def);
+			options->disable_pushdowns.provided = true;
 			continue;
 		}
 
-		if (options->updatable != NULL && strcmp(def->defname, "updatable") == 0)
+		if (options->updatable.opt.boolptr != NULL && strcmp(def->defname, "updatable") == 0)
 		{
-			*options->updatable = defGetBoolean(def);
+			*options->updatable.opt.boolptr = defGetBoolean(def);
+			options->updatable.provided = true;
 			continue;
 		}
 	}

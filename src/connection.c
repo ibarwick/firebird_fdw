@@ -182,6 +182,7 @@ firebirdInstantiateConnection(ForeignServer *server, UserMapping *user)
 		char *dbpath;
 
 		ListCell   *lc;
+
 		fbServerOptions server_options = fbServerOptions_init;
 
 		elog(DEBUG2, "%s(): no cache entry found", __func__);
@@ -189,8 +190,8 @@ firebirdInstantiateConnection(ForeignServer *server, UserMapping *user)
 		entry->xact_depth = 0;	/* just to be sure */
 		entry->have_error = false;
 
-		server_options.address = &svr_address;
-		server_options.database = &svr_database;
+		server_options.address.opt.strptr = &svr_address;
+		server_options.database.opt.strptr = &svr_database;
 
 		firebirdGetServerOptions(
 			server,

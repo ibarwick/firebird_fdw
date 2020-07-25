@@ -310,8 +310,8 @@ firebird_fdw_server_options(PG_FUNCTION_ARGS)
 
 	StringInfoData option;
 
-	Datum		values[2];
-	bool		nulls[2];
+	Datum		values[3];
+	bool		nulls[3];
 
 	char	   *address = NULL;
 	int			port = FIREBIRD_DEFAULT_PORT;
@@ -337,16 +337,15 @@ firebird_fdw_server_options(PG_FUNCTION_ARGS)
 	server_name = text_to_cstring(PG_GETARG_TEXT_PP(0));
 	server = GetForeignServerByName(server_name, false);
 
-	server_options.address = &address;
-	server_options.port = &port;
-	server_options.database = &database;
-	server_options.disable_pushdowns = &disable_pushdowns;
-	server_options.updatable = &updatable;
+	server_options.address.opt.strptr = &address;
+	server_options.port.opt.intptr = &port;
+	server_options.database.opt.strptr = &database;
+	server_options.disable_pushdowns.opt.boolptr = &disable_pushdowns;
+	server_options.updatable.opt.boolptr = &updatable;
 
 	firebirdGetServerOptions(
 		server,
 		&server_options);
-
 
 	/* Switch into long-lived context to construct returned data structures */
 	per_query_ctx = rsinfo->econtext->ecxt_per_query_memory;
@@ -367,15 +366,11 @@ firebird_fdw_server_options(PG_FUNCTION_ARGS)
 	memset(values, 0, sizeof(values));
 	memset(nulls, 0, sizeof(nulls));
 
-	initStringInfo(&option);
-	appendStringInfo(&option,
-					 "%s", address);
-
 	values[0] = CStringGetTextDatum("address");
-	values[1] = CStringGetTextDatum(option.data);
+	values[1] = CStringGetTextDatum(address);
+	values[2] = BoolGetDatum(server_options.address.provided);
 
 	tuplestore_putvalues(tupstore, tupdesc, values, nulls);
-	pfree(option.data);
 
 	/* port */
 	memset(values, 0, sizeof(values));
@@ -387,6 +382,7 @@ firebird_fdw_server_options(PG_FUNCTION_ARGS)
 
 	values[0] = CStringGetTextDatum("port");
 	values[1] = CStringGetTextDatum(option.data);
+	values[2] = BoolGetDatum(server_options.port.provided);
 
 	tuplestore_putvalues(tupstore, tupdesc, values, nulls);
 	pfree(option.data);
@@ -395,15 +391,11 @@ firebird_fdw_server_options(PG_FUNCTION_ARGS)
 	memset(values, 0, sizeof(values));
 	memset(nulls, 0, sizeof(nulls));
 
-	initStringInfo(&option);
-	appendStringInfo(&option,
-					 "%s", database);
-
 	values[0] = CStringGetTextDatum("database");
-	values[1] = CStringGetTextDatum(option.data);
+	values[1] = CStringGetTextDatum(database);
+	values[2] = BoolGetDatum(server_options.database.provided);
 
 	tuplestore_putvalues(tupstore, tupdesc, values, nulls);
-	pfree(option.data);
 
 	/* disable_pushdowns */
 	memset(values, 0, sizeof(values));
@@ -415,6 +407,7 @@ firebird_fdw_server_options(PG_FUNCTION_ARGS)
 
 	values[0] = CStringGetTextDatum("disable_pushdowns");
 	values[1] = CStringGetTextDatum(option.data);
+	values[2] = BoolGetDatum(server_options.disable_pushdowns.provided);
 
 	tuplestore_putvalues(tupstore, tupdesc, values, nulls);
 	pfree(option.data);
@@ -429,6 +422,7 @@ firebird_fdw_server_options(PG_FUNCTION_ARGS)
 
 	values[0] = CStringGetTextDatum("updatable");
 	values[1] = CStringGetTextDatum(option.data);
+	values[2] = BoolGetDatum(server_options.updatable.provided);
 
 	tuplestore_putvalues(tupstore, tupdesc, values, nulls);
 	pfree(option.data);
@@ -694,7 +688,7 @@ getFdwState(Oid foreigntableid)
 	fdw_state->estimated_row_count = -1;
 
 	/* Retrieve server options */
-	server_options.disable_pushdowns = &fdw_state->disable_pushdowns;
+	server_options.disable_pushdowns.opt.boolptr = &fdw_state->disable_pushdowns;
 
 	firebirdGetServerOptions(
 		server,
@@ -737,7 +731,7 @@ firebirdEstimateCosts(PlannerInfo *root, RelOptInfo *baserel, Oid foreigntableid
 	table = GetForeignTable(foreigntableid);
 	server = GetForeignServer(table->serverid);
 
-	server_options.address = &svr_address;
+	server_options.address.opt.strptr = &svr_address;
 	firebirdGetServerOptions(
 		server,
 		&server_options);
@@ -1620,7 +1614,7 @@ firebirdIsForeignRelUpdatable(Relation rel)
 
 	/* Get server setting, if available */
 
-	server_options.updatable = &updatable;
+	server_options.updatable.opt.boolptr = &updatable;
 
 	firebirdGetServerOptions(
 		server,

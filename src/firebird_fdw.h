@@ -63,21 +63,33 @@
 							 || (x) == NUMERICOID || (x) == DATEOID || (x) == TIMESTAMPOID \
 							 || (x) == TIMEOID)
 
+union opttype {
+	char **strptr;
+	int *intptr;
+	bool *boolptr;
+} opttype;
+
+typedef struct fbServerOpt {
+	union opttype opt;
+	bool provided;
+} fbServerOpt;
+
 typedef struct fbServerOptions {
-	char **address;
-	int *port;
-	char **database;
-	bool *disable_pushdowns;
-	bool *updatable;
+	fbServerOpt address;
+	fbServerOpt port;
+	fbServerOpt database;
+	fbServerOpt disable_pushdowns;
+	fbServerOpt updatable;
 } fbServerOptions;
 
 #define fbServerOptions_init { \
-	NULL, \
-	NULL, \
-	NULL, \
-	NULL, \
-	NULL \
+	{ { NULL }, false }, \
+	{ { NULL }, false }, \
+	{ { NULL }, false }, \
+	{ { NULL }, false }, \
+	{ { NULL }, false } \
 }
+
 
 typedef struct fbTableOptions {
 	char **query;
@@ -212,6 +224,7 @@ extern void fbfdw_report_error(int errlevel, int pg_errcode, FBresult *res, FBco
 
 extern void firebirdGetServerOptions(ForeignServer *server,
 									 fbServerOptions *options);
+
 extern void firebirdGetTableOptions(ForeignTable *table,
 									fbTableOptions *options);
 

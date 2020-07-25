@@ -224,13 +224,13 @@ functions, `firebird_fdw` provides the following user-callable utility functions
 
 ```
 postgres=# SELECT * FROM firebird_fdw_server_options('firebird_server');
-       name        |              value
--------------------+---------------------------------
- address           | localhost
- port              | 3050
- database          | /var/lib/firebird/data/test.fdb
- disable_pushdowns | false
- updatable         | false
+       name        |              value              | provided
+-------------------+---------------------------------+----------
+ address           | localhost                       | t
+ port              | 3050                            | f
+ database          | /var/lib/firebird/data/test.fdb | t
+ disable_pushdowns | false                           | f
+ updatable         | false                           | f
 (5 rows)
 ```
 

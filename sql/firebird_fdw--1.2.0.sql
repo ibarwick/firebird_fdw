@@ -44,7 +44,8 @@ LANGUAGE C STRICT;
 CREATE OR REPLACE FUNCTION firebird_fdw_server_options(
     IN server_name TEXT,
     OUT name TEXT,
-    OUT value TEXT)
+    OUT value TEXT,
+    OUT provided BOOL)
   RETURNS SETOF record
   AS 'MODULE_PATHNAME'
   LANGUAGE C STRICT VOLATILE PARALLEL SAFE;
