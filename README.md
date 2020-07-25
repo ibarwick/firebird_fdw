@@ -7,7 +7,7 @@ support, as well as pushdown of some operations. While it appears to be
 working reliably, please be aware this is still very much work-in-progress;
 *USE AT YOUR OWN RISK*.
 
-`firebird_fdw` is designed to be compatible with PostgreSQL 9.2 ~ 12.
+`firebird_fdw` is designed to be compatible with PostgreSQL 9.3 ~ 12.
 Write support is available in PostgreSQL 9.3 and later. It is not
 designed to work with forks of the main PostgreSQL community version.
 
@@ -420,7 +420,6 @@ Import a Firebird schema:
 
 Note: `someschema` has no particular meaning and can be set to an arbitrary value.
 
-
 Limitations
 -----------
 
@@ -436,8 +435,8 @@ TAP tests
 Simple TAP tests are provided in the `t/` directory. These require a running
 Firebird database to be available; provide connection details for this with
 the standard Firebird environment variables `ISC_DATABASE`, `ISC_USER` and
-`ISC_PASSWORD`. Additionally, PostgreSQL must have been compiled with
-the `--enable-tap-tests` option.
+`ISC_PASSWORD`. The tests are designed for PostgreSQL 9.5 and later, and
+require it to have been compiled with the `--enable-tap-tests` option.
 
 Run with
 
@@ -445,7 +444,6 @@ Run with
 
 The TAP tests will create temporary tables in the Firebird database and
 remove them after test completion.
-
 
 Development roadmap
 -------------------
