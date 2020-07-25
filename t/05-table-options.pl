@@ -1,8 +1,8 @@
 #!/usr/bin/env perl
 
-# 05-fdw-options.pl
+# 05-table-options.pl
 #
-# Check various server/table options (work-in-progress)
+# Check table-level options (work-in-progress)
 
 use strict;
 use warnings;
