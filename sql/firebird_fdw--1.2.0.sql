@@ -41,6 +41,14 @@ CREATE OR REPLACE FUNCTION firebird_fdw_close_connections()
   AS 'MODULE_PATHNAME'
 LANGUAGE C STRICT;
 
+CREATE OR REPLACE FUNCTION firebird_fdw_server_options(
+    IN server_name TEXT,
+    OUT name TEXT,
+    OUT value TEXT)
+  RETURNS SETOF record
+  AS 'MODULE_PATHNAME'
+  LANGUAGE C STRICT VOLATILE PARALLEL SAFE;
+
 CREATE OR REPLACE FUNCTION firebird_fdw_diag(
     OUT name TEXT,
     OUT setting TEXT)

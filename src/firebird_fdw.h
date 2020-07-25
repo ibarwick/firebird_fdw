@@ -41,6 +41,9 @@
 #define FB_FDW_LOGPREFIX "[firebird_fdw] "
 #define FB_FDW_LOGPREFIX_LEN strlen(FB_FDW_LOGPREFIX)
 
+/* http://www.firebirdfaq.org/faq259/ */
+#define FIREBIRD_DEFAULT_PORT 3050
+
 /*
  * In PostgreSQL 12 and earlier, "table_open|close()" were "heap_open|close()";
  * see core commits 4b21acf5 and f25968c4.
@@ -59,7 +62,6 @@
 							 || (x) == INT4OID ||  (x) == FLOAT4OID || (x) == FLOAT8OID \
 							 || (x) == NUMERICOID || (x) == DATEOID || (x) == TIMESTAMPOID \
 							 || (x) == TIMEOID)
-
 
 typedef struct fbServerOptions {
 	char **address;

@@ -114,11 +114,13 @@ enum FdwModifyPrivateIndex
 extern Datum firebird_fdw_handler(PG_FUNCTION_ARGS);
 extern Datum firebird_fdw_version(PG_FUNCTION_ARGS);
 extern Datum firebird_fdw_close_connections(PG_FUNCTION_ARGS);
+extern Datum firebird_fdw_server_options(PG_FUNCTION_ARGS);
 extern Datum firebird_fdw_diag(PG_FUNCTION_ARGS);
 
 PG_FUNCTION_INFO_V1(firebird_fdw_handler);
 PG_FUNCTION_INFO_V1(firebird_fdw_version);
 PG_FUNCTION_INFO_V1(firebird_fdw_close_connections);
+PG_FUNCTION_INFO_V1(firebird_fdw_server_options);
 PG_FUNCTION_INFO_V1(firebird_fdw_diag);
 
 extern void _PG_init(void);
@@ -287,6 +289,154 @@ firebird_fdw_close_connections(PG_FUNCTION_ARGS)
 {
 	firebirdCloseConnections(true);
 	PG_RETURN_VOID();
+}
+
+
+/**
+ * firebird_fdw_server_options()
+ *
+ * Returns the options provided to "CREATE SERVER".
+ *
+ * This is mainly useful for diagnostic/testing purposes.
+ */
+Datum
+firebird_fdw_server_options(PG_FUNCTION_ARGS)
+{
+	ReturnSetInfo *rsinfo = (ReturnSetInfo *) fcinfo->resultinfo;
+	TupleDesc	tupdesc;
+	Tuplestorestate *tupstore;
+	MemoryContext per_query_ctx;
+	MemoryContext oldcontext;
+
+	StringInfoData option;
+
+	Datum		values[2];
+	bool		nulls[2];
+
+	char	   *address = NULL;
+	int			port = FIREBIRD_DEFAULT_PORT;
+	char	   *database = NULL;
+	bool		disable_pushdowns = false;
+	bool		updatable = false;
+
+	ForeignServer *server;
+	fbServerOptions server_options = fbServerOptions_init;
+	const char  *server_name;
+
+	/* check to see if caller supports this function returning a tuplestore */
+	if (rsinfo == NULL || !IsA(rsinfo, ReturnSetInfo))
+		ereport(ERROR,
+				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+				 errmsg("set-valued function called in context that cannot accept a set")));
+	if (!(rsinfo->allowedModes & SFRM_Materialize))
+		ereport(ERROR,
+				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+				 errmsg("materialize mode required, but it is not " \
+						"allowed in this context")));
+
+	server_name = text_to_cstring(PG_GETARG_TEXT_PP(0));
+	server = GetForeignServerByName(server_name, false);
+
+	server_options.address = &address;
+	server_options.port = &port;
+	server_options.database = &database;
+	server_options.disable_pushdowns = &disable_pushdowns;
+	server_options.updatable = &updatable;
+
+	firebirdGetServerOptions(
+		server,
+		&server_options);
+
+
+	/* Switch into long-lived context to construct returned data structures */
+	per_query_ctx = rsinfo->econtext->ecxt_per_query_memory;
+	oldcontext = MemoryContextSwitchTo(per_query_ctx);
+
+	/* Build a tuple descriptor for function's result type */
+	if (get_call_result_type(fcinfo, NULL, &tupdesc) != TYPEFUNC_COMPOSITE)
+		elog(ERROR, "return type must be a row type");
+
+	tupstore = tuplestore_begin_heap(true, false, work_mem);
+	rsinfo->returnMode = SFRM_Materialize;
+	rsinfo->setResult = tupstore;
+	rsinfo->setDesc = tupdesc;
+
+	MemoryContextSwitchTo(oldcontext);
+
+	/* address */
+	memset(values, 0, sizeof(values));
+	memset(nulls, 0, sizeof(nulls));
+
+	initStringInfo(&option);
+	appendStringInfo(&option,
+					 "%s", address);
+
+	values[0] = CStringGetTextDatum("address");
+	values[1] = CStringGetTextDatum(option.data);
+
+	tuplestore_putvalues(tupstore, tupdesc, values, nulls);
+	pfree(option.data);
+
+	/* port */
+	memset(values, 0, sizeof(values));
+	memset(nulls, 0, sizeof(nulls));
+
+	initStringInfo(&option);
+	appendStringInfo(&option,
+					 "%i", port);
+
+	values[0] = CStringGetTextDatum("port");
+	values[1] = CStringGetTextDatum(option.data);
+
+	tuplestore_putvalues(tupstore, tupdesc, values, nulls);
+	pfree(option.data);
+
+	/* database */
+	memset(values, 0, sizeof(values));
+	memset(nulls, 0, sizeof(nulls));
+
+	initStringInfo(&option);
+	appendStringInfo(&option,
+					 "%s", database);
+
+	values[0] = CStringGetTextDatum("database");
+	values[1] = CStringGetTextDatum(option.data);
+
+	tuplestore_putvalues(tupstore, tupdesc, values, nulls);
+	pfree(option.data);
+
+	/* disable_pushdowns */
+	memset(values, 0, sizeof(values));
+	memset(nulls, 0, sizeof(nulls));
+
+	initStringInfo(&option);
+	appendStringInfo(&option,
+					 "%s", disable_pushdowns ? "true" : "false");
+
+	values[0] = CStringGetTextDatum("disable_pushdowns");
+	values[1] = CStringGetTextDatum(option.data);
+
+	tuplestore_putvalues(tupstore, tupdesc, values, nulls);
+	pfree(option.data);
+
+	/* updatable */
+	memset(values, 0, sizeof(values));
+	memset(nulls, 0, sizeof(nulls));
+
+	initStringInfo(&option);
+	appendStringInfo(&option,
+					 "%s", updatable ? "true" : "false");
+
+	values[0] = CStringGetTextDatum("updatable");
+	values[1] = CStringGetTextDatum(option.data);
+
+	tuplestore_putvalues(tupstore, tupdesc, values, nulls);
+	pfree(option.data);
+
+	/* no more rows */
+	tuplestore_donestoring(tupstore);
+
+	return (Datum) 0;
 }
 
 

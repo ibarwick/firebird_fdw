@@ -175,7 +175,7 @@ firebirdInstantiateConnection(ForeignServer *server, UserMapping *user)
 	{
 		char *svr_address  = NULL;
 		char *svr_database = NULL;
-		int	  svr_port	   = 0;
+		int	  svr_port	   = FIREBIRD_DEFAULT_PORT;
 		char *svr_username = NULL;
 		char *svr_password = NULL;
 

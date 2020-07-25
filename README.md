@@ -217,7 +217,23 @@ functions, `firebird_fdw` provides the following user-callable utility functions
 
  - `firebird_fdw_version()`: returns the version number as an integer
  - `firebird_fdw_close_connections()`: closes all cached connections from
-      PostgreSQL and Firebird
+      PostgreSQL to Firebird
+ - `firebird_fdw_server_options(servername TEXT)`: returns the server-level option
+      settings for the named server (either the options provided to `CREATE SERVER` or
+      if not provided, the respective default values); example:
+
+```
+postgres=# SELECT * FROM firebird_fdw_server_options('firebird_server');
+       name        |              value
+-------------------+---------------------------------
+ address           | localhost
+ port              | 3050
+ database          | /var/lib/firebird/data/test.fdb
+ disable_pushdowns | false
+ updatable         | false
+(5 rows)
+```
+
  - `firebird_fdw_diag()`: returns ad-hoc information about the Firebird FDW in key/value
       form, example:
 
@@ -232,6 +248,7 @@ functions, `firebird_fdw` provides the following user-callable utility functions
      cached_connection_count     | 1
     (5 rows)
 ```
+
 
 Identifier case handling
 ------------------------
