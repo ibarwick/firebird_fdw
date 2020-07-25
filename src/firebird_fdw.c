@@ -531,6 +531,7 @@ getFdwState(Oid foreigntableid)
 	ForeignServer *server = GetForeignServer(table->serverid);
 
 	fbServerOptions server_options = fbServerOptions_init;
+	fbTableOptions table_options = fbTableOptions_init;
 
 	elog(DEBUG3, "OID: %u", foreigntableid);
 
@@ -542,17 +543,22 @@ getFdwState(Oid foreigntableid)
 	fdw_state->svr_table = NULL;
 	fdw_state->estimated_row_count = -1;
 
+	/* Retrieve server options */
 	server_options.disable_pushdowns = &fdw_state->disable_pushdowns;
+
 	firebirdGetServerOptions(
 		server,
 		&server_options);
 
+	/* Retrieve table options */
+	table_options.query = &fdw_state->svr_query;
+	table_options.table_name = &fdw_state->svr_table;
+	table_options.estimated_row_count = &fdw_state->estimated_row_count;
+	table_options.quote_identifier = &fdw_state->quote_identifier;
+
 	firebirdGetTableOptions(
 		table,
-		&fdw_state->svr_query,
-		&fdw_state->svr_table,
-		&fdw_state->estimated_row_count,
-		&fdw_state->quote_identifier);
+		&table_options);
 
 	return fdw_state;
 }
@@ -573,19 +579,18 @@ firebirdEstimateCosts(PlannerInfo *root, RelOptInfo *baserel, Oid foreigntableid
 	ForeignServer *server;
 	ForeignTable *table;
 	char *svr_address  = NULL;
-	ListCell   *lc;
+
+	fbServerOptions server_options = fbServerOptions_init;
+
 	elog(DEBUG2, "entering function %s", __func__);
 
 	table = GetForeignTable(foreigntableid);
 	server = GetForeignServer(table->serverid);
 
-	foreach (lc, server->options)
-	{
-		DefElem	   *def = (DefElem *) lfirst(lc);
-
-		if (strcmp(def->defname, "address") == 0)
-			svr_address = defGetString(def);
-	}
+	server_options.address = &svr_address;
+	firebirdGetServerOptions(
+		server,
+		&server_options);
 
 	/* Set startup cost based on the localness of the database */
 	/* XXX TODO:
@@ -1073,6 +1078,7 @@ firebirdBeginForeignScan(ForeignScanState *node,
 	UserMapping *user;
 
 	ListCell *lc;
+	fbTableOptions table_options = fbTableOptions_init;
 
 	elog(DEBUG2, "entering function %s", __func__);
 
@@ -1083,11 +1089,10 @@ firebirdBeginForeignScan(ForeignScanState *node,
 	user = GetUserMapping(userid, server->serverid);
 
 	/* needed for svr_query */
-	firebirdGetTableOptions(table,
-							&svr_query,
-							&svr_table,
-							NULL,
-							NULL);
+	table_options.query = &svr_query;
+	table_options.table_name = &svr_table;
+
+	firebirdGetTableOptions(table, &table_options);
 
 	/* Initialise FDW state */
 	fdw_state = (FirebirdFdwScanState *) palloc0(sizeof(FirebirdFdwScanState));
@@ -1455,8 +1460,8 @@ firebirdIsForeignRelUpdatable(Relation rel)
 	ForeignServer *server;
 	ForeignTable  *table;
 	bool		   updatable = true;
-	ListCell	  *lc;
 	fbServerOptions server_options = fbServerOptions_init;
+	fbTableOptions table_options = fbTableOptions_init;
 
 	elog(DEBUG2, "entering function %s", __func__);
 
@@ -1473,16 +1478,11 @@ firebirdIsForeignRelUpdatable(Relation rel)
 
 	/* Table setting overrides server setting */
 
-	foreach (lc, table->options)
-	{
-		DefElem	   *def = (DefElem *) lfirst(lc);
+	table_options.updatable = &updatable;
 
-		if (strcmp(def->defname, "updatable") == 0)
-		{
-			updatable = defGetBoolean(def);
-			break;
-		}
-	}
+	firebirdGetTableOptions(
+		table,
+		&table_options);
 
 	return updatable ?
 		(1 << CMD_INSERT) | (1 << CMD_UPDATE) | (1 << CMD_DELETE) : 0;

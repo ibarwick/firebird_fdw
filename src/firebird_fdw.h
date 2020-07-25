@@ -69,7 +69,6 @@ typedef struct fbServerOptions {
 	bool *updatable;
 } fbServerOptions;
 
-
 #define fbServerOptions_init { \
 	NULL, \
 	NULL, \
@@ -78,6 +77,21 @@ typedef struct fbServerOptions {
 	NULL \
 }
 
+typedef struct fbTableOptions {
+	char **query;
+	char **table_name;
+	bool *updatable;
+	int *estimated_row_count;
+	bool *quote_identifier;
+} fbTableOptions;
+
+#define fbTableOptions_init { \
+	NULL, \
+	NULL, \
+	NULL, \
+	NULL, \
+	NULL \
+}
 
 typedef struct fbTableColumn
 {
@@ -197,10 +211,7 @@ extern void fbfdw_report_error(int errlevel, int pg_errcode, FBresult *res, FBco
 extern void firebirdGetServerOptions(ForeignServer *server,
 									 fbServerOptions *options);
 extern void firebirdGetTableOptions(ForeignTable *table,
-									char **svr_query,
-									char **svr_table,
-									int *estimated_row_count,
-									bool *quote_identifier);
+									fbTableOptions *options);
 
 /* query-building functions (in convert.c) */
 

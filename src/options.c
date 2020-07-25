@@ -263,19 +263,35 @@ firebirdGetServerOptions(ForeignServer *server,
 		elog(DEBUG2, "server option: \"%s\"", def->defname);
 
 		if (options->address != NULL && strcmp(def->defname, "address") == 0)
+		{
 			*options->address = defGetString(def);
+			continue;
+		}
 
 		if (options->port != NULL && strcmp(def->defname, "port") == 0)
+		{
 			*options->port = strtod(defGetString(def), NULL);
+			continue;
+		}
+
 
 		if (options->database != NULL && strcmp(def->defname, "database") == 0)
+		{
 			*options->database = defGetString(def);
+			continue;
+		}
 
 		if (options->disable_pushdowns != NULL && strcmp(def->defname, "disable_pushdowns") == 0)
+		{
 			*options->disable_pushdowns = defGetBoolean(def);
+			continue;
+		}
 
 		if (options->updatable != NULL && strcmp(def->defname, "updatable") == 0)
+		{
 			*options->updatable = defGetBoolean(def);
+			continue;
+		}
 	}
 }
 
@@ -289,10 +305,7 @@ firebirdGetServerOptions(ForeignServer *server,
  */
 void
 firebirdGetTableOptions(ForeignTable *table,
-						char **svr_query,
-						char **svr_table,
-						int *estimated_row_count,
-						bool *quote_identifier)
+						fbTableOptions *options)
 {
 	ListCell	  *lc;
 
@@ -303,21 +316,34 @@ firebirdGetTableOptions(ForeignTable *table,
 		elog(DEBUG2, "table option: \"%s\"", def->defname);
 
 		/* table-level options */
-		if (strcmp(def->defname, "query") == 0)
+		if (options->query != NULL && strcmp(def->defname, "query") == 0)
 		{
-			*svr_query = defGetString(def);
+			*options->query = defGetString(def);
+			continue;
 		}
-		else if (strcmp(def->defname, "table_name") == 0)
+
+		if (options->table_name != NULL && strcmp(def->defname, "table_name") == 0)
 		{
-			*svr_table = defGetString(def);
+			*options->table_name = defGetString(def);
+			continue;
 		}
-		else if (strcmp(def->defname, "estimated_row_count") == 0 && estimated_row_count != NULL)
+
+		if (options->updatable != NULL && strcmp(def->defname, "updatable") == 0)
 		{
-			*estimated_row_count = strtod(defGetString(def), NULL);
+			*options->updatable = defGetBoolean(def);
+			continue;
 		}
-		else if (strcmp(def->defname, "quote_identifier") == 0 && quote_identifier != NULL)
+
+		if (options->estimated_row_count != NULL && strcmp(def->defname, "estimated_row_count") == 0)
 		{
-			*quote_identifier = defGetBoolean(def);
+			*options->estimated_row_count = strtod(defGetString(def), NULL);
+			continue;
+		}
+
+		if (options->quote_identifier != NULL && strcmp(def->defname, "quote_identifier") == 0 )
+		{
+			*options->quote_identifier = defGetBoolean(def);
+			continue;
 		}
 	}
 
@@ -325,7 +351,10 @@ firebirdGetTableOptions(ForeignTable *table,
 	 * If no query and no table name specified, default to the PostgreSQL
 	 * table name.
 	 */
-	if (!*svr_table && !*svr_query)
-		*svr_table = get_rel_name(table->relid);
+	if (options->table_name != NULL && options->query != NULL)
+	{
+		if (!*options->table_name && !*options->query)
+			*options->table_name = get_rel_name(table->relid);
+	}
 }
 
