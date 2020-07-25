@@ -590,30 +590,46 @@ firebirdCachedConnectionsCount(void)
  *
  * Utility function to generate a Firebird database path.
  *
- * XXX ignores the 'port' parameter
+ * See: http://www.firebirdfaq.org/faq259/
  */
 static char *
 firebirdDbPath(char **address, char **database, int *port)
 {
-	char *hostname;
+	StringInfoData buf;
+	char *path;
+	int len;
 
-	if (*database != NULL && *address != NULL)
+	initStringInfo(&buf);
+
+	if (*address != NULL)
 	{
-		hostname = palloc0(strlen(*address) + strlen(*database) + 2);
-		sprintf(hostname, "%s:%s", *address, *database);
-	}
-	else if (*database != NULL)
-	{
-		hostname = palloc0(strlen(*database) + 1);
-		sprintf(hostname, "%s", *database);
-	}
-	else
-	{
-		/* dummy empty string */
-		hostname = palloc0(1);
+		appendStringInfoString(&buf,
+							   *address);
+
+		if (*port > 0 && *port != FIREBIRD_DEFAULT_PORT)
+		{
+			appendStringInfo(&buf,
+							 "/%i", *port);
+		}
+
+		appendStringInfoChar(&buf,
+							 ':');
 	}
 
-	return hostname;
+	/* Caller should ensure at least *database is not NULL  */
+	if (*database != NULL)
+	{
+		appendStringInfoString(&buf,
+							   *database);
+	}
+
+	len = strlen(buf.data) + 1;
+	path = palloc0(len);
+
+	snprintf(path, len, "%s", buf.data);
+	pfree(buf.data);
+
+	return path;
 }
 
 
