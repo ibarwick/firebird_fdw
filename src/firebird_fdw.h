@@ -60,6 +60,25 @@
 							 || (x) == NUMERICOID || (x) == DATEOID || (x) == TIMESTAMPOID \
 							 || (x) == TIMEOID)
 
+
+typedef struct fbServerOptions {
+	char **address;
+	int *port;
+	char **database;
+	bool *disable_pushdowns;
+	bool *updatable;
+} fbServerOptions;
+
+
+#define fbServerOptions_init { \
+	NULL, \
+	NULL, \
+	NULL, \
+	NULL, \
+	NULL \
+}
+
+
 typedef struct fbTableColumn
 {
 	char *fbname;			 /* Firebird column name */
@@ -176,7 +195,7 @@ extern void fbfdw_report_error(int errlevel, int pg_errcode, FBresult *res, FBco
 /* option functions (in options.c) */
 
 extern void firebirdGetServerOptions(ForeignServer *server,
-									 bool *disable_pushdowns);
+									 fbServerOptions *options);
 extern void firebirdGetTableOptions(ForeignTable *table,
 									char **svr_query,
 									char **svr_table,

@@ -248,15 +248,11 @@ firebirdIsValidOption(const char *option, Oid context)
 /**
  * firebirdGetServerOptions()
  *
- * Fetch the options which apply to a firebird_fdw foreign server.
- * These do not include the foreign server connection options, which are
- * handled in connection.c.
- *
- * Note that "updatable" is handled in firebirdIsForeignRelUpdatable().
+ * Fetch the requested server-level options.
  */
 void
 firebirdGetServerOptions(ForeignServer *server,
-						 bool *disable_pushdowns)
+						 fbServerOptions *options)
 {
 	ListCell   *lc;
 
@@ -266,8 +262,20 @@ firebirdGetServerOptions(ForeignServer *server,
 
 		elog(DEBUG2, "server option: \"%s\"", def->defname);
 
-		if (strcmp(def->defname, "disable_pushdowns") == 0 && disable_pushdowns != NULL)
-			*disable_pushdowns = defGetBoolean(def);
+		if (options->address != NULL && strcmp(def->defname, "address") == 0)
+			*options->address = defGetString(def);
+
+		if (options->port != NULL && strcmp(def->defname, "port") == 0)
+			*options->port = strtod(defGetString(def), NULL);
+
+		if (options->database != NULL && strcmp(def->defname, "database") == 0)
+			*options->database = defGetString(def);
+
+		if (options->disable_pushdowns != NULL && strcmp(def->defname, "disable_pushdowns") == 0)
+			*options->disable_pushdowns = defGetBoolean(def);
+
+		if (options->updatable != NULL && strcmp(def->defname, "updatable") == 0)
+			*options->updatable = defGetBoolean(def);
 	}
 }
 

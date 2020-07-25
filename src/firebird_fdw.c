@@ -530,7 +530,9 @@ getFdwState(Oid foreigntableid)
 	ForeignTable  *table = GetForeignTable(foreigntableid);
 	ForeignServer *server = GetForeignServer(table->serverid);
 
-	elog(DEBUG2, "OID: %u", foreigntableid);
+	fbServerOptions server_options = fbServerOptions_init;
+
+	elog(DEBUG3, "OID: %u", foreigntableid);
 
 	/* Server-level options which apply to the table */
 	fdw_state->disable_pushdowns = false;
@@ -540,9 +542,10 @@ getFdwState(Oid foreigntableid)
 	fdw_state->svr_table = NULL;
 	fdw_state->estimated_row_count = -1;
 
+	server_options.disable_pushdowns = &fdw_state->disable_pushdowns;
 	firebirdGetServerOptions(
 		server,
-		&fdw_state->disable_pushdowns);
+		&server_options);
 
 	firebirdGetTableOptions(
 		table,
@@ -1449,10 +1452,11 @@ firebirdEndForeignScan(ForeignScanState *node)
 static int
 firebirdIsForeignRelUpdatable(Relation rel)
 {
-	bool		   updatable = true;
 	ForeignServer *server;
 	ForeignTable  *table;
+	bool		   updatable = true;
 	ListCell	  *lc;
+	fbServerOptions server_options = fbServerOptions_init;
 
 	elog(DEBUG2, "entering function %s", __func__);
 
@@ -1461,16 +1465,11 @@ firebirdIsForeignRelUpdatable(Relation rel)
 
 	/* Get server setting, if available */
 
-	foreach (lc, server->options)
-	{
-		DefElem	   *def = (DefElem *) lfirst(lc);
+	server_options.updatable = &updatable;
 
-		if (strcmp(def->defname, "updatable") == 0)
-		{
-			updatable = defGetBoolean(def);
-			break;
-		}
-	}
+	firebirdGetServerOptions(
+		server,
+		&server_options);
 
 	/* Table setting overrides server setting */
 

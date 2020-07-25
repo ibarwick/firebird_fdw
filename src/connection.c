@@ -175,26 +175,26 @@ firebirdInstantiateConnection(ForeignServer *server, UserMapping *user)
 	{
 		char *svr_address  = NULL;
 		char *svr_database = NULL;
+		int	  svr_port	   = 0;
 		char *svr_username = NULL;
 		char *svr_password = NULL;
-		int	  svr_port	   = 0;
+
 		char *dbpath;
+
 		ListCell   *lc;
+		fbServerOptions server_options = fbServerOptions_init;
 
 		elog(DEBUG2, "%s(): no cache entry found", __func__);
 
 		entry->xact_depth = 0;	/* just to be sure */
 		entry->have_error = false;
 
-		foreach (lc, server->options)
-		{
-			DefElem	   *def = (DefElem *) lfirst(lc);
+		server_options.address = &svr_address;
+		server_options.database = &svr_database;
 
-			if (strcmp(def->defname, "address") == 0)
-				svr_address = defGetString(def);
-			if (strcmp(def->defname, "database") == 0)
-				svr_database = defGetString(def);
-		}
+		firebirdGetServerOptions(
+			server,
+			&server_options);
 
 		foreach (lc, user->options)
 		{
