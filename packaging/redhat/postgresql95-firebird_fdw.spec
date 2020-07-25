@@ -1,6 +1,6 @@
 Summary: A PostgreSQL foreign data wrapper (FDW) for Firebird
 Name: postgresql95-firebird_fdw
-Version: 1.1.0
+Version: 1.2.0
 Release: 1
 Source: firebird_fdw-%{version}.tar.gz
 URL: https://github.com/ibarwick/firebird_fdw
@@ -49,6 +49,8 @@ rm -rf $RPM_BUILD_ROOT
 %{pgsql_path}/share/extension/firebird_fdw--1.0.0.sql
 %{pgsql_path}/share/extension/firebird_fdw--1.0.0--1.1.0.sql
 %{pgsql_path}/share/extension/firebird_fdw--1.1.0.sql
+%{pgsql_path}/share/extension/firebird_fdw--1.1.0--1.2.0.sql
+%{pgsql_path}/share/extension/firebird_fdw--1.2.0.sql
 %{pgsql_path}/share/extension/firebird_fdw.control
 
 %changelog
