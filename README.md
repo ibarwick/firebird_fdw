@@ -230,7 +230,7 @@ postgres=# SELECT * FROM firebird_fdw_server_options('firebird_server');
  port              | 3050                            | f
  database          | /var/lib/firebird/data/test.fdb | t
  disable_pushdowns | false                           | f
- updatable         | false                           | f
+ updatable         | true                            | f
 (5 rows)
 ```
 

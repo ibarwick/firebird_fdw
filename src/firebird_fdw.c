@@ -317,7 +317,7 @@ firebird_fdw_server_options(PG_FUNCTION_ARGS)
 	int			port = FIREBIRD_DEFAULT_PORT;
 	char	   *database = NULL;
 	bool		disable_pushdowns = false;
-	bool		updatable = false;
+	bool		updatable = true;
 
 	ForeignServer *server;
 	fbServerOptions server_options = fbServerOptions_init;
