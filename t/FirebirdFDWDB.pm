@@ -13,6 +13,7 @@ sub new {
     $self->{pg_fdw_node} = $pg_fdw_node;
 
     $self->{dbname} = 'fdw_test';
+	$self->{server_name} = 'fb_test';
 
     $self->{pg_fdw_node}->safe_psql(
         'postgres',
@@ -31,16 +32,22 @@ CREATE FOREIGN DATA WRAPPER firebird
 EO_SQL
     );
 
+	# Server is created with all options explicitly set so we can
+	# easily execute "ALTER SERVER ... OPTION (SET foo 'bar)".
     $self->safe_psql(
         sprintf(
             <<EO_SQL,
-CREATE SERVER fb_test
+CREATE SERVER %s
   FOREIGN DATA WRAPPER firebird
   OPTIONS (
     address 'localhost',
-    database '%s'
+    database '%s',
+    port '3050',
+    updatable 'true',
+    disable_pushdowns 'false'
  );
 EO_SQL
+			$self->{server_name},
             $self->{pg_fdw_node}->{firebird_dbname},
         )
     );
@@ -60,15 +67,22 @@ EO_SQL
         )
     );
 
-    $self->{table_name} = 'tbl_';
-
-    foreach my $i (0..7) {
-        $self->{table_name} .= chr(int(26*rand) + 97);
-    }
-
-
     return $self;
 }
+
+
+sub _make_table_name {
+	my $self = shift;
+
+	my $table_name = 'tbl_';
+
+    foreach my $i (0..7) {
+        $table_name .= chr(int(26*rand) + 97);
+    }
+
+	return $table_name;
+}
+
 
 
 sub dbname {
@@ -109,11 +123,48 @@ EO_SQL
 }
 
 
+sub alter_server_option {
+    my $self = shift;
+    my $option = shift;
+	my $value = shift;
+
+	$self->safe_psql(
+        sprintf(
+            <<EO_SQL,
+    ALTER SERVER %s
+       OPTIONS (SET %s '%s')
+EO_SQL
+			$self->{server_name},
+			$option,
+			$value,
+		),
+	);
+}
+
+
+sub drop_server_option {
+    my $self = shift;
+    my $option = shift;
+
+	$self->safe_psql(
+        sprintf(
+            <<EO_SQL,
+    ALTER SERVER %s
+       OPTIONS (DROP %s)
+EO_SQL
+			$self->{server_name},
+			$option,
+		),
+	);
+}
+
 sub init_table {
     my $self = shift;
     my %table_options = @_;
 
 	$table_options{firebird_only} //= 0;
+
+	my $table_name = $self->_make_table_name();
 
     # Create Firebird table
 
@@ -126,14 +177,14 @@ CREATE TABLE %s (
   NAME_NATIVE                     VARCHAR(64) NOT NULL
 )
 EO_SQL
-            $self->{table_name},
+            $table_name,
         ),
     );
 
     $tbl_query->execute();
     $tbl_query->finish();
 
-    return $self->{table_name} if $table_options{firebird_only} == 1;
+    return $table_name if $table_options{firebird_only} == 1;
 
     # Create PostgreSQL foreign table
 
@@ -141,7 +192,7 @@ EO_SQL
 
     push @options, sprintf(
         q|table_name '%s'|,
-        $self->{table_name},
+        $table_name,
     );
 
     if (defined($table_options{updatable})) {
@@ -165,16 +216,17 @@ CREATE FOREIGN TABLE %s (
   name_english                    VARCHAR(64) NOT NULL,
   name_native                     VARCHAR(64) NOT NULL
 )
-  SERVER fb_test
+  SERVER %s
   OPTIONS (%s)
 EO_SQL
-        $self->{table_name},
+        $table_name,
+		$self->{server_name},
         join(",\n", @options),
     );
 
     $self->safe_psql($sql);
 
-    return $self->{table_name};
+    return $table_name;
 }
 
 
@@ -186,7 +238,7 @@ sub init_data_table {
 
     my $table_name = sprintf(
         q|%s_data|,
-        $self->{table_name},
+		$self->_make_table_name(),
     );
 
 	my $fb_tables = {
@@ -247,11 +299,12 @@ EO_SQL
 CREATE FOREIGN TABLE %s (
 %s
 )
-  SERVER fb_test
+  SERVER %s
   OPTIONS (table_name '%s')
 EO_SQL
             $table_name,
 			$pg_column_defs->{$fb_major_version},
+			$self->{server_name},
             $table_name,
         ),
     );
