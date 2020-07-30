@@ -119,6 +119,9 @@ by table-level settings.
 Turns off pushdowns of `WHERE` clause elements to Firebird. Useful
 mainly for debugging and benchmarking.
 
+`quote_identifiers`
+
+
 
 ## CREATE USER MAPPING options
 

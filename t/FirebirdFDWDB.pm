@@ -123,6 +123,25 @@ EO_SQL
 }
 
 
+
+sub add_server_option {
+    my $self = shift;
+    my $option = shift;
+	my $value = shift;
+
+	$self->safe_psql(
+        sprintf(
+            <<EO_SQL,
+    ALTER SERVER %s
+       OPTIONS (ADD %s '%s')
+EO_SQL
+			$self->{server_name},
+			$option,
+			$value,
+		),
+	);
+}
+
 sub alter_server_option {
     my $self = shift;
     my $option = shift;

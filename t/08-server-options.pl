@@ -3,6 +3,8 @@
 # 08-server-options.pl
 #
 # Check server-level options (work-in-progress)
+#
+# Option "quote_identifiers" covered by 09-identifier-quoting.pl
 
 use strict;
 use warnings;

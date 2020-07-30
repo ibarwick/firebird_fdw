@@ -100,9 +100,13 @@ sub get_firebird_major_version {
 sub drop_table {
     my $self = shift;
     my $table_name = shift;
+    my $quote_identifier = @_ ? shift : 0;
 
     $self->firebird_reconnect();
 
+    if ($quote_identifier) {
+        $table_name = qq|"$table_name"|;
+    }
     my $drop_table = sprintf(
         q|DROP TABLE %s|,
         $table_name,
