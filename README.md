@@ -121,6 +121,11 @@ mainly for debugging and benchmarking.
 
 `quote_identifiers`
 
+Quote all identifiers (table and column names) by default. This can
+be overridden with `quote_identifier = 'false'` for individual table
+and column names.
+See "[Identifier case handling](#identifier-case-handling)" for details.
+`firebird_fdw` 1.2.0 and later.
 
 
 ## CREATE USER MAPPING options
@@ -350,6 +355,10 @@ and given the PostgreSQL query:
 `firebird_fdw` will generate the following Firebird query:
 
     SELECT "col1" FROM "casetest3"
+
+The server-level option `quote_identifiers` can be set to `true` to quote all identifiers
+(table and column names) by default. This setting can be overridden for individual
+table and column names by setting the respective `quote_identifier` option to `false`.
 
 
 Examples
