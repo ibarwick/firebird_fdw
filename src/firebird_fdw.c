@@ -1825,7 +1825,9 @@ firebirdPlanForeignModify(PlannerInfo *root,
 	else if (operation == CMD_UPDATE)
 
 	{
-#if (PG_VERSION_NUM >= 90500)
+#if (PG_VERSION_NUM >= 120000)
+		Bitmapset  *tmpset = bms_union(rte->updatedCols, rte->extraUpdatedCols);
+#elif (PG_VERSION_NUM >= 90500)
 		Bitmapset  *tmpset = bms_copy(rte->updatedCols);
 #else
 		Bitmapset  *tmpset = bms_copy(rte->modifiedCols);
@@ -1852,8 +1854,6 @@ firebirdPlanForeignModify(PlannerInfo *root,
 	if (plan->returningLists)
 		returningList = (List *) list_nth(plan->returningLists, subplan_index);
 
-
-	elog(DEBUG1, "Construct the SQL command string ");
 	/* Construct the SQL command string */
 	switch (operation)
 	{
@@ -1882,7 +1882,7 @@ firebirdPlanForeignModify(PlannerInfo *root,
 
 	table_close(rel, NoLock);
 
-	elog(DEBUG1, "Constructed the SQL command string ");
+	elog(DEBUG2, "Constructed the SQL command string");
 
 	/*
 	 * Build the fdw_private list that will be available to the executor.

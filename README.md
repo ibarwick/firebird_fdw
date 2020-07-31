@@ -24,11 +24,12 @@ releases.
 4. [Usage](#usage)
 5. [Functions](#functions)
 6. [Identifier case handling](#identifier-case-handling)
-7. [Examples](#examples)
-8. [Limitations](#limitations)
-9. [TAP tests](#tap-tests)
-10. [Development roadmap](#development-roadmap)
-11. [Useful links](#useful-links)
+7. [Generated columns](#generated-columns)
+8. [Examples](#examples)
+9. [Limitations](#limitations)
+10. [TAP tests](#tap-tests)
+11. [Development roadmap](#development-roadmap)
+12. [Useful links](#useful-links)
 
 Features
 --------
@@ -360,6 +361,23 @@ The server-level option `quote_identifiers` can be set to `true` to quote all id
 (table and column names) by default. This setting can be overridden for individual
 table and column names by setting the respective `quote_identifier` option to `false`.
 
+
+Generated columns
+-----------------
+
+`firebird_fdw` (1.2.0 and later) provides support for PostgreSQL's generated
+columns (PostgreSQL 12 and later).
+
+Note that while `firebird_fdw` will insert or update the generated column value
+in Firebird, there is nothing to stop the value being modified within Firebird,
+and hence no guarantee that in subsequent `SELECT` operations the column will
+still contain the expected generated value. This limitation also applies to
+`postgres_fdw`.
+
+For more details on generated columns see:
+
+- [Generated Columns](https://www.postgresql.org/docs/current/ddl-generated-columns.html)
+- [CREATE FOREIGN TABLE](https://www.postgresql.org/docs/current/sql-createforeigntable.html)
 
 Examples
 --------
