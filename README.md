@@ -11,12 +11,10 @@ working reliably, please be aware this is still very much work-in-progress;
 Write support is available in PostgreSQL 9.3 and later. It is not
 designed to work with forks of the main PostgreSQL community version.
 
-`firebird_fdw` was written for Firebird 2.5 and will probably work with
-Firebird 2.0 or later. It should work with earlier versions if the
-`disable_pushdowns` option is set (see below). It works with Firebird 3.0.x
-but has not yet been extensively tested with that version, and does not take
-advantage of all new Firebird 3 features. This will be addressed in future
-releases.
+`firebird_fdw` supports Firebird 2.5 and later. It will probably work with
+Firebird 2.0 or later, and may work with earlier versions if the
+`disable_pushdowns` option is set (see below), but has never been tested
+with those versions.
 
 1. [Features](#features)
 2. [Supported platforms](#supported-platforms)
