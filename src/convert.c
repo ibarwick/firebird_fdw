@@ -370,12 +370,13 @@ convertFirebirdObject(char *server_name, char *schema, char *object_name, char o
 	for (colnr = 0; colnr < coltotal; colnr++)
 	{
 		char *datatype;
+		char *colname = pstrdup(FQgetvalue(colres, colnr, 0));
 
 		/* Column name and datatype */
 		datatype = FQgetvalue(colres, colnr, 2);
 		appendStringInfo(&create_table,
 						 "	%s %s",
-						 FQgetvalue(colres, colnr, 0),
+						 quote_fb_identifier_for_import(colname),
 						 datatype);
 
 		if (object_type == 'r')
