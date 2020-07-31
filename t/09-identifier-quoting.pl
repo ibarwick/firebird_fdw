@@ -13,27 +13,20 @@ use TestLib;
 use Test::More tests => 1;
 
 use FirebirdFDWNode;
-use FirebirdFDWDB;
-
 
 # Initialize nodes
 # ----------------
 
-my $pg_node = get_new_fdw_node('pg_node');
-
-$pg_node->init();
-$pg_node->start();
-
-my $pg_db = FirebirdFDWDB->new($pg_node);
+my $node = FirebirdFDWNode->new();
 
 # 1. Check server option "quote_identifiers"
 # ------------------------------------------
 
 # Create Firebird table with quoted identifiers
 
-$pg_db->add_server_option('quote_identifiers', 'true');
+$node->add_server_option('quote_identifiers', 'true');
 
-my $table_name = $pg_db->_make_table_name();
+my $table_name = $node->_make_table_name();
 
 my $tbl_sql = sprintf(
     <<EO_SQL,
@@ -47,7 +40,7 @@ EO_SQL
     $table_name,
 );
 
-my $tbl_query = $pg_node->{dbh}->prepare($tbl_sql);
+my $tbl_query = $node->firebird_conn()->prepare($tbl_sql);
 $tbl_query->execute();
 $tbl_query->finish();
 
@@ -63,11 +56,11 @@ SERVER %s
 OPTIONS (table_name '%s')
 EO_SQL
     $table_name,
-    $pg_db->{server_name},
+    $node->{server_name},
     $table_name,
 );
 
-$pg_db->safe_psql($ftbl_sql);
+$node->safe_psql($ftbl_sql);
 
 my $insert_q1 = sprintf(
     <<EO_SQL,
@@ -77,7 +70,7 @@ EO_SQL
 );
 
 
-my $res = $pg_db->safe_psql($insert_q1);
+my $res = $node->safe_psql($insert_q1);
 
 
 is(
@@ -87,4 +80,5 @@ is(
 );
 
 
-$pg_node->drop_table($table_name, 1);
+$node->firebird_drop_table($table_name, 1);
+done_testing();

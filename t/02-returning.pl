@@ -14,23 +14,16 @@ use TestLib;
 use Test::More tests => 9;
 
 use FirebirdFDWNode;
-use FirebirdFDWDB;
 
 # Initialize PostgreSQL node
 # --------------------------
 
-my $pg_node = get_new_fdw_node('pg_node');
-
-$pg_node->init();
-$pg_node->start();
-
-my $pg_db = FirebirdFDWDB->new($pg_node);
-
+my $node = FirebirdFDWNode->new();
 
 # Prepare table
 # --------------
 
-my $table_name = $pg_db->init_table();
+my $table_name = $node->init_table();
 
 
 # 1. INSERT ... RETURNING ... with specified columns
@@ -45,7 +38,7 @@ EO_SQL
     $table_name,
 );
 
-my $out = $pg_db->safe_psql( $insert_q );
+my $out = $node->safe_psql( $insert_q );
 
 
 is(
@@ -68,7 +61,7 @@ EO_SQL
 );
 
 
-$out = $pg_db->safe_psql( $insert_q );
+$out = $node->safe_psql( $insert_q );
 
 is(
 	$out,
@@ -93,7 +86,7 @@ EO_SQL
     $table_name,
 );
 
-$out = $pg_db->safe_psql( $insert_q );
+$out = $node->safe_psql( $insert_q );
 
 
 is(
@@ -115,7 +108,7 @@ EO_SQL
     $table_name,
 );
 
-$out = $pg_db->safe_psql( $update_q );
+$out = $node->safe_psql( $update_q );
 
 is(
 	$out,
@@ -137,7 +130,7 @@ EO_SQL
 );
 
 
-$out = $pg_db->safe_psql( $update_q );
+$out = $node->safe_psql( $update_q );
 
 is(
 	$out,
@@ -161,7 +154,7 @@ EO_SQL
     $table_name,
 );
 
-$out = $pg_db->safe_psql( $update_q );
+$out = $node->safe_psql( $update_q );
 
 is(
 	$out,
@@ -182,7 +175,7 @@ EO_SQL
     $table_name,
 );
 
-$out = $pg_db->safe_psql( $delete_q );
+$out = $node->safe_psql( $delete_q );
 
 is(
 	$out,
@@ -203,7 +196,7 @@ EO_SQL
 );
 
 
-$out = $pg_db->safe_psql( $delete_q );
+$out = $node->safe_psql( $delete_q );
 
 is(
 	$out,
@@ -226,7 +219,7 @@ EO_SQL
     $table_name,
 );
 
-$out = $pg_db->safe_psql( $delete_q );
+$out = $node->safe_psql( $delete_q );
 
 is(
 	$out,
@@ -238,8 +231,8 @@ is(
 # Clean up
 # --------
 
-$pg_db->drop_foreign_server();
-$pg_node->drop_table($table_name);
+$node->drop_foreign_server();
+$node->firebird_drop_table($table_name);
 
 
 done_testing();

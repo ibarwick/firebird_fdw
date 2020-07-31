@@ -15,18 +15,12 @@ use TestLib;
 use Test::More tests => 5;
 
 use FirebirdFDWNode;
-use FirebirdFDWDB;
-
 
 # Initialize nodes
 # ----------------
 
-my $pg_node = get_new_fdw_node('pg_node');
+my $node = FirebirdFDWNode->new();
 
-$pg_node->init();
-$pg_node->start();
-
-my $pg_db = FirebirdFDWDB->new($pg_node);
 
 # 1. Check options as reported by "firebird_fdw_server_options()"
 # ---------------------------------------------------------------
@@ -34,7 +28,7 @@ my $pg_db = FirebirdFDWDB->new($pg_node);
 # Record order is stable so no need for ORDER BY
 my $options_q1 = sprintf(
 	q|SELECT * FROM firebird_fdw_server_options('%s')|,
-	$pg_db->{server_name},
+	$node->{server_name},
 );
 
 my $options_e1 = sprintf(
@@ -45,12 +39,12 @@ database|%s|t
 disable_pushdowns|false|t
 updatable|true|t
 EO_TXT
-	$pg_db->{pg_fdw_node}->{firebird_dbname},
+	$node->{firebird_dbname},
 );
 
 chomp($options_e1);
 
-my $res = $pg_db->safe_psql($options_q1);
+my $res = $node->safe_psql($options_q1);
 
 is(
 	$res,
@@ -61,16 +55,16 @@ is(
 # 2. Set "updatable" to "false"
 # -----------------------------
 
-$pg_db->alter_server_option('updatable', 'false');
+$node->alter_server_option('updatable', 'false');
 
 my $options_q2 = sprintf(
 	q|SELECT * FROM firebird_fdw_server_options('%s') WHERE name = 'updatable'|,
-	$pg_db->{server_name},
+	$node->{server_name},
 );
 
 my $options_e2 = q/updatable|false|t/;
 
-$res = $pg_db->safe_psql($options_q2);
+$res = $node->safe_psql($options_q2);
 
 is(
 	$res,
@@ -81,13 +75,13 @@ is(
 # 3. Verify table cannot be updated
 # ---------------------------------
 
-my $table_name_3 = $pg_db->init_table();
+my $table_name_3 = $node->init_table();
 my $options_q3 = sprintf(
 	q|INSERT INTO %s VALUES('xx','yy','zz')|,
 	$table_name_3,
 );
 
-my ($insert_res, $insert_stdout, $insert_stderr) = $pg_db->psql(
+my ($insert_res, $insert_stdout, $insert_stderr) = $node->psql(
     $options_q3,
 );
 
@@ -102,12 +96,12 @@ like(
 	q|Check table cannot be inserted into|,
 );
 
-$pg_node->drop_table($table_name_3);
+$node->firebird_drop_table($table_name_3);
 
 # 4. Create table with updatable=true, verify can be updated
 # ----------------------------------------------------------
 
-my $table_name_4 = $pg_db->init_table(
+my $table_name_4 = $node->init_table(
 	'updatable' => 'true',
 );
 
@@ -116,7 +110,7 @@ my $options_q4 = sprintf(
 	$table_name_4,
 );
 
-$pg_db->safe_psql( $options_q4 );
+$node->safe_psql( $options_q4 );
 
 
 my $check_query_q4 = sprintf(
@@ -124,7 +118,7 @@ my $check_query_q4 = sprintf(
     $table_name_4,
 );
 
-my $query_q4 = $pg_node->{dbh}->prepare($check_query_q4);
+my $query_q4 = $node->firebird_conn()->prepare($check_query_q4);
 
 $query_q4->execute();
 
@@ -141,21 +135,21 @@ is(
 );
 
 
-$pg_node->drop_table($table_name_4);
+$node->firebird_drop_table($table_name_4);
 
 # 5. drop updateable option
 # -------------------------
 
-$pg_db->drop_server_option('updatable');
+$node->drop_server_option('updatable');
 
 my $options_q5 = sprintf(
 	q|SELECT * FROM firebird_fdw_server_options('%s') WHERE name = 'updatable'|,
-	$pg_db->{server_name},
+	$node->{server_name},
 );
 
 my $options_e5 = q/updatable|true|f/;
 
-$res = $pg_db->safe_psql($options_q5);
+$res = $node->safe_psql($options_q5);
 
 is(
 	$res,
@@ -167,6 +161,6 @@ is(
 # Clean up
 # --------
 
-$pg_db->drop_foreign_server();
+$node->drop_foreign_server();
 
 done_testing();

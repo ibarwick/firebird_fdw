@@ -13,23 +13,16 @@ use TestLib;
 use Test::More;
 
 use FirebirdFDWNode;
-use FirebirdFDWDB;
-
 
 # Initialize nodes
 # ----------------
 
-my $pg_node = get_new_fdw_node('pg_node');
-
-$pg_node->init();
-$pg_node->start();
-
-my $pg_db = FirebirdFDWDB->new($pg_node);
+my $node = FirebirdFDWNode->new();
 
 # Check Firebird version
 # ----------------------
 
-if ($pg_node->{firebird_major_version} >= 3) {
+if ($node->{firebird_major_version} >= 3) {
 	plan tests => 2;
 }
 else {
@@ -39,7 +32,7 @@ else {
 # Prepare table
 # --------------
 
-my $table_name = $pg_db->init_data_table();
+my $table_name = $node->init_data_table();
 
 # 1) Test BLOB type
 # -----------------
@@ -52,14 +45,14 @@ EO_SQL
     $table_name,
 );
 
-$pg_db->safe_psql($blob_insert_sql);
+$node->safe_psql($blob_insert_sql);
 
 my $q1_sql = sprintf(
     q|SELECT blob_type FROM %s WHERE id = 1|,
     $table_name,
 );
 
-my $q1 = $pg_node->{dbh}->prepare($q1_sql);
+my $q1 = $node->firebird_conn()->prepare($q1_sql);
 
 $q1->execute();
 
@@ -74,7 +67,7 @@ is (
 );
 
 
-if ($pg_node->{firebird_major_version} >= 3) {
+if ($node->{firebird_major_version} >= 3) {
 
 	# 2) Test BOOLEAN type
 	# ---------------------
@@ -87,14 +80,14 @@ EO_SQL
 		$table_name,
 	);
 
-	$pg_db->safe_psql($bool_insert_sql);
+	$node->safe_psql($bool_insert_sql);
 
 	my $q2_sql = sprintf(
 		q|SELECT id, bool_type FROM %s WHERE id IN (2,3) ORDER BY id|,
 		$table_name,
 	);
 
-	my $q2_res = $pg_db->safe_psql($q2_sql);
+	my $q2_res = $node->safe_psql($q2_sql);
 
 	is (
 		$q2_res,
@@ -107,7 +100,7 @@ EO_SQL
 # Clean up
 # --------
 
-$pg_db->drop_foreign_server();
-$pg_node->drop_table($table_name);
+$node->drop_foreign_server();
+$node->firebird_drop_table($table_name);
 
 done_testing();

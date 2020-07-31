@@ -13,24 +13,16 @@ use TestLib;
 use Test::More tests => 2;
 
 use FirebirdFDWNode;
-use FirebirdFDWDB;
-
-
 
 # Initialize nodes
 # ----------------
 
-my $pg_node = get_new_fdw_node('pg_node');
-
-$pg_node->init();
-$pg_node->start();
-
-my $pg_db = FirebirdFDWDB->new($pg_node);
+my $node = FirebirdFDWNode->new();
 
 # Create tables
 # -------------
 
-my $table_name = $pg_db->_make_table_name();
+my $table_name = $node->_make_table_name();
 
 my $tbl_sql = sprintf(
     <<EO_SQL,
@@ -42,7 +34,7 @@ EO_SQL
     $table_name,
 );
 
-my $tbl_query = $pg_node->{dbh}->prepare($tbl_sql);
+my $tbl_query = $node->firebird_conn()->prepare($tbl_sql);
 $tbl_query->execute();
 $tbl_query->finish();
 
@@ -56,11 +48,11 @@ SERVER %s
 OPTIONS (table_name '%s')
 EO_SQL
     $table_name,
-    $pg_db->{server_name},
+    $node->{server_name},
     $table_name,
 );
 
-$pg_db->safe_psql($ftbl_sql);
+$node->safe_psql($ftbl_sql);
 
 # 1. Check INSERT
 # ---------------
@@ -72,18 +64,18 @@ EO_SQL
     $table_name,
 );
 
-$pg_db->safe_psql($insert_q1);
+$node->safe_psql($insert_q1);
 
 my $select_q1 = sprintf(
     q|SELECT * FROM %s ORDER BY a|,
     $table_name,
 );
 
-my $q1 = $pg_node->{dbh}->prepare($select_q1);
+my $q1 = $node->firebird_conn()->prepare($select_q1);
 
 $q1->execute();
 
-my $res1 = $pg_node->firebird_format_results($q1);
+my $res1 = $node->firebird_format_results($q1);
 
 $q1->finish();
 
@@ -112,18 +104,18 @@ EO_SQL
     $table_name,
 );
 
-$pg_db->safe_psql($update_q2);
+$node->safe_psql($update_q2);
 
 my $select_q2 = sprintf(
     q|SELECT * FROM %s ORDER BY a|,
     $table_name,
 );
 
-my $q2 = $pg_node->{dbh}->prepare($select_q2);
+my $q2 = $node->firebird_conn()->prepare($select_q2);
 
 $q2->execute();
 
-my $res2 = $pg_node->firebird_format_results($q2);
+my $res2 = $node->firebird_format_results($q2);
 
 $q2->finish();
 
@@ -143,4 +135,6 @@ is(
 # Cleanup
 # -------
 
-$pg_node->drop_table($table_name);
+$node->firebird_drop_table($table_name);
+
+done_testing();

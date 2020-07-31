@@ -15,24 +15,17 @@ use TestLib;
 use Test::More;
 
 use FirebirdFDWNode;
-use FirebirdFDWDB;
-
 
 
 # Initialize nodes
 # ----------------
 
-my $pg_node = get_new_fdw_node('pg_node');
-
-$pg_node->init();
-$pg_node->start();
-
-my $pg_db = FirebirdFDWDB->new($pg_node);
+my $node = FirebirdFDWNode->new();
 
 # Get PostgreSQL version
 # ----------------------
 
-my $version = $pg_db->version();
+my $version = $node->pg_version();
 if ($version < 90400) {
     plan skip_all => sprintf(
         q|version is %i, tests for 9.4 and later|,
@@ -47,7 +40,7 @@ else {
 # Prepare table
 # --------------
 
-my $table_name = $pg_db->init_table();
+my $table_name = $node->init_table();
 
 # Initialize trigger
 # ------------------
@@ -60,7 +53,7 @@ CREATE TABLE results (
 )
 EO_SQL
 
-$pg_db->safe_psql($results_tbl);
+$node->safe_psql($results_tbl);
 
 my $trigger_func = <<'EO_SQL';
 CREATE OR REPLACE FUNCTION test_trigger() RETURNS TRIGGER AS $$
@@ -84,7 +77,7 @@ CREATE OR REPLACE FUNCTION test_trigger() RETURNS TRIGGER AS $$
 $$ language plpgsql
 EO_SQL
 
-$pg_db->safe_psql($trigger_func);
+$node->safe_psql($trigger_func);
 
 my $trigger_def = sprintf(
     <<EO_SQL,
@@ -97,7 +90,7 @@ EO_SQL
     $table_name,
 );
 
-$pg_db->safe_psql($trigger_def);
+$node->safe_psql($trigger_def);
 
 # INSERT test
 # -----------
@@ -112,9 +105,9 @@ EO_SQL
     $table_name,
 );
 
-$pg_db->safe_psql($insert_sql);
+$node->safe_psql($insert_sql);
 
-my $insert_res = $pg_db->safe_psql(
+my $insert_res = $node->safe_psql(
     sprintf(q|SELECT * FROM results WHERE subtest = %i|, $subtest),
 );
 
@@ -138,9 +131,9 @@ EO_SQL
     $table_name,
 );
 
-$pg_db->safe_psql($update_sql);
+$node->safe_psql($update_sql);
 
-my $update_res = $pg_db->safe_psql(
+my $update_res = $node->safe_psql(
     sprintf(q|SELECT * FROM results WHERE subtest = %i|, $subtest),
 );
 
@@ -163,9 +156,9 @@ EO_SQL
     $table_name,
 );
 
-$pg_db->safe_psql($delete_sql);
+$node->safe_psql($delete_sql);
 
-my $delete_res = $pg_db->safe_psql(
+my $delete_res = $node->safe_psql(
     sprintf(q|SELECT * FROM results WHERE subtest = %i|, $subtest),
 );
 
@@ -178,7 +171,7 @@ is (
 # Clean up
 # --------
 
-$pg_db->drop_foreign_server();
-$pg_node->drop_table($table_name);
+$node->drop_foreign_server();
+$node->firebird_drop_table($table_name);
 
 done_testing();

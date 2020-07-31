@@ -10,23 +10,32 @@ use warnings;
 use Cwd;
 use Config;
 use TestLib;
-use Test::More tests => 3;
+use Test::More;
 
 use FirebirdFDWNode;
-use FirebirdFDWDB;
 
 
 # Initialize nodes
 # ----------------
 
-my $pg_node = get_new_fdw_node('pg_node');
+my $node = FirebirdFDWNode->new();
 
-$pg_node->init();
-$pg_node->start();
+# Get PostgreSQL version
+# ----------------------
 
-my $pg_db = FirebirdFDWDB->new($pg_node);
+my $version = $node->pg_version();
+if ($version < 90500) {
+    plan skip_all => sprintf(
+        q|version is %i, tests for 9.5 and later|,
+        $version,
+    );
+}
+else {
+    plan tests => 3;
+}
 
-my $data_table_name = $pg_db->init_data_table(firebird_only => 1);
+
+my $data_table_name = $node->init_data_table(firebird_only => 1);
 
 
 # 1) Test "IMPORT FOREIGN SCHEMA"
@@ -38,14 +47,14 @@ my $import_foreign_schema_sql = sprintf(
 );
 
 
-$pg_db->safe_psql($import_foreign_schema_sql);
+$node->safe_psql($import_foreign_schema_sql);
 
 my $q1_sql = sprintf(
     q|\d %s|,
     $data_table_name,
 );
 
-my $q1_res = $pg_db->safe_psql($q1_sql);
+my $q1_res = $node->safe_psql($q1_sql);
 
 my $q1_expected_output = {
 	2 => <<EO_TXT,
@@ -59,7 +68,7 @@ bool_type|boolean||||
 EO_TXT
 };
 
-my $q1_expected = $q1_expected_output->{$pg_node->{firebird_major_version}};
+my $q1_expected = $q1_expected_output->{$node->{firebird_major_version}};
 
 chomp $q1_expected;
 
@@ -74,7 +83,7 @@ is (
 # 2) Test "import_not_null" option
 # --------------------------------
 
-my $table_name = $pg_db->init_table(firebird_only => 1);
+my $table_name = $node->init_table(firebird_only => 1);
 
 my $q2_import_foreign_schema_sql = sprintf(
     <<'EO_SQL',
@@ -88,14 +97,14 @@ EO_SQL
 );
 
 
-$pg_db->safe_psql($q2_import_foreign_schema_sql);
+$node->safe_psql($q2_import_foreign_schema_sql);
 
 my $q2_sql = sprintf(
     q|\d %s|,
     $table_name,
 );
 
-my $q2_res = $pg_db->safe_psql($q2_sql);
+my $q2_res = $node->safe_psql($q2_sql);
 
 my $q2_expected = <<EO_TXT;
 lang_id|character(2)||||
@@ -111,7 +120,7 @@ is (
     q|Check "import_not_null" option|,
 );
 
-$pg_db->drop_foreign_table($table_name);
+$node->drop_foreign_table($table_name);
 
 
 # 3) Test "updatable" option
@@ -129,7 +138,7 @@ EO_SQL
 );
 
 
-$pg_db->safe_psql($q3_import_foreign_schema_sql);
+$node->safe_psql($q3_import_foreign_schema_sql);
 
 my $q3_sql = sprintf(
     <<'EO_SQL',
@@ -142,7 +151,7 @@ EO_SQL
     $table_name,
 );
 
-my $q3_res = $pg_db->safe_psql($q3_sql);
+my $q3_res = $node->safe_psql($q3_sql);
 
 my $q3_expected = q|updatable=false|;
 
@@ -152,13 +161,12 @@ is (
     q|Check "updatable" option|,
 );
 
-
 # Clean up
 # --------
 
-$pg_db->drop_foreign_server();
+$node->drop_foreign_server();
 
-$pg_node->drop_table($table_name);
-$pg_node->drop_table($data_table_name);
+$node->firebird_drop_table($table_name);
+$node->firebird_drop_table($data_table_name);
 
 done_testing();

@@ -13,25 +13,18 @@ use TestLib;
 use Test::More tests => 3;
 
 use FirebirdFDWNode;
-use FirebirdFDWDB;
-
 
 # Initialize nodes
 # ----------------
 
-my $pg_node = get_new_fdw_node('pg_node');
-
-$pg_node->init();
-$pg_node->start();
-
-my $pg_db = FirebirdFDWDB->new($pg_node);
+my $node = FirebirdFDWNode->new();
 
 # Prepare table
 # --------------
 
 my $estimated_row_count = 100;
 
-my $table_name = $pg_db->init_table(
+my $table_name = $node->init_table(
     'updatable' => 'FALSE',
     'estimated_row_count' => $estimated_row_count,
 );
@@ -45,7 +38,7 @@ my $insert_q = sprintf(
     $table_name,
 );
 
-my ($insert_res, $insert_stdout, $insert_stderr) = $pg_db->psql(
+my ($insert_res, $insert_stdout, $insert_stderr) = $node->psql(
     $insert_q,
 );
 
@@ -71,7 +64,7 @@ my $explain_q = sprintf(
     $table_name,
 );
 
-my ($explain_res, $explain_stdout, $explain_stderr) = $pg_db->psql(
+my ($explain_res, $explain_stdout, $explain_stderr) = $node->psql(
     $explain_q,
 );
 
@@ -111,14 +104,14 @@ EO_SQL
     $table_name,
 );
 
-$pg_db->safe_psql( $column_name_table_q );
+$node->safe_psql( $column_name_table_q );
 
 my $q3_insert_q = sprintf(
     q|INSERT INTO %s (pg_lang_id, pg_name_english, pg_name_native) VALUES('de', 'German', 'Deutsch')|,
     $column_name_table,
 );
 
-$pg_db->safe_psql( $q3_insert_q );
+$node->safe_psql( $q3_insert_q );
 
 # Check it arrives
 
@@ -127,7 +120,7 @@ my $q3_check_query = sprintf(
     $table_name,
 );
 
-my $query = $pg_node->{dbh}->prepare($q3_check_query);
+my $query = $node->firebird_conn()->prepare($q3_check_query);
 
 $query->execute();
 
@@ -149,7 +142,7 @@ is(
 # Clean up
 # --------
 
-$pg_db->drop_foreign_server();
-$pg_node->drop_table($table_name);
+$node->drop_foreign_server();
+$node->firebird_drop_table($table_name);
 
 done_testing();
