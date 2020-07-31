@@ -97,6 +97,19 @@ sub get_firebird_major_version {
 	return undef;
 }
 
+sub firebird_format_results {
+    my $self = shift;
+    my $query = shift;
+
+    my @outp;
+
+    while (my @row = $query->fetchrow_array()) {
+        push @outp, join('|', @row);
+    }
+
+    return join("\n", @outp);
+}
+
 sub drop_table {
     my $self = shift;
     my $table_name = shift;
