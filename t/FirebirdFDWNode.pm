@@ -111,12 +111,15 @@ EO_SQL
     $self->safe_psql(
         sprintf(
             <<EO_SQL,
-CREATE USER MAPPING FOR CURRENT_USER SERVER fb_test
+CREATE USER MAPPING
+  FOR CURRENT_USER
+  SERVER %s
   OPTIONS(
     username '%s',
     password '%s'
   );
 EO_SQL
+            $self->{server_name},
             $ENV{'ISC_USER'},
             $ENV{'ISC_PASSWORD'},
         )
@@ -130,6 +133,11 @@ EO_SQL
 # General methods
 #
 #-----------------------------------------------------------------------
+
+sub server_name {
+    shift->{server_name};
+}
+
 
 sub _make_table_name {
 	my $self = shift;
@@ -427,7 +435,10 @@ sub drop_foreign_table {
 sub drop_foreign_server {
     my $self = shift;
 
-    my $drop_foreign_server = q|DROP SERVER IF EXISTS fb_test CASCADE|;
+    my $drop_foreign_server = sprintf(
+        q|DROP SERVER IF EXISTS %s CASCADE|,
+        $self->{server_name},
+    );
 
     $self->safe_psql( $drop_foreign_server );
 }

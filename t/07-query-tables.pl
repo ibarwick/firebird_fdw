@@ -37,12 +37,13 @@ CREATE FOREIGN TABLE %s (
   name_english VARCHAR(64),
   name_native VARCHAR(64)
 )
-SERVER fb_test
+SERVER %s
 OPTIONS(
    query $$SELECT lang_id, name_english, name_native FROM %s$$
 )
 EO_SQL
     $query_table_name,
+    $node->server_name(),
     $table_name,
 );
 

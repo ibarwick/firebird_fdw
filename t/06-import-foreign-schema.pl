@@ -42,8 +42,9 @@ my $data_table_name = $node->init_data_table(firebird_only => 1);
 # -------------------------------
 
 my $import_foreign_schema_sql = sprintf(
-    q|IMPORT FOREIGN SCHEMA foo LIMIT TO (%s) FROM SERVER fb_test INTO public|,
+    q|IMPORT FOREIGN SCHEMA foo LIMIT TO (%s) FROM SERVER %s INTO public|,
     $data_table_name,
+    $node->server_name(),
 );
 
 
@@ -89,11 +90,12 @@ my $q2_import_foreign_schema_sql = sprintf(
     <<'EO_SQL',
   IMPORT FOREIGN SCHEMA foo
                LIMIT TO (%s)
-            FROM SERVER fb_test
+            FROM SERVER %s
                    INTO public
                 OPTIONS (import_not_null 'false')
 EO_SQL
     $table_name,
+    $node->server_name(),
 );
 
 
@@ -130,11 +132,12 @@ my $q3_import_foreign_schema_sql = sprintf(
     <<'EO_SQL',
   IMPORT FOREIGN SCHEMA foo
                LIMIT TO (%s)
-            FROM SERVER fb_test
+            FROM SERVER %s
                    INTO public
                 OPTIONS (updatable 'false')
 EO_SQL
     $table_name,
+    $node->server_name(),
 );
 
 

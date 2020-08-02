@@ -95,12 +95,13 @@ CREATE FOREIGN TABLE %s (
   pg_name_english VARCHAR(64) OPTIONS (column_name 'name_english'),
   pg_name_native VARCHAR(64) OPTIONS (column_name 'name_native')
 )
-SERVER fb_test
+SERVER %s
 OPTIONS(
    table_name '%s'
 )
 EO_SQL
     $column_name_table,
+    $node->server_name(),
     $table_name,
 );
 
