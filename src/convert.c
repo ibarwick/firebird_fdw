@@ -707,11 +707,19 @@ quote_fb_identifier_for_import(const char *ident)
 		 * that's fine, since we already know we have all-lower-case.
 		 */
 
-		// XXX HEAD; 9.2 is different
+#if (PG_VERSION_NUM < 120000)
+		const ScanKeyword *keyword = ScanKeywordLookup(ident,
+													   ScanKeywords,
+													   NumScanKeywords);
+		if (keyword != NULL && keyword->category != UNRESERVED_KEYWORD)
+			safe = false;
+#else
 		int			kwnum = ScanKeywordLookup(ident, &ScanKeywords);
 
 		if (kwnum >= 0 && ScanKeywordCategories[kwnum] != UNRESERVED_KEYWORD)
 			safe = false;
+#endif
+
 	}
 
 	if (safe)
