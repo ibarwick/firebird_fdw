@@ -2806,7 +2806,8 @@ firebirdImportForeignSchema(ImportForeignSchemaStmt *stmt,
 		char *object_type;
 		char *column_query;
 		FBresult *colres;
-		char *foreign_table_definition;
+		StringInfoData foreign_table_definition;
+		char *foreign_table_sql;
 
 		object_name = FQgetvalue(res, row, 0);
 		object_type = FQgetvalue(res, row, 1);
@@ -2844,12 +2845,17 @@ firebirdImportForeignSchema(ImportForeignSchemaStmt *stmt,
 				 object_name);
 		}
 
-		foreign_table_definition = convertFirebirdObject(
+		initStringInfo(&foreign_table_definition);
+
+		convertFirebirdObject(
 			server->servername,
 			stmt->local_schema, object_name, object_type[0],
-			import_not_null, updatable, colres);
+			import_not_null, updatable, colres, &foreign_table_definition);
 
-		firebirdTables = lappend(firebirdTables, foreign_table_definition);
+		foreign_table_sql = pstrdup(foreign_table_definition.data);
+		pfree(foreign_table_definition.data);
+
+		firebirdTables = lappend(firebirdTables, foreign_table_sql);
 	}
 
 	FQclear(res);

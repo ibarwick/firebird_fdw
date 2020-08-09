@@ -351,16 +351,12 @@ buildWhereClause(StringInfo output,
  *
  * Convert table or view to PostgreSQL format to implement IMPORT FOREIGN SCHEMA
  */
-char *
-convertFirebirdObject(char *server_name, char *schema, char *object_name, char object_type, bool import_not_null, bool updatable, FBresult *colres)
+void
+convertFirebirdObject(char *server_name, char *schema, char *object_name, char object_type, bool import_not_null, bool updatable, FBresult *colres, StringInfoData *create_table)
 {
 	const char *table_identifier;
 	int colnr, coltotal;
-
-	StringInfoData create_table;
 	List	   *table_options = NIL;
-
-	initStringInfo(&create_table);
 
 	/* Initialise table options list */
 	if (updatable == false)
@@ -377,7 +373,7 @@ convertFirebirdObject(char *server_name, char *schema, char *object_name, char o
 		table_options = lappend(table_options, "quote_identifier 'true'");
 
 	/* Generate SQL */
-	appendStringInfo(&create_table,
+	appendStringInfo(create_table,
 					 "CREATE FOREIGN TABLE %s.%s (\n",
 					 schema,
 					 table_identifier);
@@ -402,7 +398,7 @@ convertFirebirdObject(char *server_name, char *schema, char *object_name, char o
 
 		/* Column name and datatype */
 		datatype = FQgetvalue(colres, colnr, 2);
-		appendStringInfo(&create_table,
+		appendStringInfo(create_table,
 						 "	%s %s",
 						 col_identifier,
 						 datatype);
@@ -414,7 +410,7 @@ convertFirebirdObject(char *server_name, char *schema, char *object_name, char o
 			ListCell   *lc;
 			bool		first = true;
 
-			appendStringInfoString(&create_table,
+			appendStringInfoString(create_table,
 								   " OPTIONS (");
 
 			foreach (lc, column_options)
@@ -422,14 +418,14 @@ convertFirebirdObject(char *server_name, char *schema, char *object_name, char o
 				if (first == true)
 					first = false;
 				else
-					appendStringInfoString(&create_table,
+					appendStringInfoString(create_table,
 										   ", ");
 
-				appendStringInfoString(&create_table,
+				appendStringInfoString(create_table,
 									   (char *)lfirst(lc));
 			}
 
-			appendStringInfoChar(&create_table,
+			appendStringInfoChar(create_table,
 								 ')');
 		}
 
@@ -440,28 +436,28 @@ convertFirebirdObject(char *server_name, char *schema, char *object_name, char o
 
 			if (strlen(default_value))
 			{
-				appendStringInfo(&create_table, " %s", default_value);
+				appendStringInfo(create_table, " %s", default_value);
 			}
 
 			/* NOT NULL */
 			if (import_not_null == true && FQgetvalue(colres, colnr, 4) != NULL)
 			{
-				appendStringInfoString(&create_table, " NOT NULL");
+				appendStringInfoString(create_table, " NOT NULL");
 			}
 		}
 
 
 		if (colnr < (coltotal - 1))
 		{
-			appendStringInfoString(&create_table, ",\n");
+			appendStringInfoString(create_table, ",\n");
 		}
 		else
 		{
-			appendStringInfoString(&create_table, "\n");
+			appendStringInfoString(create_table, "\n");
 		}
 	}
 
-	appendStringInfo(&create_table,
+	appendStringInfo(create_table,
 					 ") SERVER %s",
 					 server_name);
 
@@ -470,7 +466,7 @@ convertFirebirdObject(char *server_name, char *schema, char *object_name, char o
 		ListCell   *lc;
 		bool		first = true;
 
-		appendStringInfoString(&create_table,
+		appendStringInfoString(create_table,
 							   "\nOPTIONS(\n");
 
 		foreach (lc, table_options)
@@ -478,21 +474,21 @@ convertFirebirdObject(char *server_name, char *schema, char *object_name, char o
 			if (first == true)
 				first = false;
 			else
-				appendStringInfoString(&create_table,
+				appendStringInfoString(create_table,
 									 ",\n");
 
-			appendStringInfo(&create_table,
+			appendStringInfo(create_table,
 							 "  %s",
 							 (char *)lfirst(lc));
 		}
 
-		appendStringInfoString(&create_table,
+		appendStringInfoString(create_table,
 							   "\n)");
 	}
 
-	elog(DEBUG1, "%s", create_table.data);
+	elog(DEBUG1, "%s", create_table->data);
 
-	return create_table.data;
+	return;
 }
 #endif
 
@@ -618,7 +614,7 @@ convertColumnRef(StringInfo buf, int varno, int varattno, RangeTblEntry *rte, bo
 /**
  * convertRelation()
  *
- * Append the Firebird name of specified foreign table to 'buf'.
+ * Append the Firebird name of the specified foreign table to 'buf'.
  * Firebird does not have schemas, so we will only return the table
  * name itself.
  */
@@ -629,8 +625,6 @@ convertRelation(StringInfo buf, FirebirdFdwState *fdw_state)
 
 	if (fdw_state->svr_table != NULL)
 	{
-
-
 		appendStringInfoString(buf,
 							   quote_fb_identifier(fdw_state->svr_table,
 												   fdw_state->quote_identifier));
