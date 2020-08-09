@@ -354,30 +354,84 @@ buildWhereClause(StringInfo output,
 char *
 convertFirebirdObject(char *server_name, char *schema, char *object_name, char object_type, bool import_not_null, bool updatable, FBresult *colres)
 {
+	const char *table_identifier;
 	int colnr, coltotal;
 
 	StringInfoData create_table;
+	List	   *table_options = NIL;
 
 	initStringInfo(&create_table);
 
-	/* XXX consider quoting schema and table names */
+	/* Initialise table options list */
+	if (updatable == false)
+		table_options = lappend(table_options, "updatable 'false'");
+
+	/*
+	 * If the Firebird identifier is all lower-case, force "quote_identifier 'true'"
+	 * as PostgreSQL won't know to quote it.
+	 * XXX Currently we just check if the first character is lower case.
+	 */
+	table_identifier = quote_fb_identifier_for_import(object_name);
+
+	if (table_identifier[0] == '"' && (table_identifier[1] >= 'a' && table_identifier[1] <= 'z'))
+		table_options = lappend(table_options, "quote_identifier 'true'");
+
+	/* Generate SQL */
 	appendStringInfo(&create_table,
 					 "CREATE FOREIGN TABLE %s.%s (\n",
 					 schema,
-					 quote_fb_identifier_for_import(object_name));
+					 table_identifier);
 
 	coltotal = FQntuples(colres);
 	for (colnr = 0; colnr < coltotal; colnr++)
 	{
+		List	   *column_options = NIL;
+
 		char *datatype;
 		char *colname = pstrdup(FQgetvalue(colres, colnr, 0));
+
+		const char *col_identifier = quote_fb_identifier_for_import(colname);
+
+		/*
+		 * If the Firebird identifier is all lower-case, force "quote_identifier 'true'"
+		 * as PostgreSQL won't know to quote it.
+		 * XXX Currently we just check if the first character is lower case.
+		 */
+		if (col_identifier[0] == '"' && (col_identifier[1] >= 'a' && col_identifier[1] <= 'z'))
+			column_options = lappend(column_options, "quote_identifier 'true'");
 
 		/* Column name and datatype */
 		datatype = FQgetvalue(colres, colnr, 2);
 		appendStringInfo(&create_table,
 						 "	%s %s",
-						 quote_fb_identifier_for_import(colname),
+						 col_identifier,
 						 datatype);
+
+
+		/* add OPTIONS if required */
+		if (column_options != NIL)
+		{
+			ListCell   *lc;
+			bool		first = true;
+
+			appendStringInfoString(&create_table,
+								   " OPTIONS (");
+
+			foreach (lc, column_options)
+			{
+				if (first == true)
+					first = false;
+				else
+					appendStringInfoString(&create_table,
+										   ", ");
+
+				appendStringInfoString(&create_table,
+									   (char *)lfirst(lc));
+			}
+
+			appendStringInfoChar(&create_table,
+								 ')');
+		}
 
 		if (object_type == 'r')
 		{
@@ -396,6 +450,7 @@ convertFirebirdObject(char *server_name, char *schema, char *object_name, char o
 			}
 		}
 
+
 		if (colnr < (coltotal - 1))
 		{
 			appendStringInfoString(&create_table, ",\n");
@@ -410,10 +465,29 @@ convertFirebirdObject(char *server_name, char *schema, char *object_name, char o
 					 ") SERVER %s",
 					 server_name);
 
-	if (updatable == false)
+	if (table_options != NIL)
 	{
-		appendStringInfo(&create_table,
-						 "\n OPTIONS(updatable 'false')");
+		ListCell   *lc;
+		bool		first = true;
+
+		appendStringInfoString(&create_table,
+							   "\nOPTIONS(\n");
+
+		foreach (lc, table_options)
+		{
+			if (first == true)
+				first = false;
+			else
+				appendStringInfoString(&create_table,
+									 ",\n");
+
+			appendStringInfo(&create_table,
+							 "  %s",
+							 (char *)lfirst(lc));
+		}
+
+		appendStringInfoString(&create_table,
+							   "\n)");
 	}
 
 	elog(DEBUG1, "%s", create_table.data);
