@@ -1036,7 +1036,8 @@ convertBoolExpr(BoolExpr *node, convert_expr_cxt *context, char **result)
 			break;
 		case NOT_EXPR:
 			convertExprRecursor(linitial(node->args), context, &local_result);
-			appendStringInfo(&buf, "(NOT %s )", local_result);
+			appendStringInfo(&buf, "(NOT %s)", local_result);
+			*result = pstrdup(buf.data);
 			return;
 	}
 
