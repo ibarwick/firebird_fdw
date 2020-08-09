@@ -565,7 +565,7 @@ convertDatum(Datum datum, Oid type)
 			else
 				appendStringInfoString(&result, "FALSE");
 
-			elog(INFO, "BOOL! '%s' %s", str, result.data);
+			elog(DEBUG2, "boolean conversion: '%s' -> '%s'", str, result.data);
 			break;
 
 		default:
