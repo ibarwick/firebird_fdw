@@ -504,6 +504,19 @@ sub firebird_format_results {
     return join("\n", @outp);
 }
 
+
+sub firebird_execute_sql {
+    my $self = shift;
+    my $sql = shift;
+
+    my $q = $self->firebird_conn()->prepare( $sql);
+
+    $q->execute();
+
+    $q->finish();
+}
+
+
 sub firebird_drop_table {
     my $self = shift;
     my $table_name = shift;

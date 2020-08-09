@@ -31,7 +31,7 @@ if ($version < 90500) {
     );
 }
 else {
-    plan tests => 3;
+    plan tests => 5;
 }
 
 
@@ -164,6 +164,88 @@ is (
     q|Check "updatable" option|,
 );
 
+# 4) Test default quoted identifier handling (1)
+# ----------------------------------------------
+
+# Here we'll just check the "IMPORT FOREIGN SCHEMA" operation
+# succeeds
+
+my $q4_tbl_name = $node->_make_table_name(uc_prefix => 1);
+
+my $q4_fb_sql = sprintf(
+    <<'EO_SQL',
+CREATE TABLE "%s" (
+   "col1" INT,
+   "UClc" INT,
+   unquoted INT,
+   "lclc" INT
+)
+EO_SQL
+    $q4_tbl_name,
+);
+
+$node->firebird_execute_sql($q4_fb_sql);
+
+my $q4_import_sql = sprintf(
+    <<'EO_SQL',
+  IMPORT FOREIGN SCHEMA foo
+               LIMIT TO ("%s")
+            FROM SERVER fb_test
+                   INTO public
+EO_SQL
+    $q4_tbl_name,
+);
+
+my ($q4_res, $q4_stdout, $q4_stderr) = $node->psql(
+    $q4_import_sql,
+);
+
+is (
+    $q4_res,
+    q|0|,
+    q|Check "IMPORT FOREIGN SCHEMA" operation succeeds|,
+);
+
+# 5) Test default quoted identifier handling (2)
+# ----------------------------------------------
+
+# Here we'll check the previous "IMPORT FOREIGN SCHEMA" operation
+# created table name and columns correctly
+
+# Query won't return any results if table name was created incorrectly
+my $q5_sql = sprintf(
+    <<'EO_SQL',
+    SELECT a.attname
+      FROM pg_catalog.pg_class c
+INNER JOIN pg_catalog.pg_attribute a
+        ON a.attrelid = c.oid
+INNER JOIN pg_catalog.pg_namespace n
+        ON n.oid = c.relnamespace
+     WHERE c.relname = '%s'
+       AND n.nspname = 'public'
+       AND a.attnum > 0
+  ORDER BY a.attnum
+EO_SQL
+    $q4_tbl_name,
+);
+
+my $q5_res = $node->safe_psql($q5_sql);
+
+my $q5_expected = <<EO_TXT;
+col1
+UClc
+unquoted
+lclc
+EO_TXT
+
+chomp $q5_expected;
+
+is (
+    $q5_res,
+    $q5_expected,
+    q|Check table and column names created correctly|,
+);
+
 # Clean up
 # --------
 
@@ -171,5 +253,6 @@ $node->drop_foreign_server();
 
 $node->firebird_drop_table($table_name);
 $node->firebird_drop_table($data_table_name);
+$node->firebird_drop_table($q4_tbl_name, 1);
 
 done_testing();
