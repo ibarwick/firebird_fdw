@@ -216,6 +216,13 @@ If set to `false`, mark all imported foreign tables as not updatable. The defaul
 
 Logs the name of each table or view being imported at log level `INFO`.
 
+`IMPORT FOREIGN SCHEMA` will quote Firebird table column names if required, and if the
+Firebird name is entirely lower-case, will add the appropriate `quote_identifier`
+option to the PostgreSQL table definition.
+
+Note that the `EXCEPT` and `LIMIT TO` options are currently unable to handle Firebird
+table names which are entirely lower-case.
+
 Functions
 ---------
 
@@ -453,7 +460,6 @@ Limitations
 
 - Works with Firebird 3.x, but does not yet support all 3.x features
 - No support for Firebird `ARRAY` datatype
-- `IMPORT SCHEMA` does not correctly handle quoted identifiers
 - The result of the Firebird query is copied into memory before being
   processed by PostgreSQL; this could be improved by using Firebird cursors
 
