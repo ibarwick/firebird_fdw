@@ -96,6 +96,8 @@ static void convertExprRecursor(Expr *node, convert_expr_cxt *context, char **re
 static void convertBoolExpr(BoolExpr *node, convert_expr_cxt *context, char **result);
 static void convertConst(Const *node, convert_expr_cxt *context, char **result);
 static void convertNullTest(NullTest *node, convert_expr_cxt *context, char **result);
+static void convertBooleanTest(BooleanTest *node, convert_expr_cxt *context, char **result);
+
 static void convertOpExpr(OpExpr *node, convert_expr_cxt *context, char **result);
 static void convertRelabelType(RelabelType *node, convert_expr_cxt *context, char **result);
 static void convertScalarArrayOpExpr(ScalarArrayOpExpr *node, convert_expr_cxt *context, char **result)
@@ -870,6 +872,10 @@ convertExprRecursor(Expr *node, convert_expr_cxt *context, char **result)
 			convertBoolExpr((BoolExpr *) node, context, result);
 			break;
 
+		case T_BooleanTest:
+			convertBooleanTest((BooleanTest *) node, context, result);
+			break;
+
 		case T_NullTest:
 			/* IS [NOT] NULL */
 			convertNullTest((NullTest *) node, context, result);
@@ -1080,6 +1086,55 @@ convertNullTest(NullTest *node, convert_expr_cxt *context, char **result)
 		appendStringInfoString(&buf, " IS NULL)");
 	else
 		appendStringInfoString(&buf, " IS NOT NULL)");
+
+	*result = pstrdup(buf.data);
+}
+
+
+/**
+ * convertBooleanTest()
+ *
+ * Firebird 3.0 and later.
+ *
+ * Not that Firebird appears to interpret "IS NOT TRUE" as "IS FALSE", whereas
+ * PostgreSQL interprets it as "IS FALSE" or "IS NULL", and vice-versa, so
+ * we can't pass the boolean test syntax verbatim for those cases.
+ */
+static void
+convertBooleanTest(BooleanTest *node, convert_expr_cxt *context, char **result)
+{
+	StringInfoData	buf;
+	char *local_result;
+
+	initStringInfo(&buf);
+
+	appendStringInfoChar(&buf, '(');
+	convertExprRecursor(node->arg, context, &local_result);
+	appendStringInfoString(&buf, local_result);
+
+	switch (node->booltesttype)
+	{
+		case IS_TRUE:
+			appendStringInfoString(&buf, " IS TRUE)");
+			break;
+		case IS_NOT_TRUE:
+			appendStringInfo(&buf, " IS FALSE) OR (%s IS NULL)",
+							 local_result);
+			break;
+		case IS_FALSE:
+			appendStringInfoString(&buf, " IS FALSE)");
+			break;
+		case IS_NOT_FALSE:
+			appendStringInfo(&buf, " IS TRUE) OR (%s IS NULL)",
+							 local_result);
+			break;
+		case IS_UNKNOWN:
+			appendStringInfoString(&buf, " IS NULL)");
+			break;
+		case IS_NOT_UNKNOWN:
+			appendStringInfoString(&buf, " IS NOT NULL)");
+			break;
+	}
 
 	*result = pstrdup(buf.data);
 }
@@ -1904,10 +1959,12 @@ foreign_expr_walker(Node *node,
 			elog(DEBUG2, "%s: true", __func__);
 			return true;
 		}
+
 		case T_BoolExpr:
 		{
 			BoolExpr   *b = (BoolExpr *) node;
 
+			elog(DEBUG2, "%s: bool expr", __func__);
 			/* Recurse to input subexpressions */
 			if (!foreign_expr_walker((Node *) b->args,
 									 glob_cxt))
@@ -1928,9 +1985,26 @@ foreign_expr_walker(Node *node,
 			return true;
 		}
 
+
+		case T_BooleanTest:
+		{
+			BooleanTest   *bt = (BooleanTest *) node;
+
+			if (glob_cxt->firebird_version < 30000)
+				return false;
+
+			/* Recurse to input subexpressions	*/
+			if (!foreign_expr_walker((Node *) bt->arg,
+									 glob_cxt))
+				return false;
+
+			return true;
+		}
+
+
 		case T_ScalarArrayOpExpr:
 			/*	WHERE v1 NOT IN(1,2) */
-			/* Note: FB can only handle up to 1,500 members; see FB book p396*/
+			/* Note: FB can only handle up to 1,500 members; see FB book p396 */
 		{
 			HeapTuple tuple;
 			char *oprname;
@@ -2175,13 +2249,11 @@ foreign_expr_walker(Node *node,
 			return true;
 		}
 
-		/* Firebird 3 will support booleans; we may need to add an
-		   exception here */
-
 		default:
 
 			/* Assume any other types are unsafe */
 			elog(DEBUG1, "%s(): Unhandled node tag: %i", __func__, nodeTag(node));
+
 			return false;
 	}
 

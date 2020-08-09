@@ -7,6 +7,7 @@ Revision history for firebird_fdw
 	- Add function firebird_fdw_server_options()
 	- Apply CREATE SERVER's "port" option, if provided
 	- Add support for generated columns (PostgreSQL 12 and later)
+	- Push down boolean tests in WHERE clauses where possible
 	- Prevent tables defined as queries from being set as "updatable = 'true'"
 	- Prevent crash on attempted COPY operation (PostgreSQL 11 and later)
 
