@@ -75,7 +75,7 @@ if ($node->{firebird_major_version} >= 3) {
 	my $bool_insert_sql = sprintf(
 		<<EO_SQL,
 INSERT INTO %s (id, bool_type)
-         VALUES(2, TRUE), (3, FALSE);
+         VALUES(2, TRUE), (3, FALSE), (4, NULL);
 EO_SQL
 		$table_name,
 	);
@@ -83,7 +83,7 @@ EO_SQL
 	$node->safe_psql($bool_insert_sql);
 
 	my $q2_sql = sprintf(
-		q|SELECT id, bool_type FROM %s WHERE id IN (2,3) ORDER BY id|,
+		q|SELECT id, bool_type FROM %s WHERE id IN (2,3,4) ORDER BY id|,
 		$table_name,
 	);
 
@@ -91,7 +91,7 @@ EO_SQL
 
 	is (
 		$q2_res,
-		qq/2|t\n3|f/,
+		qq/2|t\n3|f\n4|/,
 		q|Check BOOLEAN|,
 	);
 }
