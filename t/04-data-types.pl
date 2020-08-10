@@ -32,7 +32,7 @@ else {
 # Prepare table
 # --------------
 
-my $table_name = $node->init_data_table();
+my $table_name = $node->init_data_type_table();
 
 # 1) Test BLOB type
 # -----------------

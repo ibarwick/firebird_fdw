@@ -233,14 +233,14 @@ EO_SQL
 
 # Tables for testing data type handling
 
-sub init_data_table {
+sub init_data_type_table {
     my $self = shift;
     my %params = @_;
 
     $params{firebird_only} //= 0;
 
     my $table_name = sprintf(
-        q|%s_data|,
+        q|%s_data_type|,
 		$self->_make_table_name(),
     );
 

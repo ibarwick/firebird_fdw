@@ -35,7 +35,7 @@ else {
 }
 
 
-my $data_table_name = $node->init_data_table(firebird_only => 1);
+my $data_table_name = $node->init_data_type_table(firebird_only => 1);
 
 
 # 1) Test "IMPORT FOREIGN SCHEMA"
