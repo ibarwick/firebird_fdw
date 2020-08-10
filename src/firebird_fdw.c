@@ -1156,14 +1156,10 @@ firebirdExplainForeignScan(ForeignScanState *node,
 
 	ExplainPropertyText("Firebird query", fdw_state->query, es);
 
-	/* Show Firebird's "PLAN" information" in verbose mode */
+	/* Show the Firebird "PLAN" information" in VERBOSE mode */
 	if (es->verbose)
 	{
-		char *plan = NULL;
-
-		FQstartTransaction(fdw_state->conn);
-		plan = FQexplainStatement(fdw_state->conn, fdw_state->query);
-		FQrollbackTransaction(fdw_state->conn);
+		char *plan = FQexplainStatement(fdw_state->conn, fdw_state->query);
 
 		if (plan != NULL)
 		{
