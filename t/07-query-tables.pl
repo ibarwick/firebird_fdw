@@ -10,7 +10,7 @@ use warnings;
 use Cwd;
 use Config;
 use TestLib;
-use Test::More tests => 1;
+use Test::More tests => 2;
 
 use FirebirdFDWNode;
 
@@ -23,14 +23,14 @@ my $node = FirebirdFDWNode->new();
 # Prepare table
 # --------------
 
-my $table_name = $node->init_table();
+my $table_name = $node->init_table(firebird_only => 1);
 
 my $query_table_name = sprintf(q|%s_query|, $table_name);
 
 # 1) Test basic functionality
 # ---------------------------
 
-my $create_q = sprintf(
+my $create_q1 = sprintf(
     <<'EO_SQL',
 CREATE FOREIGN TABLE %s (
   lang_id CHAR(2),
@@ -47,21 +47,25 @@ EO_SQL
     $table_name,
 );
 
-$node->safe_psql( $create_q );
+$node->safe_psql( $create_q1 );
 
-my $insert_q = sprintf(
+my $insert_q1 = sprintf(
     q|INSERT INTO %s (lang_id, name_english, name_native) VALUES('en', 'English', 'English')|,
     $table_name,
 );
 
-$node->safe_psql( $insert_q );
+my $fb_q1= $node->firebird_conn()->prepare($insert_q1);
 
-my $queryText = sprintf(
+$fb_q1->execute();
+
+$fb_q1->finish();
+
+my $select_q1 = sprintf(
     q|SELECT lang_id, name_english, name_native FROM %s WHERE lang_id = 'en'|,
     $query_table_name,
 );
 
-my $res = $node->safe_psql( $queryText );
+my $res = $node->safe_psql( $select_q1 );
 
 
 is(
@@ -70,6 +74,24 @@ is(
 	'query OK',
 );
 
+# 2) Verify that insert operations fail
+# -------------------------------------
+
+my $insert_q2 = sprintf(
+    q|INSERT INTO %s (lang_id, name_english, name_native) VALUES('de', 'German', 'Deutsch')|,
+    $query_table_name,
+);
+
+my ($insert_q2_res, $insert_q2_stdout, $insert_q2_stderr) = $node->psql(
+    $insert_q2,
+);
+
+my $expected_q2_stderr = q|unable to modify a foreign table defined as a query|;
+like (
+    $insert_q2_stderr,
+    qr/$expected_q2_stderr/,
+    q|Check INSERT on foreign table defined as query fails|,
+);
 
 # Clean up
 # --------
