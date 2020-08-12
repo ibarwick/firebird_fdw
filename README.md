@@ -390,14 +390,11 @@ Examples
 Install the extension:
 
     CREATE EXTENSION firebird_fdw;
-    CREATE FOREIGN DATA WRAPPER firebird
-      HANDLER firebird_fdw_handler
-      VALIDATOR firebird_fdw_validator;
 
 Create a foreign server with appropriate configuration:
 
     CREATE SERVER firebird_server
-      FOREIGN DATA WRAPPER firebird
+      FOREIGN DATA WRAPPER firebird_fdw
       OPTIONS (
         address 'localhost',
         database '/path/to/database'

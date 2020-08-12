@@ -81,9 +81,6 @@ sub new {
     $self->safe_psql(
         <<EO_SQL,
 CREATE EXTENSION firebird_fdw;
-CREATE FOREIGN DATA WRAPPER firebird
-  HANDLER firebird_fdw_handler
-  VALIDATOR firebird_fdw_validator;
 EO_SQL
     );
 
@@ -93,7 +90,7 @@ EO_SQL
         sprintf(
             <<EO_SQL,
 CREATE SERVER %s
-  FOREIGN DATA WRAPPER firebird
+  FOREIGN DATA WRAPPER firebird_fdw
   OPTIONS (
     address 'localhost',
     database '%s',
