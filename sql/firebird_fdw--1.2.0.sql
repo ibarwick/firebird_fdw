@@ -45,14 +45,25 @@ CREATE OR REPLACE FUNCTION firebird_fdw_server_options(
     IN server_name TEXT,
     OUT name TEXT,
     OUT value TEXT,
-    OUT provided BOOL)
+    OUT provided BOOL
+  )
   RETURNS SETOF record
   AS 'MODULE_PATHNAME'
   LANGUAGE C STRICT VOLATILE PARALLEL SAFE;
 
 CREATE OR REPLACE FUNCTION firebird_fdw_diag(
     OUT name TEXT,
-    OUT setting TEXT)
+    OUT setting TEXT
+  )
+  RETURNS SETOF record
+  AS 'MODULE_PATHNAME'
+  LANGUAGE C STRICT VOLATILE PARALLEL SAFE;
+
+CREATE OR REPLACE FUNCTION firebird_version(
+    OUT server_name TEXT,
+    OUT firebird_version TEXT,
+    OUT firebird_version_num INT
+  )
   RETURNS SETOF record
   AS 'MODULE_PATHNAME'
   LANGUAGE C STRICT VOLATILE PARALLEL SAFE;

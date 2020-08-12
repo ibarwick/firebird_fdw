@@ -60,6 +60,11 @@
 #include "access/htup_details.h"
 #endif
 
+#include "access/xact.h"
+#include "executor/spi.h"
+#include "pgstat.h"
+#include "utils/snapmgr.h"
+
 #include "libfq.h"
 
 #include "firebird_fdw.h"
@@ -116,12 +121,14 @@ extern Datum firebird_fdw_version(PG_FUNCTION_ARGS);
 extern Datum firebird_fdw_close_connections(PG_FUNCTION_ARGS);
 extern Datum firebird_fdw_server_options(PG_FUNCTION_ARGS);
 extern Datum firebird_fdw_diag(PG_FUNCTION_ARGS);
+extern Datum firebird_version(PG_FUNCTION_ARGS);
 
 PG_FUNCTION_INFO_V1(firebird_fdw_handler);
 PG_FUNCTION_INFO_V1(firebird_fdw_version);
 PG_FUNCTION_INFO_V1(firebird_fdw_close_connections);
 PG_FUNCTION_INFO_V1(firebird_fdw_server_options);
 PG_FUNCTION_INFO_V1(firebird_fdw_diag);
+PG_FUNCTION_INFO_V1(firebird_version);
 
 extern void _PG_init(void);
 
@@ -458,6 +465,7 @@ firebird_fdw_diag(PG_FUNCTION_ARGS)
 		ereport(ERROR,
 				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
 				 errmsg("set-valued function called in context that cannot accept a set")));
+
 	if (!(rsinfo->allowedModes & SFRM_Materialize))
 		ereport(ERROR,
 				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
@@ -538,6 +546,126 @@ firebird_fdw_diag(PG_FUNCTION_ARGS)
 
 	tuplestore_putvalues(tupstore, tupdesc, values, nulls);
 	pfree(setting.data);
+
+	/* no more rows */
+	tuplestore_donestoring(tupstore);
+
+	return (Datum) 0;
+}
+
+
+
+/**
+ * firebird_version()
+ *
+ * Returns version information for the Firebird instances defined
+ * as foreign servers
+ */
+Datum
+firebird_version(PG_FUNCTION_ARGS)
+{
+	ReturnSetInfo *rsinfo = (ReturnSetInfo *) fcinfo->resultinfo;
+	TupleDesc	tupdesc;
+	Tuplestorestate *tupstore;
+	MemoryContext per_query_ctx;
+	MemoryContext oldcontext;
+
+	Datum		values[3];
+	bool		nulls[3];
+
+	StringInfoData buf;
+	int			ret;
+
+	/* check to see if caller supports this function returning a tuplestore */
+	if (rsinfo == NULL || !IsA(rsinfo, ReturnSetInfo))
+		ereport(ERROR,
+				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+				 errmsg("set-valued function called in context that cannot accept a set")));
+
+	if (!(rsinfo->allowedModes & SFRM_Materialize))
+		ereport(ERROR,
+				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+				 errmsg("materialize mode required, but it is not " \
+						"allowed in this context")));
+
+	/* Switch into long-lived context to construct returned data structures */
+	per_query_ctx = rsinfo->econtext->ecxt_per_query_memory;
+
+
+	initStringInfo(&buf);
+	appendStringInfoString(&buf,
+						   "     SELECT fs.oid, fs.srvname, um.umuser "
+						   "       FROM pg_foreign_data_wrapper fdw "
+						   " INNER JOIN pg_catalog.pg_foreign_server fs "
+						   "         ON fs.srvfdw = fdw.oid "
+						   " INNER JOIN pg_catalog.pg_user_mapping um "
+						   "            ON um.umserver=fs.oid "
+						   "      WHERE fdw.fdwname = 'firebird_fdw'");
+
+	SPI_connect();
+	PushActiveSnapshot(GetTransactionSnapshot());
+	pgstat_report_activity(STATE_RUNNING, buf.data);
+
+	ret = SPI_execute(buf.data, false, 0);
+
+	pfree(buf.data);
+
+	if (ret != SPI_OK_SELECT)
+		elog(FATAL, "unable to query foreign data wrapper system catalog data");
+
+	oldcontext = MemoryContextSwitchTo(per_query_ctx);
+
+	/* Build a tuple descriptor for function's result type */
+	if (get_call_result_type(fcinfo, NULL, &tupdesc) != TYPEFUNC_COMPOSITE)
+		elog(ERROR, "return type must be a row type");
+
+	tupstore = tuplestore_begin_heap(true, false, work_mem);
+	rsinfo->returnMode = SFRM_Materialize;
+	rsinfo->setResult = tupstore;
+	rsinfo->setDesc = tupdesc;
+
+	MemoryContextSwitchTo(oldcontext);
+
+	if (SPI_processed > 0)
+	{
+		int i;
+
+		for (i = 0; i < SPI_processed; i++)
+		{
+			bool	isnull;
+			Oid serverid;
+			Oid userid;
+			FBconn *conn;
+
+			memset(values, 0, sizeof(values));
+			memset(nulls, 0, sizeof(nulls));
+
+			serverid = DatumGetObjectId(SPI_getbinval(SPI_tuptable->vals[i],
+													   SPI_tuptable->tupdesc,
+													   1, &isnull));
+
+			userid = DatumGetObjectId(SPI_getbinval(SPI_tuptable->vals[i],
+													SPI_tuptable->tupdesc,
+													3, &isnull));
+
+			conn = firebirdInstantiateConnection(GetForeignServer(serverid),
+												 GetUserMapping(userid, serverid));
+
+			values[0] = CStringGetTextDatum(SPI_getvalue(SPI_tuptable->vals[i],
+													  SPI_tuptable->tupdesc,
+													  2));
+			values[1] = CStringGetTextDatum(FQserverVersionString(conn));
+			values[2] = FQserverVersion(conn);
+
+			tuplestore_putvalues(tupstore, tupdesc, values, nulls);
+		}
+	}
+
+	SPI_finish();
+	PopActiveSnapshot();
+	pgstat_report_stat(false);
+	pgstat_report_activity(STATE_IDLE, NULL);
+
 
 	/* no more rows */
 	tuplestore_donestoring(tupstore);

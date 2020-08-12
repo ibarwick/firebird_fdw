@@ -5,6 +5,7 @@ Revision history for firebird_fdw
 	- Add server option "quote_identifiers"
 	- Have IMPORT FOREIGN SCHEMA add "quote_identifier" where appropriate
 	- Add function firebird_fdw_server_options()
+	- Add function firebird_version()
 	- Apply CREATE SERVER's "port" option, if provided
 	- Add support for generated columns (PostgreSQL 12 and later)
 	- Push down boolean tests in WHERE clauses where possible

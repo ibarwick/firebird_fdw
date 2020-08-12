@@ -237,15 +237,15 @@ functions, `firebird_fdw` provides the following user-callable utility functions
       if not provided, the respective default values); example:
 
 ```
-postgres=# SELECT * FROM firebird_fdw_server_options('firebird_server');
-       name        |              value              | provided
--------------------+---------------------------------+----------
- address           | localhost                       | t
- port              | 3050                            | f
- database          | /var/lib/firebird/data/test.fdb | t
- disable_pushdowns | false                           | f
- updatable         | true                            | f
-(5 rows)
+    postgres=# SELECT * FROM firebird_fdw_server_options('firebird_server');
+           name        |              value              | provided
+    -------------------+---------------------------------+----------
+     address           | localhost                       | t
+     port              | 3050                            | f
+     database          | /var/lib/firebird/data/test.fdb | t
+     disable_pushdowns | false                           | f
+     updatable         | true                            | f
+    (5 rows)
 ```
 
  - `firebird_fdw_diag()`: returns ad-hoc information about the Firebird FDW in key/value
@@ -263,6 +263,20 @@ postgres=# SELECT * FROM firebird_fdw_server_options('firebird_server');
     (5 rows)
 ```
 
+ - `firebird_version()`: returns the Firebird version numbers for each
+      `firebird_fdw` foreign server defined in the current database, for example:
+
+```
+    postgres=# SELECT * FROM firebird_version();
+       server_name   | firebird_version | firebird_version_num
+    -----------------+------------------+----------------------
+     firebird_server | 3.0.3            |                30003
+    (1 row)
+```
+
+    Note that this function will open a connection to each Firebird server
+    if no previously cached connection exists. It will return a row for each
+    user mapping defined, even if those map to the same Firebird server.
 
 Identifier case handling
 ------------------------
