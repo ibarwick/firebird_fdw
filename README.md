@@ -280,9 +280,9 @@ functions, `firebird_fdw` provides the following user-callable utility functions
   defined in the current database, for example:
 
       postgres=# SELECT * FROM firebird_version();
-         server_name   | firebird_version | firebird_version_num
-      -----------------+------------------+----------------------
-       firebird_server | 3.0.3            |                30003
+         server_name   | firebird_version | firebird_version_string
+      -----------------+------------------+-------------------------
+       firebird_server |            30005 | 3.0.5
       (1 row)
 
   Note that this function will open a connection to each Firebird server

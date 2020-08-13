@@ -651,11 +651,14 @@ firebird_version(PG_FUNCTION_ARGS)
 			conn = firebirdInstantiateConnection(GetForeignServer(serverid),
 												 GetUserMapping(userid, serverid));
 
+			/* server_name */
 			values[0] = CStringGetTextDatum(SPI_getvalue(SPI_tuptable->vals[i],
 													  SPI_tuptable->tupdesc,
 													  2));
-			values[1] = CStringGetTextDatum(FQserverVersionString(conn));
-			values[2] = FQserverVersion(conn);
+			/* firebird_version */
+			values[1] = FQserverVersion(conn);
+			/* firebird_version_string */
+			values[2] = CStringGetTextDatum(FQserverVersionString(conn));
 
 			tuplestore_putvalues(tupstore, tupdesc, values, nulls);
 		}

@@ -61,8 +61,8 @@ CREATE OR REPLACE FUNCTION firebird_fdw_diag(
 
 CREATE OR REPLACE FUNCTION firebird_version(
     OUT server_name TEXT,
-    OUT firebird_version TEXT,
-    OUT firebird_version_num INT
+    OUT firebird_version INT,
+    OUT firebird_version_string TEXT
   )
   RETURNS SETOF record
   AS 'MODULE_PATHNAME'
