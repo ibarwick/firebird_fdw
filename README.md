@@ -99,32 +99,33 @@ Usage
 
 `firebird_fdw` accepts the following options via the `CREATE SERVER` command:
 
-`address`
+- **address**
 
-The Firebird server's address (default: `localhost`)
+  The Firebird server's address (default: `localhost`)
 
-`database`
+- **database**
 
-The name of the Firebird database to connect to.
+  The name of the Firebird database to connect to.
 
-`updatable`
+- **updatable**
 
-a boolean value indicating whether the foreign server as a whole
-is updatable. Default is true. Note that this can be overridden
-by table-level settings.
+  A boolean value indicating whether the foreign server as a whole
+  is updatable. Default is true. Note that this can be overridden
+  by table-level settings.
 
-`disable_pushdowns`
+- **disable_pushdowns**
 
-Turns off pushdowns of `WHERE` clause elements to Firebird. Useful
-mainly for debugging and benchmarking.
+  Turns off pushdowns of `WHERE` clause elements to Firebird. Useful
+  mainly for debugging and benchmarking.
 
-`quote_identifiers`
+- **quote_identifiers**
 
-Quote all identifiers (table and column names) by default. This can
-be overridden with `quote_identifier = 'false'` for individual table
-and column names.
-See "[Identifier case handling](#identifier-case-handling)" for details.
-`firebird_fdw` 1.2.0 and later.
+  Quote all identifiers (table and column names) by default. This can
+  be overridden with `quote_identifier = 'false'` for individual table
+  and column names.
+
+  See "[Identifier case handling](#identifier-case-handling)" for details.
+  `firebird_fdw` 1.2.0 and later.
 
 
 ## CREATE USER MAPPING options
@@ -132,13 +133,13 @@ See "[Identifier case handling](#identifier-case-handling)" for details.
 `firebird_fdw` accepts the following options via the `CREATE USER MAPPING`
 command:
 
-`username`
+- **username**
 
-The Firebird username to connect as (not case-sensitive)
+  The Firebird username to connect as (not case-sensitive).
 
-`password`
+- **password**
 
-The Firebird user's password
+  The Firebird user's password.
 
 
 ## CREATE FOREIGN TABLE options
@@ -146,48 +147,48 @@ The Firebird user's password
 `firebird_fdw` accepts the following table-level options via the
 `CREATE FOREIGN TABLE` command:
 
-`table_name`
+- **table_name**
 
-The Firebird table name, if different to the PostgreSQL foreign table
-name. Cannot be used together with the `query` option.
+  The Firebird table name, if different to the PostgreSQL foreign table
+  name. Cannot be used together with the `query` option.
 
-`quote_identifier`
+- **quote_identifier**
 
-Pass the table name to Firebird as a quoted identifier.
-See "[Identifier case handling](#identifier-case-handling)" for details.
-`firebird_fdw` 1.2.0 and later.
+  Pass the table name to Firebird as a quoted identifier.
+  See "[Identifier case handling](#identifier-case-handling)" for details.
+  `firebird_fdw` 1.2.0 and later.
 
-`query`
+- **query**
 
-A Firebird SQL statement producing a result set which can be treated
-like a read-only view. Cannot be used together with the `table_name` option.
+  A Firebird SQL statement producing a result set which can be treated
+  like a read-only view. Cannot be used together with the `table_name` option.
 
-`updatable`
+- **updatable**
 
-A boolean value indicating whether the table is updatable. Default is `true`.
-Note that this overrides the server-level setting. Cannot be set for the
-`query` option.
+  A boolean value indicating whether the table is updatable. Default is `true`.
+  Note that this overrides the server-level setting. Cannot be set for the
+  `query` option.
 
-`estimated_row_count`
+- **estimated_row_count**
 
-An integer indicating the expected number of rows in the Firebird table, or
-rows which would be returned by the statement defined in `query`. If not
-set, an attempt will be made to determine the number of rows by executing
-`SELECT COUNT(*) FROM ...`, which can be inefficient, particularly for queries.
+  An integer indicating the expected number of rows in the Firebird table, or
+  rows which would be returned by the statement defined in `query`. If not
+  set, an attempt will be made to determine the number of rows by executing
+  `SELECT COUNT(*) FROM ...`, which can be inefficient, particularly for queries.
 
 The following column-level options are available:
 
-`column_name`
+- **column_name**
 
-The Firebird column name, if different to the column name defined in the
-foreign table. This can also be used for foreign tables defined with the
-`query` option.
+  The Firebird column name, if different to the column name defined in the
+  foreign table. This can also be used for foreign tables defined with the
+  `query` option.
 
-`quote_identifier`
+- **quote_identifier**
 
-Pass the column name to Firebird as a quoted identifier. See section
-See "[Identifier case handling](#identifier-case-handling)" for details.
-`firebird_fdw` 1.2.0 and later.
+  Pass the column name to Firebird as a quoted identifier. See section
+  See "[Identifier case handling](#identifier-case-handling)" for details.
+  `firebird_fdw` 1.2.0 and later.
 
 Note that while PostgreSQL allows a foreign table to be defined without
 any columns, `firebird_fdw` will raise an error as soon as any operations
@@ -196,25 +197,25 @@ are carried out on it.
 
 ## IMPORT FOREIGN SCHEMA options
 
-`firebird_fdw` supports `IMPORT FOREIGN SCHEMA` (when running with PostgreSQL
-9.5 or later), with the following options:
+`firebird_fdw` supports [IMPORT FOREIGN SCHEMA](https://www.postgresql.org/docs/current/sql-importforeignschema.html) (when running with PostgreSQL
+9.5 or later) and accepts the following custom options:
 
-`import_not_null`
+- **import_not_null**
 
-Determines whether column `NOT NULL` constraints are included in the definitions
-of foreign tables imported from a Firebid server. The default is `true`.
+  Determines whether column `NOT NULL` constraints are included in the definitions
+  of foreign tables imported from a Firebid server. The default is `true`.
 
-`import_views`
+- **import_views**
 
-Determines whether Firebird views are imported as foreign tables. The default is `true`.
+  Determines whether Firebird views are imported as foreign tables. The default is `true`.
 
-`updatable`
+- **updatable**
 
-If set to `false`, mark all imported foreign tables as not updatable. The default is `true`.
+  If set to `false`, mark all imported foreign tables as not updatable. The default is `true`.
 
-`verbose`
+- **verbose**
 
-Logs the name of each table or view being imported at log level `INFO`.
+  Logs the name of each table or view being imported at log level `INFO`.
 
 `IMPORT FOREIGN SCHEMA` will quote Firebird table column names if required, and if the
 Firebird name is entirely lower-case, will add the appropriate `quote_identifier`
@@ -229,54 +230,63 @@ Functions
 As well as the standard `firebird_fdw_handler()` and `firebird_fdw_validator()`
 functions, `firebird_fdw` provides the following user-callable utility functions:
 
- - `firebird_fdw_version()`: returns the version number as an integer
- - `firebird_fdw_close_connections()`: closes all cached connections from
-      PostgreSQL to Firebird
- - `firebird_fdw_server_options(servername TEXT)`: returns the server-level option
-      settings for the named server (either the options provided to `CREATE SERVER` or
-      if not provided, the respective default values); example:
+- **firebird_fdw_version()**
 
-```
-    postgres=# SELECT * FROM firebird_fdw_server_options('firebird_server');
-           name        |              value              | provided
-    -------------------+---------------------------------+----------
-     address           | localhost                       | t
-     port              | 3050                            | f
-     database          | /var/lib/firebird/data/test.fdb | t
-     disable_pushdowns | false                           | f
-     updatable         | true                            | f
-    (5 rows)
-```
+  Returns the version number as an integer.
 
- - `firebird_fdw_diag()`: returns ad-hoc information about the Firebird FDW in key/value
-      form, example:
+- **firebird_fdw_close_connections()**
 
-```
-    postgres=# SELECT * FROM firebird_fdw_diag();
-                name             | setting
-    -----------------------------+---------
-     firebird_fdw_version        | 10100
-     firebird_fdw_version_string | 1.1.0
-     libfq_version               | 400
-     libfq_version_string        | 0.4.0
-     cached_connection_count     | 1
-    (5 rows)
-```
+  Closes all cached connections from PostgreSQL to Firebird in the current session.
 
- - `firebird_version()`: returns the Firebird version numbers for each
-      `firebird_fdw` foreign server defined in the current database, for example:
+- **firebird_fdw_server_options(servername TEXT)**
 
-```
-    postgres=# SELECT * FROM firebird_version();
-       server_name   | firebird_version | firebird_version_num
-    -----------------+------------------+----------------------
-     firebird_server | 3.0.3            |                30003
-    (1 row)
-```
+  Returns the server-level option settings for the named server (either the options provided
+  to `CREATE SERVER` or if not provided, the respective default values); example:
 
-    Note that this function will open a connection to each Firebird server
-    if no previously cached connection exists. It will return a row for each
-    user mapping defined, even if those map to the same Firebird server.
+
+      postgres=# SELECT * FROM firebird_fdw_server_options('firebird_server');
+             name        |              value              | provided
+      -------------------+---------------------------------+----------
+       address           | localhost                       | t
+       port              | 3050                            | f
+       database          | /var/lib/firebird/data/test.fdb | t
+       disable_pushdowns | false                           | f
+       updatable         | true                            | f
+      (5 rows)
+
+  (`firebird_fdw` 1.2.0 and later)
+
+- **firebird_fdw_diag()**
+
+  Returns ad-hoc information about the Firebird FDW in key/value form, example:
+
+      postgres=# SELECT * FROM firebird_fdw_diag();
+                  name             | setting
+      -----------------------------+---------
+       firebird_fdw_version        | 10100
+       firebird_fdw_version_string | 1.1.0
+       libfq_version               | 400
+       libfq_version_string        | 0.4.0
+       cached_connection_count     | 1
+      (5 rows)
+
+- **firebird_version()**
+
+  Returns the Firebird version numbers for each `firebird_fdw` foreign server
+  defined in the current database, for example:
+
+      postgres=# SELECT * FROM firebird_version();
+         server_name   | firebird_version | firebird_version_num
+      -----------------+------------------+----------------------
+       firebird_server | 3.0.3            |                30003
+      (1 row)
+
+  Note that this function will open a connection to each Firebird server
+  if no previously cached connection exists. It will return a row for each
+  user mapping defined, even if those map to the same Firebird server.
+
+  (`firebird_fdw` 1.2.0 and later)
+
 
 Identifier case handling
 ------------------------
