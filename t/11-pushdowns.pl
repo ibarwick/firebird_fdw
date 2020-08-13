@@ -7,8 +7,6 @@
 use strict;
 use warnings;
 
-use Cwd;
-use Config;
 use TestLib;
 use Test::More;
 
@@ -20,7 +18,7 @@ use FirebirdFDWNode;
 my $node = FirebirdFDWNode->new();
 
 
-if (1 && $node->{firebird_major_version} >= 3) {
+if ($node->{firebird_major_version} >= 3) {
 	plan tests => 3;
 }
 else {

@@ -8,8 +8,6 @@
 use strict;
 use warnings;
 
-use Cwd;
-use Config;
 use TestLib;
 use Test::More tests => 9;
 
