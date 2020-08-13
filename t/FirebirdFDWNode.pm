@@ -8,9 +8,8 @@ package FirebirdFDWNode;
 #  2) to provide a connection to a running Firebird instance.
 #
 # The Firebird database must be specified with the standard Firebird
-# environment variables `ISC_DATABASE`, `ISC_USER` and `ISC_PASSWORD`.
-#
-# XXX behaviour undefined if not set
+# environment variables `ISC_DATABASE`, `ISC_USER` and `ISC_PASSWORD`,
+# otherwise each test will exit with an error.
 
 use strict;
 use warnings;
@@ -19,11 +18,11 @@ use v5.10.0;
 
 use PostgresNode;
 
+
 use Exporter 'import';
 use vars qw(@EXPORT @EXPORT_OK);
 
-use Carp 'verbose';
-
+use Carp;
 use DBI;
 
 $SIG{__DIE__} = \&Carp::confess;
@@ -45,6 +44,9 @@ sub new {
     #
     # (do this first to catch any problems connecting to Firebird)
 
+    croak "please set environment variables ISC_DATABASE, ISC_USER and ISC_PASSWORD"
+        unless defined($ENV{'ISC_DATABASE'});
+
 	$self->{firebird_dbname} = $ENV{'ISC_DATABASE'};
 
 	$self->{firebird_dbh} = DBI->connect(
@@ -59,6 +61,7 @@ sub new {
 	);
 
 	$self->{firebird_major_version} = $self->get_firebird_major_version();
+
 
 
     # Set up FDW on PostgreSQL
@@ -85,7 +88,7 @@ EO_SQL
     );
 
 	# Server is created with all options explicitly set so we can
-	# easily execute "ALTER SERVER ... OPTION (SET foo 'bar)".
+	# easily execute "ALTER SERVER ... OPTION (SET foo 'bar')".
     $self->safe_psql(
         sprintf(
             <<EO_SQL,
@@ -388,7 +391,7 @@ sub alter_server_option {
 	$self->safe_psql(
         sprintf(
             <<EO_SQL,
-    ALTER SERVER %s
+  ALTER SERVER %s
        OPTIONS (SET %s '%s')
 EO_SQL
 			$self->{server_name},
