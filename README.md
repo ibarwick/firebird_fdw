@@ -103,6 +103,10 @@ Usage
 
   The Firebird server's address (default: `localhost`)
 
+- **port**
+
+  The Firebird server's port (default: `3050`)
+
 - **database**
 
   The name of the Firebird database to connect to.
