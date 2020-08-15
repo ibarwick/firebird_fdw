@@ -238,8 +238,9 @@ static void exitHook(int code, Datum arg);
 static FirebirdFdwState *getFdwState(Oid foreigntableid);
 
 static FirebirdFdwModifyState *
-create_foreign_modify(ResultRelInfo *resultRelInfo,
-					  EState *estate,
+create_foreign_modify(EState *estate,
+					  RangeTblEntry *rte,
+					  ResultRelInfo *resultRelInfo,
 					  CmdType operation,
 					  Plan *subplan,
 					  char *query,
@@ -2055,8 +2056,9 @@ firebirdPlanForeignModify(PlannerInfo *root,
  */
 
 static FirebirdFdwModifyState *
-create_foreign_modify(ResultRelInfo *resultRelInfo,
-					  EState *estate,
+create_foreign_modify(EState *estate,
+					  RangeTblEntry *rte,
+					  ResultRelInfo *resultRelInfo,
 					  CmdType operation,
 					  Plan *subplan,
 					  char *query,
@@ -2066,7 +2068,6 @@ create_foreign_modify(ResultRelInfo *resultRelInfo,
 {
 	FirebirdFdwModifyState *fmstate;
 
-	RangeTblEntry *rte;
 	Relation rel  = resultRelInfo->ri_RelationDesc;
 
 #if (PG_VERSION_NUM >= 110000)
@@ -2089,8 +2090,6 @@ create_foreign_modify(ResultRelInfo *resultRelInfo,
 	fmstate = (FirebirdFdwModifyState *) palloc0(sizeof(FirebirdFdwModifyState));
 
 	fmstate->rel = rel;
-
-	rte = rt_fetch(resultRelInfo->ri_RangeTableIndex, estate->es_range_table);
 
 	userid = rte->checkAsUser ? rte->checkAsUser : GetUserId();
 
@@ -2131,11 +2130,11 @@ create_foreign_modify(ResultRelInfo *resultRelInfo,
 
 	/* Prepare for input conversion of RETURNING results. */
 	if (fmstate->has_returning)
-		fmstate->attinmeta = TupleDescGetAttInMetadata(RelationGetDescr(rel));
+		fmstate->attinmeta = TupleDescGetAttInMetadata(tupdesc);
 
 	/* Prepare for output conversion of parameters used in prepared stmt. */
 	n_params = list_length(fmstate->target_attrs) + 1;
-	elog(DEBUG2,"  n_params is: %i", n_params);
+	elog(DEBUG2, "n_params is: %i", n_params);
 	fmstate->p_flinfo = (FmgrInfo *) palloc0(sizeof(FmgrInfo) * n_params);
 	fmstate->p_nums = 0;
 
@@ -2244,7 +2243,7 @@ firebirdBeginForeignModify(ModifyTableState *mtstate,
 						   int eflags)
 {
 	FirebirdFdwModifyState *fmstate;
-	EState	   *estate = mtstate->ps.state;
+	RangeTblEntry *rte;
 
 	CmdType		operation = mtstate->operation;
 
@@ -2257,8 +2256,19 @@ firebirdBeginForeignModify(ModifyTableState *mtstate,
 	if (eflags & EXEC_FLAG_EXPLAIN_ONLY)
 		return;
 
-	fmstate = create_foreign_modify(resultRelInfo,
-									estate,
+	/* Find RTE. */
+#if (PG_VERSION_NUM >= 120000)
+	rte = exec_rt_fetch(resultRelInfo->ri_RangeTableIndex,
+						mtstate->ps.state);
+#else
+	rte = rt_fetch(resultRelInfo->ri_RangeTableIndex,
+				   mtstate->ps.state->es_range_table);
+#endif
+
+
+	fmstate = create_foreign_modify(mtstate->ps.state,
+									rte,
+									resultRelInfo,
 									operation,
 									mtstate->mt_plans[subplan_index]->plan,
 									strVal(list_nth(fdw_private,
@@ -2658,12 +2668,12 @@ firebirdBeginForeignInsert(ModifyTableState *mtstate,
 {
 	FirebirdFdwModifyState *fmstate;
 
+	ModifyTable *plan = castNode(ModifyTable, mtstate->ps.plan);
 	Index		resultRelation = resultRelInfo->ri_RangeTableIndex;
 	EState	   *estate = mtstate->ps.state;
 	Relation	rel = resultRelInfo->ri_RelationDesc;
-
-	TupleDesc	tupdesc = RelationGetDescr(rel);
 	RangeTblEntry *rte;
+	TupleDesc	tupdesc = RelationGetDescr(rel);
 
 	int			attnum;
 
@@ -2674,11 +2684,47 @@ firebirdBeginForeignInsert(ModifyTableState *mtstate,
 
 	FirebirdFdwState *fdw_state = getFdwState(RelationGetRelid(rel));
 
+
 	elog(DEBUG2, "%s: begin foreign table insert on %s",
 		 __func__,
 		 RelationGetRelationName(rel));
 
+	/* no support for INSERT ... ON CONFLICT (9.5 and later) */
+	if (plan && plan->onConflictAction != ONCONFLICT_NONE)
+		ereport(ERROR,
+				(errcode(ERRCODE_FDW_UNABLE_TO_CREATE_EXECUTION),
+				errmsg("INSERT with ON CONFLICT clause is not supported")));
+
+#if (PG_VERSION_NUM >= 120000)
 	rte = exec_rt_fetch(resultRelation, estate);
+#else
+	rte = list_nth(estate->es_range_table, resultRelation - 1);
+#endif
+
+	if (rte->relid != RelationGetRelid(rel))
+	{
+		rte = copyObject(rte);
+		rte->relid = RelationGetRelid(rel);
+		rte->relkind = RELKIND_FOREIGN_TABLE;
+
+		/*
+		 * For UPDATE, we must use the RT index of the first subplan target
+		 * rel's RTE, because the core code would have built expressions for
+		 * the partition, such as RETURNING, using that RT index as varno of
+		 * Vars contained in those expressions.
+		 */
+
+#if (PG_VERSION_NUM >= 120000)
+		if (plan && plan->operation == CMD_UPDATE &&
+			resultRelation == plan->rootRelation)
+			resultRelation = mtstate->resultRelInfo[0].ri_RangeTableIndex;
+#else
+		if (plan && plan->operation == CMD_UPDATE &&
+			resultRelation == plan->nominalRelation)
+			resultRelation = mtstate->resultRelInfo[0].ri_RangeTableIndex;
+#endif
+	}
+
 
 	/* Transmit all columns that are defined in the foreign table. */
 	for (attnum = 1; attnum <= tupdesc->natts; attnum++)
@@ -2705,8 +2751,9 @@ firebirdBeginForeignInsert(ModifyTableState *mtstate,
 
 	elog(DEBUG2, "%s", sql.data);
 
-	fmstate = create_foreign_modify(resultRelInfo,
-									estate,
+	fmstate = create_foreign_modify(estate,
+									rte,
+									resultRelInfo,
 									mtstate->operation,
 									NULL,
 									sql.data,
@@ -3292,9 +3339,14 @@ store_returning_result(FirebirdFdwModifyState *fmstate,
 										  fmstate->attinmeta,
 										  fmstate->retrieved_attrs,
 										  fmstate->temp_cxt);
+
 		/* tuple will be deleted when it is cleared from the slot */
 #if (PG_VERSION_NUM >= 120000)
-		ExecStoreHeapTuple(newtup, slot, true);
+		/*
+		 * The returning slot will not necessarily be suitable to store
+		 * heaptuples directly, so allow for conversion.
+		 */
+		ExecForceStoreHeapTuple(newtup, slot, true);
 #else
 		ExecStoreTuple(newtup, slot, InvalidBuffer, true);
 #endif
@@ -3408,6 +3460,10 @@ create_tuple_from_result(FBresult *res,
 	MemoryContextSwitchTo(orig_context);
 
 	tuple = heap_form_tuple(tupdesc, values, nulls);
+
+	HeapTupleHeaderSetXmax(tuple->t_data, InvalidTransactionId);
+	HeapTupleHeaderSetXmin(tuple->t_data, InvalidTransactionId);
+	HeapTupleHeaderSetCmin(tuple->t_data, InvalidTransactionId);
 
 	/* Clean up */
 	MemoryContextReset(tmp_context);
