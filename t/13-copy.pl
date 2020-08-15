@@ -1,6 +1,6 @@
 #!/usr/bin/env perl
 
-# 12-copy.pl
+# 13-copy.pl
 #
 # Check support for COPY
 

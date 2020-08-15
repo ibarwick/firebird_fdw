@@ -11,6 +11,7 @@ Revision history for firebird_fdw
 	- Add support for generated columns (PostgreSQL 12 and later)
 	- Push down boolean tests in WHERE clauses where possible
 	- Prevent tables defined as queries from being set as "updatable = 'true'"
+	- Explicitly reject INSERT with ON CONFLICT clause
 
 1.1.0	2019-05-31
 	- Add utility function "firebird_fdw_close_connections()"

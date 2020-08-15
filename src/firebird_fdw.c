@@ -1916,6 +1916,16 @@ firebirdPlanForeignModify(PlannerInfo *root,
 	List	   *retrieved_attrs = NIL;
 
 	elog(DEBUG2, "entering function %s", __func__);
+
+#if PG_VERSION_NUM >= 90500
+	/* no support for INSERT ... ON CONFLICT */
+	if (plan->onConflictAction != ONCONFLICT_NONE)
+		ereport(ERROR,
+				(errcode(ERRCODE_FDW_UNABLE_TO_CREATE_EXECUTION),
+				errmsg("INSERT with ON CONFLICT clause is not supported")));
+#endif  /* PG_VERSION_NUM */
+
+
 	elog(DEBUG2, "RTE rtekind: %i; operation %i", rte->rtekind, operation);
 
 	initStringInfo(&sql);
