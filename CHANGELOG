@@ -7,10 +7,10 @@ Revision history for firebird_fdw
 	- Add function firebird_fdw_server_options()
 	- Add function firebird_version()
 	- Apply CREATE SERVER's "port" option, if provided
+	- Add support for COPY and partition tuple routing (PostgreSQL 11 and later)
 	- Add support for generated columns (PostgreSQL 12 and later)
 	- Push down boolean tests in WHERE clauses where possible
 	- Prevent tables defined as queries from being set as "updatable = 'true'"
-	- Prevent crash on attempted COPY operation (PostgreSQL 11 and later)
 
 1.1.0	2019-05-31
 	- Add utility function "firebird_fdw_close_connections()"

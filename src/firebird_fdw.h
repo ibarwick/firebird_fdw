@@ -232,7 +232,8 @@ extern void firebirdGetTableOptions(ForeignTable *table,
 
 /* query-building functions (in convert.c) */
 
-extern void buildInsertSql(StringInfo buf, RangeTblEntry *rte,
+extern void buildInsertSql(StringInfo buf,
+						   RangeTblEntry *rte,
 						   FirebirdFdwState *fdw_state,
 						   Index rtindex, Relation rel,
 						   List *targetAttrs, List *returningList,

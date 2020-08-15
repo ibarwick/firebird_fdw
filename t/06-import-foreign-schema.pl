@@ -168,7 +168,7 @@ is (
 # Here we'll just check the "IMPORT FOREIGN SCHEMA" operation
 # succeeds
 
-my $q4_tbl_name = $node->_make_table_name(uc_prefix => 1);
+my $q4_tbl_name = $node->make_table_name(uc_prefix => 1);
 
 my $q4_fb_sql = sprintf(
     <<'EO_SQL',

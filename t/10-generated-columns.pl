@@ -36,7 +36,7 @@ else {
 # Create tables
 # -------------
 
-my $table_name = $node->_make_table_name();
+my $table_name = $node->make_table_name();
 
 my $tbl_sql = sprintf(
     <<EO_SQL,

@@ -37,6 +37,8 @@ sub new {
 
     bless($self, $class);
 
+    srand();
+
 	$self->{postgres_node} = get_new_node('pg_node');
 
     # Set up Firebird connection
@@ -61,8 +63,6 @@ sub new {
 	);
 
 	$self->{firebird_major_version} = $self->get_firebird_major_version();
-
-
 
     # Set up FDW on PostgreSQL
     # ------------------------
@@ -139,7 +139,7 @@ sub server_name {
 }
 
 
-sub _make_table_name {
+sub make_table_name {
 	my $self = shift;
     my %options = @_;
 
@@ -165,7 +165,31 @@ sub init_table {
 
 	$table_options{firebird_only} //= 0;
 
-	my $table_name = $self->_make_table_name();
+    $table_options{table_name} //= $self->make_table_name();
+
+    # Check if Firebird table exists (might have been left behind from a
+    # previous test run) and if so, delete it.
+    my $exists_query = $self->firebird_conn()->prepare(
+        sprintf(
+            q|SELECT COUNT(*) FROM rdb$relations WHERE TRIM(rdb$relation_name) = '%s'|,
+            uc($table_options{table_name}),
+        ),
+    );
+
+    $exists_query->execute();
+    my $cnt = $exists_query->fetchrow_array();
+    $exists_query->finish();
+
+    if ($cnt) {
+        my $drop_query = $self->firebird_conn()->prepare(
+            sprintf(
+                q|DROP TABLE %s|,
+                $table_options{table_name},
+            ),
+        );
+        $drop_query->execute();
+        $drop_query->finish();
+    }
 
     # Create Firebird table
 
@@ -178,14 +202,14 @@ CREATE TABLE %s (
   NAME_NATIVE                     VARCHAR(64) NOT NULL
 )
 EO_SQL
-            $table_name,
+            $table_options{table_name},
         ),
     );
 
     $tbl_query->execute();
     $tbl_query->finish();
 
-    return $table_name if $table_options{firebird_only} == 1;
+    return $table_options{table_name} if $table_options{firebird_only} == 1;
 
     # Create PostgreSQL foreign table
 
@@ -193,7 +217,7 @@ EO_SQL
 
     push @options, sprintf(
         q|table_name '%s'|,
-        $table_name,
+        $table_options{table_name},
     );
 
     if (defined($table_options{updatable})) {
@@ -220,14 +244,14 @@ CREATE FOREIGN TABLE %s (
   SERVER %s
   OPTIONS (%s)
 EO_SQL
-        $table_name,
+        $table_options{table_name},
 		$self->{server_name},
         join(",\n", @options),
     );
 
     $self->safe_psql($sql);
 
-    return $table_name;
+    return $table_options{table_name};
 }
 
 
@@ -241,7 +265,7 @@ sub init_data_type_table {
 
     my $table_name = sprintf(
         q|%s_data_type|,
-		$self->_make_table_name(),
+		$self->make_table_name(),
     );
 
 	my $fb_tables = {

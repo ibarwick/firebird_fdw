@@ -40,7 +40,7 @@ Features
 - Connection caching
 - Supports triggers on foreign tables (PostgreSQL 9.4 and later)
 - Supports `IMPORT FOREIGN SCHEMA` (PostgreSQL 9.5 and later)
-
+- Supports `COPY` and partition tuple routing (PostgreSQL 11 and later)
 
 Supported platforms
 -------------------

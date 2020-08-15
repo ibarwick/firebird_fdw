@@ -24,7 +24,7 @@ my $node = FirebirdFDWNode->new();
 
 $node->add_server_option('quote_identifiers', 'true');
 
-my $table_name = $node->_make_table_name();
+my $table_name = $node->make_table_name();
 
 my $tbl_sql = sprintf(
     <<EO_SQL,
