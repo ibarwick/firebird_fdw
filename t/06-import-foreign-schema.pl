@@ -53,19 +53,36 @@ my $q1_sql = sprintf(
     $data_table_name,
 );
 
+
+
 my $q1_res = $node->safe_psql($q1_sql);
 
-my $q1_expected_output = {
-	2 => <<EO_TXT,
+my $q1_expected_output = {};
+
+if ($version < 100000) {
+	$q1_expected_output->{2} = <<EO_TXT;
+id|integer|not null|
+blob_type|text||
+EO_TXT
+
+    $q1_expected_output->{3} = <<EO_TXT;
+id|integer|not null|
+blob_type|text||
+bool_type|boolean||
+EO_TXT
+}
+else {
+    $q1_expected_output->{2} = <<EO_TXT;
 id|integer||not null||
 blob_type|text||||
 EO_TXT
-	3 => <<EO_TXT,
+
+    $q1_expected_output->{3} = <<EO_TXT;
 id|integer||not null||
 blob_type|text||||
 bool_type|boolean||||
 EO_TXT
-};
+}
 
 my $q1_expected = $q1_expected_output->{$node->{firebird_major_version}};
 
@@ -106,11 +123,22 @@ my $q2_sql = sprintf(
 
 my $q2_res = $node->safe_psql($q2_sql);
 
-my $q2_expected = <<EO_TXT;
+my $q2_expected = undef;
+
+if ($version < 100000) {
+    $q2_expected = <<EO_TXT;
+lang_id|character(2)||
+name_english|character varying(64)||
+name_native|character varying(64)||
+EO_TXT
+}
+else {
+    $q2_expected = <<EO_TXT;
 lang_id|character(2)||||
 name_english|character varying(64)||||
 name_native|character varying(64)||||
 EO_TXT
+}
 
 chomp($q2_expected);
 

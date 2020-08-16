@@ -26,7 +26,11 @@
 #include "catalog/pg_proc.h"
 #include "catalog/pg_type.h"
 #include "commands/defrem.h"
+#if (PG_VERSION_NUM >= 90600)
 #include "common/keywords.h"
+#else
+#include "parser/keywords.h"
+#endif
 #include "nodes/nodeFuncs.h"
 #include "optimizer/clauses.h"
 #if (PG_VERSION_NUM >= 120000)
@@ -116,7 +120,9 @@ static bool foreign_expr_walker(Node *node,
 static bool canConvertOp(OpExpr *oe, int firebird_version);
 static bool is_builtin(Oid procid);
 
+#if (PG_VERSION_NUM >= 90500)
 static const char *quote_fb_identifier_for_import(const char *ident);
+#endif
 
 /**
  * buildSelectSql()
@@ -661,6 +667,7 @@ quote_fb_identifier(const char *ident, bool quote_ident)
 }
 
 
+#if (PG_VERSION_NUM >= 90500)
 /**
  * quote_fb_identifier_for_import()
  *
@@ -709,16 +716,16 @@ quote_fb_identifier_for_import(const char *ident)
 		 * that's fine, since we already know we have all-lower-case.
 		 */
 
-#if (PG_VERSION_NUM < 120000)
+#if (PG_VERSION_NUM >= 120000)
+		int			kwnum = ScanKeywordLookup(ident, &ScanKeywords);
+
+		if (kwnum >= 0 && ScanKeywordCategories[kwnum] != UNRESERVED_KEYWORD)
+			safe = false;
+#else
 		const ScanKeyword *keyword = ScanKeywordLookup(ident,
 													   ScanKeywords,
 													   NumScanKeywords);
 		if (keyword != NULL && keyword->category != UNRESERVED_KEYWORD)
-			safe = false;
-#else
-		int			kwnum = ScanKeywordLookup(ident, &ScanKeywords);
-
-		if (kwnum >= 0 && ScanKeywordCategories[kwnum] != UNRESERVED_KEYWORD)
 			safe = false;
 #endif
 
@@ -745,6 +752,7 @@ quote_fb_identifier_for_import(const char *ident)
 
 	return result;
 }
+#endif
 
 /**
  * unquoted_ident_to_upper()

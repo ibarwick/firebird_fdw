@@ -2069,10 +2069,7 @@ create_foreign_modify(EState *estate,
 	FirebirdFdwModifyState *fmstate;
 
 	Relation rel  = resultRelInfo->ri_RelationDesc;
-
-#if (PG_VERSION_NUM >= 110000)
 	TupleDesc	tupdesc = RelationGetDescr(rel);
-#endif
 
 	Oid			userid;
 	ForeignTable *table;
