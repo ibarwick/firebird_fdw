@@ -3458,9 +3458,11 @@ create_tuple_from_result(FBresult *res,
 
 	tuple = heap_form_tuple(tupdesc, values, nulls);
 
+#if (PG_VERSION_NUM >= 90500)
 	HeapTupleHeaderSetXmax(tuple->t_data, InvalidTransactionId);
 	HeapTupleHeaderSetXmin(tuple->t_data, InvalidTransactionId);
 	HeapTupleHeaderSetCmin(tuple->t_data, InvalidTransactionId);
+#endif
 
 	/* Clean up */
 	MemoryContextReset(tmp_context);

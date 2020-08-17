@@ -924,14 +924,23 @@ convertVar(Var *node, convert_expr_cxt *context, char **result)
 	{
 		/* Var belongs to foreign table */
 		RangeTblEntry *rte = planner_rt_fetch(node->varno, context->root);
+
+		/*
+		 * The RelOptInfo structure (represented by context->foreignrel)
+		 * only has serverid from 9.5, so we can't apply the server-level
+		 * quote_identifiers option in 9.4 and earlier.
+		 */
+
+		bool		quote_identifier = false;
+
+#if (PG_VERSION_NUM >= 90500)
 		ForeignServer *server = GetForeignServer(context->foreignrel->serverid);
 		fbServerOptions server_options = fbServerOptions_init;
-		bool		quote_identifier = false;
 
 		server_options.quote_identifiers.opt.boolptr = &quote_identifier;
 
 		firebirdGetServerOptions(server, &server_options);
-
+#endif
 		convertColumnRef(&buf,
 						 node->varno, node->varattno, rte,
 						 quote_identifier);

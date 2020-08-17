@@ -7,9 +7,10 @@ support, as well as pushdown of some operations. While it appears to be
 working reliably, please be aware this is still very much work-in-progress;
 *USE AT YOUR OWN RISK*.
 
-`firebird_fdw` is designed to be compatible with PostgreSQL 9.3 ~ 12.
-Write support is available in PostgreSQL 9.3 and later. It is not
-designed to work with forks of the main PostgreSQL community version.
+`firebird_fdw` is designed to be compatible with PostgreSQL 9.3 ~ 12,
+although in earlier PostgreSQL versions not all `firebird_fdw` options
+are available. It is not designed to work with forks of the core PostgreSQL
+community version.
 
 `firebird_fdw` supports Firebird 2.5 and later. It will probably work with
 Firebird 2.0 or later, and may work with earlier versions if the
@@ -129,7 +130,9 @@ Usage
   and column names.
 
   See "[Identifier case handling](#identifier-case-handling)" for details.
-  `firebird_fdw` 1.2.0 and later.
+
+  `firebird_fdw` 1.2.0 and later. In PostgreSQL 9.3 and 9.4 this setting
+  is ignored for column names.
 
 
 ## CREATE USER MAPPING options
