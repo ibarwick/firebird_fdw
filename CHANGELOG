@@ -12,6 +12,8 @@ Revision history for firebird_fdw
 	- Push down boolean tests in WHERE clauses where possible
 	- Prevent tables defined as queries from being set as "updatable = 'true'"
 	- Explicitly reject INSERT with ON CONFLICT clause
+	- When analyzing a foreign table, only retrieve the columns defined in
+	  that table
 
 1.1.0	2019-05-31
 	- Add utility function "firebird_fdw_close_connections()"

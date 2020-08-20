@@ -284,6 +284,11 @@ isFirebirdExpr(PlannerInfo *root,
 extern char *
 getFirebirdColumnName(Oid foreigntableid, int varattno, bool *quote_col_identifier);
 
+void convertColumnRef(StringInfo buf,
+					  Oid relid,
+					  int varattno,
+					  bool quote_identifier);
+
 const char *
 quote_fb_identifier(const char *ident, bool quote_ident);
 

@@ -2833,10 +2833,12 @@ fbAcquireSampleRowsFunc(Relation relation, int elevel,
 	int collected_rows = 0, result_rows;
 	double rstate, row_sample_interval = -1;
 
-	TupleDesc tupDesc = RelationGetDescr(relation);
+	TupleDesc tupdesc = RelationGetDescr(relation);
 	AttInMetadata	 *attinmeta;
 	char **tuple_values;
 	Oid relid = RelationGetRelid(relation);
+	int attnum;
+	bool first = true;
 
 	ForeignTable *table;
 	ForeignServer *server;
@@ -2861,11 +2863,31 @@ fbAcquireSampleRowsFunc(Relation relation, int elevel,
 	elog(DEBUG2, "%i targrows to collect", targrows);
 
 	/* initialize analyze query */
-	initStringInfo(&analyze_query);
 
-	/* XXX explicitly select known columns */
+	initStringInfo(&analyze_query);
+	appendStringInfoString(&analyze_query, "SELECT ");
+
+	for (attnum = 1; attnum <= tupdesc->natts; attnum++)
+	{
+#if (PG_VERSION_NUM >= 110000)
+		Form_pg_attribute attr = TupleDescAttr(tupdesc, attnum - 1);
+#else
+		Form_pg_attribute attr = tupdesc->attrs[attnum - 1];
+#endif
+
+		if (attr->attisdropped)
+			continue;
+
+		if (first == false)
+			appendStringInfoString(&analyze_query, ", ");
+		else
+			first = false;
+
+		convertColumnRef(&analyze_query, relid, attnum, fdw_state->quote_identifier);
+	}
+
 	appendStringInfo(&analyze_query,
-					 "SELECT * FROM %s",
+					 " FROM %s",
 					 quote_fb_identifier(fdw_state->svr_table, fdw_state->quote_identifier));
 
 	fdw_state->query = analyze_query.data;
@@ -2884,7 +2906,7 @@ fbAcquireSampleRowsFunc(Relation relation, int elevel,
 	result_rows = FQntuples(res);
 
 	elog(DEBUG1, "%i rows returned", result_rows);
-	attinmeta = TupleDescGetAttInMetadata(tupDesc);
+	attinmeta = TupleDescGetAttInMetadata(tupdesc);
 	tuple_values = (char **) palloc0(sizeof(char *) * FQnfields(res));
 
 	for (fdw_state->row = 0; fdw_state->row < result_rows; fdw_state->row++)
@@ -2893,9 +2915,9 @@ fbAcquireSampleRowsFunc(Relation relation, int elevel,
 		vacuum_delay_point();
 
 		if (fdw_state->row == 0)
-		   elog(DEBUG2, "result has %i cols; tupDesc has %i atts",
+		   elog(DEBUG2, "result has %i cols; tupdesc has %i atts",
 				FQnfields(res),
-				tupDesc->natts);
+				tupdesc->natts);
 
 		if (fdw_state->row < targrows)
 		{

@@ -74,10 +74,7 @@ typedef struct convert_expr_cxt
 
 static char *convertDatum(Datum datum, Oid type);
 
-static void convertColumnRef(StringInfo buf,
-							 int varno, int varattno,
-							 RangeTblEntry *rte,
-							 bool quote_identifier);
+
 static void convertRelation(StringInfo buf, FirebirdFdwState *fdw_state);
 static void convertStringLiteral(StringInfo buf, const char *val);
 static void convertOperatorName(StringInfo buf, Form_pg_operator opform, char *left, char *right);
@@ -188,7 +185,7 @@ buildInsertSql(StringInfo buf,
 		else
 			first = false;
 
-		convertColumnRef(buf, rtindex, attnum, rte, fdw_state->quote_identifier);
+		convertColumnRef(buf, rte->relid, attnum, fdw_state->quote_identifier);
 	}
 
 	appendStringInfoString(buf, ")\n VALUES (");
@@ -241,7 +238,7 @@ buildUpdateSql(StringInfo buf,
 		else
 			first = false;
 
-		convertColumnRef(buf, rtindex, attnum, rte,
+		convertColumnRef(buf, rte->relid, attnum,
 						 fdw_state->quote_identifier);
 		appendStringInfo(buf, " = ?");
 	}
@@ -590,27 +587,25 @@ convertDatum(Datum datum, Oid type)
  * Construct name to use for given column, and emit it into 'buf'.
  * If it has a column_name FDW option, use that instead of attribute name.
  */
-static void
-convertColumnRef(StringInfo buf, int varno, int varattno, RangeTblEntry *rte, bool quote_identifier)
+void
+convertColumnRef(StringInfo buf, Oid relid, int varattno, bool quote_identifier)
 {
 	char	   *colname = NULL;
 	bool		quote_col_identifier = quote_identifier;
 
-	/* varno must not be any of OUTER_VAR, INNER_VAR and INDEX_VAR. */
-	Assert(!IS_SPECIAL_VARNO(varno));
 
 	elog(DEBUG2, "entering function %s", __func__);
 
 	/* Use Firebird column name if defined */
-	colname = getFirebirdColumnName(rte->relid, varattno, &quote_col_identifier);
+	colname = getFirebirdColumnName(relid, varattno, &quote_col_identifier);
 
 	/* otherwise use Postgres column name */
 	if (colname == NULL)
 	{
 #if (PG_VERSION_NUM >= 110000)
-		colname = get_attname(rte->relid, varattno, false);
+		colname = get_attname(relid, varattno, false);
 #else
-		colname = get_relid_attribute_name(rte->relid, varattno);
+		colname = get_relid_attribute_name(relid, varattno);
 #endif
 	}
 
@@ -942,7 +937,7 @@ convertVar(Var *node, convert_expr_cxt *context, char **result)
 		firebirdGetServerOptions(server, &server_options);
 #endif
 		convertColumnRef(&buf,
-						 node->varno, node->varattno, rte,
+						 rte->relid, node->varattno,
 						 quote_identifier);
 	}
 	else
@@ -1754,13 +1749,14 @@ convertTargetList(StringInfo buf,
 {
 	TupleDesc	tupdesc = RelationGetDescr(rel);
 	bool		have_wholerow;
-	bool		first;
+	bool		first = true;
 	int			i;
 
 	ForeignTable  *table = GetForeignTable(rte->relid);
 	ForeignServer *server = GetForeignServer(table->serverid);
 	fbServerOptions server_options = fbServerOptions_init;
 	bool		quote_identifier = false;
+
 
 	server_options.quote_identifiers.opt.boolptr = &quote_identifier;
 	firebirdGetServerOptions(server, &server_options);
@@ -1788,11 +1784,12 @@ convertTargetList(StringInfo buf,
 			bms_is_member(i - FirstLowInvalidHeapAttributeNumber,
 						  attrs_used))
 		{
-			if (!first)
+			if (first == false)
 				appendStringInfoString(buf, ", ");
-			first = false;
+			else
+				first = false;
 
-			convertColumnRef(buf, rtindex, i, rte, quote_identifier);
+			convertColumnRef(buf, rte->relid, i, quote_identifier);
 
 			*retrieved_attrs = lappend_int(*retrieved_attrs, i);
 		}
