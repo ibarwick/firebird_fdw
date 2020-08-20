@@ -787,7 +787,7 @@ exitHook(int code, Datum arg)
 void
 fbSigInt(SIGNAL_ARGS)
 {
-	int                     save_errno = errno;
+	int			save_errno = errno;
 
 	elog(DEBUG2, "entering function %s", __func__);
 	/*
@@ -966,7 +966,6 @@ firebirdGetForeignRelSize(PlannerInfo *root,
 							 fdw_state->disable_pushdowns,
 							 FQserverVersion(fdw_state->conn));
 
-
 	/*
 	 * Identify which attributes will need to be retrieved from the remote
 	 * server.	These include all attrs needed for joins or final output, plus
@@ -999,6 +998,10 @@ firebirdGetForeignRelSize(PlannerInfo *root,
 		elog(DEBUG2, "estimated_row_count: %i", fdw_state->estimated_row_count);
 		baserel->rows = fdw_state->estimated_row_count;
 	}
+	/*
+	 * do a brute-force SELECT COUNT(*); Firebird doesn't provide any other
+	 * way of estimating table size (see http://www.firebirdfaq.org/faq376/ )
+	 */
 	else
 	{
 		initStringInfo(&query);
@@ -1564,7 +1567,7 @@ firebirdIterateForeignScan(ForeignScanState *node)
 	}
 
 	tupledesc = node->ss.ss_currentRelation->rd_att;
-	elog(DEBUG2, "Tuple has %i atts", tupledesc->natts);
+	elog(DEBUG2, "tuple has %i atts", tupledesc->natts);
 
 	/* include/funcapi.h */
 	attinmeta = TupleDescGetAttInMetadata(tupledesc);
@@ -2839,6 +2842,8 @@ fbAcquireSampleRowsFunc(Relation relation, int elevel,
 	ForeignServer *server;
 	UserMapping *user;
 
+	elog(DEBUG2, "entering function %s", __func__);
+
 	fdw_state = getFdwState(relid);
 	fdw_state->row = 0;
 
@@ -2846,13 +2851,13 @@ fbAcquireSampleRowsFunc(Relation relation, int elevel,
 	server = GetForeignServer(table->serverid);
 	user = GetUserMapping(relation->rd_rel->relowner, server->serverid);
 	fdw_state->conn = firebirdInstantiateConnection(server, user);
-	elog(DEBUG2, "here");
+
 	/* Prepare for sampling rows */
 	/* src/backend/commands/analyze.c */
 	rstate = anl_init_selection_state(targrows);
 	*totalrows = 0;
 
-	elog(DEBUG1, "Analyzing foreign table with OID %i (%s)", relid, fdw_state->svr_table);
+	elog(DEBUG1, "analyzing foreign table with OID %i (%s)", relid, fdw_state->svr_table);
 	elog(DEBUG2, "%i targrows to collect", targrows);
 
 	/* initialize analyze query */
@@ -2864,8 +2869,8 @@ fbAcquireSampleRowsFunc(Relation relation, int elevel,
 					 quote_fb_identifier(fdw_state->svr_table, fdw_state->quote_identifier));
 
 	fdw_state->query = analyze_query.data;
-	elog(DEBUG1, "Analyze query is: %s", fdw_state->query);
-	elog(DEBUG1, "%s", FQserverVersionString(fdw_state->conn));
+	elog(DEBUG1, "analyze query is: %s", fdw_state->query);
+
 	res = FQexec(fdw_state->conn, fdw_state->query);
 
 	if (FQresultStatus(res) != FBRES_TUPLES_OK)
@@ -2904,7 +2909,7 @@ fbAcquireSampleRowsFunc(Relation relation, int elevel,
 			elog(DEBUG2, "Going to add a random sample");
 			/*
 			 * Once the initial "targrows" number of rows has been collected,
-			 * replace random rows at "row_sample_interval" intervals
+			 * replace random rows at "row_sample_interval" intervals.
 			 */
 			if (row_sample_interval < 0)
 				row_sample_interval = anl_get_next_S(*totalrows, targrows, &rstate);
@@ -2938,7 +2943,6 @@ fbAcquireSampleRowsFunc(Relation relation, int elevel,
  * Generate table definitions for import into PostgreSQL
  *
  * TODO:
- *  - preserve quoted names
  *  - verify data types, warn about ones which can't be imported
  *  - verify object names (FB is generally somewhat stricter than Pg,
  *    so range of names valid in FB but not in Pg should be fairly small)
@@ -2996,9 +3000,9 @@ firebirdImportForeignSchema(ImportForeignSchemaStmt *stmt,
 	 */
 	initStringInfo(&table_query);
 	appendStringInfoString(&table_query,
-						   "   SELECT TRIM(rdb$relation_name) AS relname,  \n"
+						   "   SELECT TRIM(rdb$relation_name) AS relname, \n"
 						   "          CASE WHEN rdb$view_blr IS NULL THEN 'r' ELSE 'v' END AS type \n"
-						   "     FROM rdb$relations  \n"
+						   "     FROM rdb$relations \n"
 						   "    WHERE (rdb$system_flag IS NULL OR rdb$system_flag = 0) \n");
 
 
@@ -3250,7 +3254,7 @@ convert_prep_stmt_params(FirebirdFdwModifyState *fmstate,
 
 		oidout = OutputFunctionCall(&fmstate->p_flinfo[pindex],
 								 PointerGetDatum(tupleid2));
-		// XXX use strtol?
+
 		sprintf(db_key, "%08x%08x", BlockIdGetBlockNumber(&tupleid->ip_blkid), (unsigned int)atol(oidout));
 
 		p_values[pindex] = db_key;
@@ -3326,7 +3330,7 @@ static void
 store_returning_result(FirebirdFdwModifyState *fmstate,
                        TupleTableSlot *slot, FBresult *res)
 {
-	/* PGresult must be released before leaving this function. */
+	/* FBresult must be released before leaving this function. */
 	PG_TRY();
 	{
 		HeapTuple	newtup;
