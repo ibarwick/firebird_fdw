@@ -2199,7 +2199,7 @@ foreign_expr_walker(Node *node,
 
 			}
 
-			/* Firebird 2.1 or later */
+			/* Firebird 2.1 and later */
 			if (glob_cxt->firebird_version >= 20100)
 			{
 				if (strcmp(oprname, "abs") == 0
@@ -2216,8 +2216,6 @@ foreign_expr_walker(Node *node,
 				 || strcmp(oprname, "ltrim") == 0
 				 || strcmp(oprname, "length") == 0
 				 || strcmp(oprname, "log") == 0
-					/* XXX: LPAD() behaviour is slightly different between 2.1 and 2.5 */
-				 || strcmp(oprname, "lpad") == 0
 				 || strcmp(oprname, "mod") == 0
 				 || strcmp(oprname, "nullif") == 0
 				 || strcmp(oprname, "overlay") == 0
@@ -2225,8 +2223,6 @@ foreign_expr_walker(Node *node,
 				 || strcmp(oprname, "pow") == 0
 				 || strcmp(oprname, "power") == 0
 				 || strcmp(oprname, "reverse") == 0
-					/* XXX: RPAD() behaviour is slightly different between 2.1 and 2.5 */
-				 || strcmp(oprname, "rpad") == 0
 				 || strcmp(oprname, "rtrim") == 0
 				 || strcmp(oprname, "sign") == 0
 				 || strcmp(oprname, "sin") == 0
@@ -2234,6 +2230,16 @@ foreign_expr_walker(Node *node,
 				 || strcmp(oprname, "strpos") == 0
 				 || strcmp(oprname, "tan") == 0
 				 || strcmp(oprname, "trunc") == 0)
+				{
+					return true;
+				}
+			}
+
+			/* Firebird 2.5 and later */
+			if (glob_cxt->firebird_version >= 20500)
+			{
+				if (strcmp(oprname, "lpad") == 0
+				 || strcmp(oprname, "rpad") == 0)
 				{
 					return true;
 				}
