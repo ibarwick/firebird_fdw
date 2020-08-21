@@ -117,6 +117,9 @@ static bool foreign_expr_walker(Node *node,
 static bool canConvertOp(OpExpr *oe, int firebird_version);
 static bool is_builtin(Oid procid);
 
+static char *getFirebirdColumnName(Oid foreigntableid, int varattno, bool *quote_col_identifier);
+
+
 #if (PG_VERSION_NUM >= 90500)
 static const char *quote_fb_identifier_for_import(const char *ident);
 #endif
@@ -1845,6 +1848,7 @@ identifyRemoteConditions(PlannerInfo *root,
 	foreach (lc, baserel->baserestrictinfo)
 	{
 		RestrictInfo *ri = (RestrictInfo *) lfirst(lc);
+		elog(DEBUG3, "here XXX");
 		if (!disable_pushdowns && isFirebirdExpr(root, baserel, ri->clause, firebird_version))
 		{
 			*remote_conds = lappend(*remote_conds, ri);
@@ -1856,6 +1860,8 @@ identifyRemoteConditions(PlannerInfo *root,
 			elog(DEBUG2, " -> keeping local");
 		}
 	}
+
+	elog(DEBUG2, "exiting function %s", __func__);
 }
 
 

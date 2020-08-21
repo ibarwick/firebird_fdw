@@ -1419,25 +1419,7 @@ firebirdBeginForeignScan(ForeignScanState *node,
 		Form_pg_attribute att_tuple = tupdesc->attrs[i];
 #endif
 
-		char	 *pg_colname = NULL;
-		char	 *fb_colname = NULL;
-
 		fdw_state->table->columns[fdw_state->table->pg_column_total] = (fbTableColumn *)palloc0(sizeof(fbTableColumn));
-
-		pg_colname = NameStr(att_tuple->attname);
-		elog(DEBUG2, "PG column: %s", pg_colname);
-
-		fb_colname = getFirebirdColumnName(foreigntableid, i + 1, NULL);
-
-		if (fb_colname == NULL)
-			fb_colname = pg_colname;
-
-		elog(DEBUG2, "FB column: %s", fb_colname);
-		fdw_state->table->columns[fdw_state->table->pg_column_total]->fbname   = fb_colname;
-		fdw_state->table->columns[fdw_state->table->pg_column_total]->pgname   = pg_colname;
-		fdw_state->table->columns[fdw_state->table->pg_column_total]->pgtype   = att_tuple->atttypid;
-		fdw_state->table->columns[fdw_state->table->pg_column_total]->pgtypmod = att_tuple->atttypmod;
-		fdw_state->table->columns[fdw_state->table->pg_column_total]->pgattnum = att_tuple->attnum;
 
 		fdw_state->table->columns[fdw_state->table->pg_column_total]->isdropped = att_tuple->attisdropped
 			? true

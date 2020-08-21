@@ -111,11 +111,6 @@ typedef struct fbTableOptions {
 
 typedef struct fbTableColumn
 {
-	char *fbname;			 /* Firebird column name */
-	char *pgname;			 /* PostgreSQL column name */
-	int pgattnum;			 /* PostgreSQL attribute number */
-	Oid pgtype;				 /* PostgreSQL data type */
-	int pgtypmod;			 /* PostgreSQL type modifier */
 	bool isdropped;			 /* indicate if PostgreSQL column is dropped */
 	bool used;				 /* indicate if column used in current query */
 } fbTableColumn;
@@ -279,10 +274,6 @@ isFirebirdExpr(PlannerInfo *root,
 			   RelOptInfo *baserel,
 			   Expr *expr,
 			   int firebird_version);
-
-
-extern char *
-getFirebirdColumnName(Oid foreigntableid, int varattno, bool *quote_col_identifier);
 
 void convertColumnRef(StringInfo buf,
 					  Oid relid,
