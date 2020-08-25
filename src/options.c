@@ -17,25 +17,25 @@
 static struct FirebirdFdwOption valid_options[] =
 {
 	/* Connection options */
-	{ "address",		   ForeignServerRelationId },
-	{ "port",			   ForeignServerRelationId }, /* not implemented (!) */
-	{ "database",		   ForeignServerRelationId },
-	{ "disable_pushdowns", ForeignServerRelationId },
-	{ "updatable",		   ForeignServerRelationId },
-	{ "quote_identifiers", ForeignServerRelationId },
+	{ "address",			 ForeignServerRelationId },
+	{ "port",				 ForeignServerRelationId },
+	{ "database",			 ForeignServerRelationId },
+	{ "disable_pushdowns",	 ForeignServerRelationId },
+	{ "updatable",			 ForeignServerRelationId },
+	{ "quote_identifiers",	 ForeignServerRelationId },
 	/* User options */
-	{ "username",		   UserMappingRelationId   },
-	{ "password",		   UserMappingRelationId   },
+	{ "username",			 UserMappingRelationId   },
+	{ "password",			 UserMappingRelationId   },
 	/* Table options */
-	{ "query",			   ForeignTableRelationId  },
-	{ "table_name",		   ForeignTableRelationId  },
-	{ "updatable",		   ForeignTableRelationId  },
-	{ "estimated_row_count", ForeignTableRelationId },
-	{ "quote_identifier",  ForeignTableRelationId  },
+	{ "query",				 ForeignTableRelationId  },
+	{ "table_name",			 ForeignTableRelationId  },
+	{ "updatable",			 ForeignTableRelationId  },
+	{ "estimated_row_count", ForeignTableRelationId  },
+	{ "quote_identifier",	 ForeignTableRelationId  },
 	/* Column options */
-	{ "column_name",	   AttributeRelationId	   },
-	{ "quote_identifier",  AttributeRelationId     },
-	{ NULL,				   InvalidOid }
+	{ "column_name",		 AttributeRelationId	 },
+	{ "quote_identifier",	 AttributeRelationId     },
+	{ NULL,					 InvalidOid }
 };
 
 extern Datum firebird_fdw_validator(PG_FUNCTION_ARGS);
