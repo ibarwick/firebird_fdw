@@ -313,11 +313,11 @@ buildWhereClause(StringInfo output,
 				 RelOptInfo *baserel,
 				 List *exprs,
 				 bool is_first,
-				 List **params,
-				 int firebird_version)
+				 List **params)
 {
 	convert_expr_cxt context;
 	ListCell   *lc;
+	FirebirdFdwState *fdw_state = (FirebirdFdwState *)baserel->fdw_private;
 
 	elog(DEBUG2, "entering function %s", __func__);
 
@@ -329,7 +329,7 @@ buildWhereClause(StringInfo output,
 	context.foreignrel = baserel;
 	context.buf = output;
 	context.params_list = params;
-	context.firebird_version = firebird_version;
+	context.firebird_version = FQserverVersion(fdw_state->conn);
 
 	foreach (lc, exprs)
 	{

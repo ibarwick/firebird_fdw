@@ -1254,7 +1254,7 @@ firebirdGetForeignPlan(PlannerInfo *root,
 				   &retrieved_attrs, &db_key_used);
 
 	if (remote_conds)
-		buildWhereClause(&sql, root, baserel, remote_conds, true, &params_list, FQserverVersion(fdw_state->conn));
+		buildWhereClause(&sql, root, baserel, remote_conds, true, &params_list);
 
 	elog(DEBUG2, "db_key_used? %c", db_key_used == true ? 'Y' : 'N');
 

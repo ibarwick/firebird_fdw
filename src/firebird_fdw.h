@@ -258,8 +258,7 @@ extern void buildWhereClause(StringInfo buf,
 				 RelOptInfo *baserel,
 				 List *exprs,
 				 bool is_first,
-				 List **params,
-				 int firebird_version);
+				 List **params);
 
 extern void
 identifyRemoteConditions(PlannerInfo *root,
