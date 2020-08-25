@@ -17,9 +17,18 @@ use FirebirdFDWNode;
 
 my $node = FirebirdFDWNode->new();
 
+my @boolean_pushdowns = (
+    ['IS TRUE' ,     q|\(\(bool_type IS TRUE\)\)|],
+    ['IS FALSE',     q|\(\(bool_type IS FALSE\)\)|],
+    ['IS NOT TRUE',  q|\(\(bool_type IS FALSE\) OR \(bool_type IS NULL\)\)|],
+    ['IS NOT FALSE', q|\(\(bool_type IS TRUE\) OR \(bool_type IS NULL\)\)|],
+    ['IS NULL',      q|\(\(bool_type IS NULL\)\)|],
+    ['IS NOT NULL',  q|\(\(bool_type IS NOT NULL\)\)|],
+);
+
 
 if ($node->{firebird_major_version} >= 3) {
-	plan tests => 3;
+	plan tests => scalar @boolean_pushdowns;
 }
 else {
     plan skip_all => sprintf(
@@ -49,75 +58,34 @@ EO_SQL
 
 	$node->safe_psql($bool_insert_sql);
 
-    # 1. Check basic pushdown
-    # -----------------------
+    # 1. Check boolean pushdowns
+    # --------------------------
 
-    my $explain_1_q = sprintf(
-        q|EXPLAIN SELECT * FROM %s WHERE bool_type IS TRUE|,
-        $table_name,
-	);
+    foreach my $boolean_pushdown (@boolean_pushdowns) {
+        my $explain_q = sprintf(
+            q|EXPLAIN SELECT * FROM %s WHERE bool_type %s|,
+            $table_name,
+            $boolean_pushdown->[0],
+        );
 
-    my ($explain_1_res, $explain_1_stdout, $explain_1_stderr) = $node->psql(
-        $explain_1_q,
-    );
+        my ($explain_res, $explain_stdout, $explain_stderr) = $node->psql(
+            $explain_q,
+        );
 
-    my $explain_1_expected = sprintf(
-        q|Firebird query: SELECT.+?WHERE\s+\(\(bool_type IS TRUE\)\)|,
-    );
+        my $explain_expected = sprintf(
+            q|Firebird query: SELECT.+?WHERE\s+%s|,
+            $boolean_pushdown->[1],
+        );
 
-    like (
-        $explain_1_stdout,
-        qr/$explain_1_expected/,
-        q|Check basic pushdown|,
-    );
-
-
-    # 2. Check IS NOT TRUE
-    # --------------------
-
-
-    my $explain_2_q = sprintf(
-        q|EXPLAIN SELECT * FROM %s WHERE bool_type IS NOT TRUE|,
-        $table_name,
-	);
-
-    my ($explain_2_res, $explain_2_stdout, $explain_2_stderr) = $node->psql(
-        $explain_2_q,
-    );
-
-    my $explain_2_expected = sprintf(
-        q|Firebird query: SELECT.+?WHERE\s+\(\(bool_type IS FALSE\) OR \(bool_type IS NULL\)\)|,
-    );
-
-    like (
-        $explain_2_stdout,
-        qr/$explain_2_expected/,
-        q|Check pushdown with IS NOT TRUE|,
-    );
-
-    # 3. Check IS NOT FALSE
-    # ---------------------
-
-    my $explain_3_q = sprintf(
-        q|EXPLAIN SELECT * FROM %s WHERE bool_type IS NOT FALSE|,
-        $table_name,
-	);
-
-    my ($explain_3_res, $explain_3_stdout, $explain_3_stderr) = $node->psql(
-        $explain_3_q,
-    );
-
-    my $explain_3_expected = sprintf(
-        q|Firebird query: SELECT.+?WHERE\s+\(\(bool_type IS TRUE\) OR \(bool_type IS NULL\)\)|,
-    );
-
-    like (
-        $explain_3_stdout,
-        qr/$explain_3_expected/,
-        q|Check pushdown with IS NOT FALSE|,
-    );
-
-
+        like (
+            $explain_stdout,
+            qr/$explain_expected/,
+            sprintf(
+                q|Check pushdown for "%s"|,
+                $boolean_pushdown->[0],
+            ),
+        );
+    }
 }
 
 # Clean up
