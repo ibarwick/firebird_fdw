@@ -338,8 +338,9 @@ firebird_fdw_server_options(PG_FUNCTION_ARGS)
 	char	   *address = NULL;
 	int			port = FIREBIRD_DEFAULT_PORT;
 	char	   *database = NULL;
-	bool		disable_pushdowns = false;
 	bool		updatable = true;
+	bool		quote_identifiers = false;
+	bool		disable_pushdowns = false;
 
 	ForeignServer *server;
 	fbServerOptions server_options = fbServerOptions_init;
@@ -362,8 +363,9 @@ firebird_fdw_server_options(PG_FUNCTION_ARGS)
 	server_options.address.opt.strptr = &address;
 	server_options.port.opt.intptr = &port;
 	server_options.database.opt.strptr = &database;
-	server_options.disable_pushdowns.opt.boolptr = &disable_pushdowns;
 	server_options.updatable.opt.boolptr = &updatable;
+	server_options.quote_identifiers.opt.boolptr = &quote_identifiers;
+	server_options.disable_pushdowns.opt.boolptr = &disable_pushdowns;
 
 	firebirdGetServerOptions(
 		server,
@@ -419,21 +421,6 @@ firebird_fdw_server_options(PG_FUNCTION_ARGS)
 
 	tuplestore_putvalues(tupstore, tupdesc, values, nulls);
 
-	/* disable_pushdowns */
-	memset(values, 0, sizeof(values));
-	memset(nulls, 0, sizeof(nulls));
-
-	initStringInfo(&option);
-	appendStringInfo(&option,
-					 "%s", disable_pushdowns ? "true" : "false");
-
-	values[0] = CStringGetTextDatum("disable_pushdowns");
-	values[1] = CStringGetTextDatum(option.data);
-	values[2] = BoolGetDatum(server_options.disable_pushdowns.provided);
-
-	tuplestore_putvalues(tupstore, tupdesc, values, nulls);
-	pfree(option.data);
-
 	/* updatable */
 	memset(values, 0, sizeof(values));
 	memset(nulls, 0, sizeof(nulls));
@@ -445,6 +432,36 @@ firebird_fdw_server_options(PG_FUNCTION_ARGS)
 	values[0] = CStringGetTextDatum("updatable");
 	values[1] = CStringGetTextDatum(option.data);
 	values[2] = BoolGetDatum(server_options.updatable.provided);
+
+	tuplestore_putvalues(tupstore, tupdesc, values, nulls);
+	pfree(option.data);
+
+	/* quote_identifiers */
+	memset(values, 0, sizeof(values));
+	memset(nulls, 0, sizeof(nulls));
+
+	initStringInfo(&option);
+	appendStringInfo(&option,
+					 "%s", quote_identifiers ? "true" : "false");
+
+	values[0] = CStringGetTextDatum("quote_identifiers");
+	values[1] = CStringGetTextDatum(option.data);
+	values[2] = BoolGetDatum(server_options.quote_identifiers.provided);
+
+	tuplestore_putvalues(tupstore, tupdesc, values, nulls);
+	pfree(option.data);
+
+	/* disable_pushdowns */
+	memset(values, 0, sizeof(values));
+	memset(nulls, 0, sizeof(nulls));
+
+	initStringInfo(&option);
+	appendStringInfo(&option,
+					 "%s", disable_pushdowns ? "true" : "false");
+
+	values[0] = CStringGetTextDatum("disable_pushdowns");
+	values[1] = CStringGetTextDatum(option.data);
+	values[2] = BoolGetDatum(server_options.disable_pushdowns.provided);
 
 	tuplestore_putvalues(tupstore, tupdesc, values, nulls);
 	pfree(option.data);

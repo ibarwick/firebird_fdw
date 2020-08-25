@@ -257,9 +257,10 @@ functions, `firebird_fdw` provides the following user-callable utility functions
        address           | localhost                       | t
        port              | 3050                            | f
        database          | /var/lib/firebird/data/test.fdb | t
-       disable_pushdowns | false                           | f
        updatable         | true                            | f
-      (5 rows)
+       quote_identifiers | false                           | f
+       disable_pushdowns | false                           | f
+      (6 rows)
 
   (`firebird_fdw` 1.2.0 and later)
 
