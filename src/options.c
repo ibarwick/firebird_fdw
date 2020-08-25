@@ -372,3 +372,29 @@ firebirdGetTableOptions(ForeignTable *table,
 	}
 }
 
+
+void
+firebirdGetColumnOptions(Oid foreigntableid, int varattno,
+						 fbColumnOptions *options)
+{
+	List	   *options_list;
+	ListCell   *lc;
+
+	options_list = GetForeignColumnOptions(foreigntableid, varattno);
+	foreach (lc, options_list)
+	{
+		DefElem	   *def = (DefElem *) lfirst(lc);
+
+		if (options->column_name != NULL &&  strcmp(def->defname, "column_name") == 0)
+		{
+			*options->column_name = defGetString(def);
+			break;
+		}
+
+		if (options->quote_identifier != NULL && strcmp(def->defname, "quote_identifier") == 0 )
+		{
+			*options->quote_identifier = defGetBoolean(def);
+			continue;
+		}
+	}
+}

@@ -109,6 +109,16 @@ typedef struct fbTableOptions {
 	NULL \
 }
 
+typedef struct fbColumnOptions {
+	char **column_name;
+	bool *quote_identifier;
+} fbColumnOptions;
+
+#define fbColumnOptions_init { \
+	NULL, \
+	NULL \
+}
+
 typedef struct fbTableColumn
 {
 	bool isdropped;			 /* indicate if PostgreSQL column is dropped */
@@ -224,6 +234,9 @@ extern void firebirdGetServerOptions(ForeignServer *server,
 
 extern void firebirdGetTableOptions(ForeignTable *table,
 									fbTableOptions *options);
+
+extern void firebirdGetColumnOptions(Oid foreigntableid, int varattno,
+									 fbColumnOptions *options);
 
 /* query-building functions (in convert.c) */
 

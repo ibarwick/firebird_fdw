@@ -117,9 +117,6 @@ static bool foreign_expr_walker(Node *node,
 static bool canConvertOp(OpExpr *oe, int firebird_version);
 static bool is_builtin(Oid procid);
 
-static char *getFirebirdColumnName(Oid foreigntableid, int varattno, bool *quote_col_identifier);
-
-
 #if (PG_VERSION_NUM >= 90500)
 static const char *quote_fb_identifier_for_import(const char *ident);
 #endif
@@ -595,12 +592,17 @@ convertColumnRef(StringInfo buf, Oid relid, int varattno, bool quote_identifier)
 {
 	char	   *colname = NULL;
 	bool		quote_col_identifier = quote_identifier;
+	fbColumnOptions column_options = fbColumnOptions_init;
 
+	column_options.quote_identifier = &quote_col_identifier;
+	column_options.column_name = &colname;
 
 	elog(DEBUG2, "entering function %s", __func__);
 
 	/* Use Firebird column name if defined */
-	colname = getFirebirdColumnName(relid, varattno, &quote_col_identifier);
+
+	firebirdGetColumnOptions(relid, varattno,
+							 &column_options);
 
 	/* otherwise use Postgres column name */
 	if (colname == NULL)
@@ -2384,48 +2386,6 @@ canConvertOp(OpExpr *oe, int firebird_version)
 	return false;
 }
 
-
-/**
- * getFirebirdColumnName()
- *
- * Return Firebird column name as defined by the column option,
- * otherwise NULL.
- */
-char *
-getFirebirdColumnName(Oid foreigntableid, int varattno, bool *quote_col_identifier)
-{
-	List	   *options;
-	ListCell   *lc;
-	char *colname = NULL;
-
-	options = GetForeignColumnOptions(foreigntableid, varattno);
-	foreach (lc, options)
-	{
-		DefElem	   *def = (DefElem *) lfirst(lc);
-
-		if (strcmp(def->defname, "column_name") == 0)
-		{
-			colname = defGetString(def);
-			break;
-		}
-	}
-
-	if (quote_col_identifier != NULL)
-	{
-		foreach (lc, options)
-		{
-			DefElem	   *def = (DefElem *) lfirst(lc);
-
-			if (strcmp(def->defname, "quote_identifier") == 0)
-			{
-				*quote_col_identifier = defGetBoolean(def);
-				break;
-			}
-		}
-	}
-
-	return colname;
-}
 
 #if (PG_VERSION_NUM >= 90500)
 /**
