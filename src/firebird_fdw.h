@@ -164,6 +164,8 @@ typedef struct FirebirdFdwState
 	bool		implicit_bool_type;  /* true if server option "implicit_bool_type" supplied */
 
 	FBconn	   *conn;
+	int		    firebird_version; /* cache Firebird version from connection */
+
 	List	   *remote_conds;
 	List	   *local_conds;
 
@@ -202,7 +204,7 @@ typedef struct FirebirdFdwModifyState
 
 	/* for remote query execution */
 	FBconn		 *conn;			   /* connection for the scan */
-	int			  firebird_version; /* cache Firebird version from connection*/
+	int			  firebird_version; /* cache Firebird version from connection */
 	/* extracted fdw_private data */
 	char		 *query;		   /* text of INSERT/UPDATE/DELETE command */
 	List		 *target_attrs;	   /* list of target attribute numbers */

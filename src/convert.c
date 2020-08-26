@@ -150,7 +150,7 @@ buildSelectSql(StringInfo buf,
 	/* Construct SELECT list */
 	appendStringInfoString(buf, "SELECT ");
 	convertTargetList(buf, rte, baserel->relid, rel, attrs_used, true,
-					  FQserverVersion(fdw_state->conn),
+					  fdw_state->firebird_version,
 					  retrieved_attrs, db_key_used);
 
 	/* Construct FROM clause */
@@ -331,7 +331,7 @@ buildWhereClause(StringInfo output,
 	context.foreignrel = baserel;
 	context.buf = output;
 	context.params_list = params;
-	context.firebird_version = FQserverVersion(fdw_state->conn);
+	context.firebird_version = fdw_state->firebird_version;
 	context.check_implicit_bool = true;
 
 	foreach (lc, exprs)
@@ -1898,7 +1898,7 @@ convertReturningList(StringInfo buf, RangeTblEntry *rte,
 
 		appendStringInfoString(buf, " RETURNING ");
 		convertTargetList(buf, rte, rtindex, rel, attrs_used, false,
-						  FQserverVersion(fdw_state->conn),
+						  fdw_state->firebird_version,
 						  retrieved_attrs, &db_key_used);
 	}
 	else

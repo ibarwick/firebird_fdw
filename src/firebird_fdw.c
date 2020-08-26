@@ -989,8 +989,9 @@ firebirdGetForeignRelSize(PlannerInfo *root,
 	baserel->fdw_private = (void *) fdw_state;
 
 	/* get connection options, connect and get the remote table description */
-
 	fdw_state->conn = firebirdInstantiateConnection(server, user);
+	fdw_state->firebird_version = FQserverVersion(fdw_state->conn);
+
 	/*
 	 * Identify which baserestrictinfo clauses can be sent to the remote
 	 * server and which can't.
@@ -1000,7 +1001,7 @@ firebirdGetForeignRelSize(PlannerInfo *root,
 							 &fdw_state->remote_conds,
 							 &fdw_state->local_conds,
 							 fdw_state->disable_pushdowns,
-							 FQserverVersion(fdw_state->conn));
+							 fdw_state->firebird_version);
 
 	/*
 	 * Identify which attributes will need to be retrieved from the remote
@@ -1277,7 +1278,7 @@ firebirdGetForeignPlan(PlannerInfo *root,
 		}
 		else
 		{
-			Assert(isFirebirdExpr(root, baserel, rinfo->clause, FQserverVersion(fdw_state->conn)));
+			Assert(isFirebirdExpr(root, baserel, rinfo->clause, fdw_state->firebird_version));
 			elog(DEBUG1, " - remote, but not a member of fdw_state->remote_conds");
 			remote_conds = lappend(remote_conds, rinfo);
 		}
