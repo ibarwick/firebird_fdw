@@ -134,6 +134,13 @@ Usage
   `firebird_fdw` 1.2.0 and later. In PostgreSQL 9.3 and 9.4 this setting
   is ignored for column names.
 
+- **implicit_bool_type**
+
+  Turns on implicit conversion of Firebird integer types to PostgreSQL
+  `BOOLEAN` types. This is an experimental feature and is disabled by
+  default. See column option `implicit_bool_type` for details.
+
+  `firebird_fdw` 1.2.0 and later.
 
 ## CREATE USER MAPPING options
 
@@ -196,6 +203,29 @@ The following column-level options are available:
   Pass the column name to Firebird as a quoted identifier. See section
   See "[Identifier case handling](#identifier-case-handling)" for details.
   `firebird_fdw` 1.2.0 and later.
+
+- **implicit_bool_type**
+
+  Set this option on a `BOOLEAN` column to `true` to indicate that the
+  corresponding column in the Firebird table is a integer column which
+  should be treated as an implicit `BOOLEAN` type.
+
+  It is assumed that the Firebird column contain one of:
+    - `0` to indicate `FALSE`
+    - any other value to indicate `TRUE`
+    - `NULL`
+
+  The implied boolean values will be transparently translated to PostgreSQL
+  `BOOLEAN` values. `WHERE` clauses with implicit boolean expressions will
+  be pushed down to Firebird in the same way as normal boolean expressions.
+
+  This is an experimental feature in `firebird_fdw` 1.2.0 and requires
+  that the server-level option `implicit_bool_type` is also set to `true`.
+
+  If the Firebird server is version 2.5.x, this option does not need to be
+  set and `firebird_fdw` will automatically assume that the Firebird column
+  represents an implicit boolean. This functionality may work on earlier
+  Firebird versions but has not been tested with them.
 
 Note that while PostgreSQL allows a foreign table to be defined without
 any columns, `firebird_fdw` will raise an error as soon as any operations
