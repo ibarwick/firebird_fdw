@@ -2648,6 +2648,11 @@ firebirdExplainForeignModify(ModifyTableState *mtstate,
 							 struct ExplainState *es)
 {
 	elog(DEBUG2, "entering function %s", __func__);
+
+	ExplainPropertyText("Firebird query",
+						strVal(list_nth(fdw_private,
+										FdwScanPrivateSelectSql)),
+						es);
 }
 #endif
 

@@ -14,6 +14,7 @@ Revision history for firebird_fdw
 	- Explicitly reject INSERT with ON CONFLICT clause
 	- When analyzing a foreign table, only retrieve the columns defined in
 	  that table
+	- Have EXPLAIN for a remote modify show the Firebird query used
 
 1.1.0	2019-05-31
 	- Add utility function "firebird_fdw_close_connections()"
