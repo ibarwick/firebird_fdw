@@ -262,7 +262,7 @@ firebirdGetServerOptions(ForeignServer *server,
 	{
 		DefElem	   *def = (DefElem *) lfirst(lc);
 
-		elog(DEBUG2, "server option: \"%s\"", def->defname);
+		elog(DEBUG3, "server option: \"%s\"", def->defname);
 
 		if (options->address.opt.strptr != NULL && strcmp(def->defname, "address") == 0)
 		{
@@ -327,7 +327,7 @@ firebirdGetTableOptions(ForeignTable *table,
 	{
 		DefElem *def = (DefElem *) lfirst(lc);
 
-		elog(DEBUG2, "table option: \"%s\"", def->defname);
+		elog(DEBUG3, "table option: \"%s\"", def->defname);
 
 		/* table-level options */
 		if (options->query != NULL && strcmp(def->defname, "query") == 0)

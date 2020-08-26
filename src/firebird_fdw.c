@@ -2801,8 +2801,14 @@ firebirdAnalyzeForeignTable(Relation relation,
 
 	*func = fbAcquireSampleRowsFunc;
 
-	/* need to provide positive page count to indicate that the table has
-	 * been ANALYZEd */
+	/*
+	 * Need to provide positive page count to indicate that the table has
+	 * been analyzed, however there's no reliable way of obtaining metadata
+	 * about table size etc. in Firebird [*], so we'll return an arbitrary
+	 * value.
+	 *
+	 * [*] see e.g. http://firebird.1100200.n4.nabble.com/How-can-i-find-size-of-table-in-firebird-td3323739.html
+	 */
 	*totalpages = 1;
 
 	return true;
@@ -2921,13 +2927,13 @@ fbAcquireSampleRowsFunc(Relation relation, int elevel,
 		if (fdw_state->row < targrows)
 		{
 			/* Add first "targrows" tuples as samples */
-			elog(DEBUG1, "Adding sample row %i", fdw_state->row);
+			elog(DEBUG3, "Adding sample row %i", fdw_state->row);
 			convertResToArray(res, fdw_state->row, tuple_values);
 			rows[collected_rows++] = BuildTupleFromCStrings(attinmeta, tuple_values);
 		}
 		else
 		{
-			elog(DEBUG2, "Going to add a random sample");
+			elog(DEBUG3, "Going to add a random sample");
 			/*
 			 * Once the initial "targrows" number of rows has been collected,
 			 * replace random rows at "row_sample_interval" intervals.
@@ -2943,7 +2949,7 @@ fbAcquireSampleRowsFunc(Relation relation, int elevel,
 				rows[k] = BuildTupleFromCStrings(attinmeta, tuple_values);
 			}
 
-			elog(DEBUG2, "row_sample_interval: %f", row_sample_interval);
+			elog(DEBUG3, "row_sample_interval: %f", row_sample_interval);
 		}
 	}
 
@@ -2951,6 +2957,8 @@ fbAcquireSampleRowsFunc(Relation relation, int elevel,
 	elog(DEBUG1, "%i rows collected", collected_rows);
 
 	*totalrows = (double)result_rows;
+
+	/* Firebird does not provide this information */
 	*totaldeadrows = 0;
 
 	return collected_rows;
