@@ -89,6 +89,8 @@ EO_SQL
 
 	# Server is created with all options explicitly set so we can
 	# easily execute "ALTER SERVER ... OPTION (SET foo 'bar')".
+    # We'll set "implicit_bool_type" to "true" by default to increase
+    # the chance of catching any general issues it may cause.
     $self->safe_psql(
         sprintf(
             <<EO_SQL,
@@ -99,7 +101,9 @@ CREATE SERVER %s
     database '%s',
     port '3050',
     updatable 'true',
-    disable_pushdowns 'false'
+    quote_identifiers 'false',
+    disable_pushdowns 'false',
+    implicit_bool_type 'true'
  );
 EO_SQL
 			$self->{server_name},
@@ -274,7 +278,8 @@ sub init_data_type_table {
             <<EO_SQL,
 CREATE TABLE %s (
   id        INT NOT NULL PRIMARY KEY,
-  blob_type BLOB SUB_TYPE TEXT DEFAULT NULL
+  blob_type BLOB SUB_TYPE TEXT DEFAULT NULL,
+  implicit_bool_type SMALLINT DEFAULT NULL
 )
 EO_SQL
             $table_name,
@@ -285,7 +290,8 @@ EO_SQL
 CREATE TABLE %s (
   id        INT NOT NULL PRIMARY KEY,
   blob_type BLOB SUB_TYPE TEXT DEFAULT NULL,
-  bool_type BOOLEAN DEFAULT NULL
+  bool_type BOOLEAN DEFAULT NULL,
+  implicit_bool_type SMALLINT DEFAULT NULL
 )
 EO_SQL
             $table_name,
@@ -309,14 +315,16 @@ EO_SQL
 		2 => sprintf(
             <<EO_SQL,
   id        INT NOT NULL,
-  blob_type TEXT DEFAULT NULL
+  blob_type TEXT DEFAULT NULL,
+  implicit_bool_type BOOLEAN OPTIONS(implicit_bool_type 'true') DEFAULT NULL
 EO_SQL
 		),
 		3 => sprintf(
             <<EO_SQL,
   id        INT NOT NULL,
   blob_type TEXT DEFAULT NULL,
-  bool_type BOOLEAN DEFAULT NULL
+  bool_type BOOLEAN DEFAULT NULL,
+  implicit_bool_type BOOLEAN OPTIONS(implicit_bool_type 'true') DEFAULT NULL
 EO_SQL
 		),
 	};

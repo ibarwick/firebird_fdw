@@ -81,9 +81,11 @@ typedef struct fbServerOptions {
 	fbServerOpt disable_pushdowns;
 	fbServerOpt updatable;
 	fbServerOpt quote_identifiers;
+	fbServerOpt implicit_bool_type;
 } fbServerOptions;
 
 #define fbServerOptions_init { \
+	{ { NULL }, false }, \
 	{ { NULL }, false }, \
 	{ { NULL }, false }, \
 	{ { NULL }, false }, \
@@ -112,9 +114,11 @@ typedef struct fbTableOptions {
 typedef struct fbColumnOptions {
 	char **column_name;
 	bool *quote_identifier;
+	bool *implicit_bool_type;
 } fbColumnOptions;
 
 #define fbColumnOptions_init { \
+	NULL, \
 	NULL, \
 	NULL \
 }
@@ -154,9 +158,10 @@ typedef struct FirebirdFdwState
 {
 	char	   *svr_query;
 	char	   *svr_table;
-	bool		disable_pushdowns;	/* true if server option "disable_pushdowns" supplied */
-	int 		estimated_row_count; /* set if server option "estimated_row_count" provided  */
+	bool		disable_pushdowns;	 /* true if server option "disable_pushdowns" supplied */
+	int 		estimated_row_count; /* set if server option "estimated_row_count" provided */
 	bool		quote_identifier;
+	bool		implicit_bool_type;  /* true if server option "implicit_bool_type" supplied */
 
 	FBconn	   *conn;
 	List	   *remote_conds;
@@ -166,7 +171,7 @@ typedef struct FirebirdFdwState
 	Cost		startup_cost;		/* cost estimate, only needed for planning */
 	Cost		total_cost;			/* cost estimate, only needed for planning */
 	int			row;
-	char		*query;				/* query to send to Firebird */
+	char	   *query;				/* query to send to Firebird */
 } FirebirdFdwState;
 
 /*
@@ -197,7 +202,7 @@ typedef struct FirebirdFdwModifyState
 
 	/* for remote query execution */
 	FBconn		 *conn;			   /* connection for the scan */
-
+	int			  firebird_version; /* cache Firebird version from connection*/
 	/* extracted fdw_private data */
 	char		 *query;		   /* text of INSERT/UPDATE/DELETE command */
 	List		 *target_attrs;	   /* list of target attribute numbers */
@@ -267,11 +272,11 @@ extern void buildSelectSql(StringInfo buf, RangeTblEntry *rte,
 						   bool *db_key_used);
 
 extern void buildWhereClause(StringInfo buf,
-				 PlannerInfo *root,
-				 RelOptInfo *baserel,
-				 List *exprs,
-				 bool is_first,
-				 List **params);
+							 PlannerInfo *root,
+							 RelOptInfo *baserel,
+							 List *exprs,
+							 bool is_first,
+							 List **params);
 
 extern void
 identifyRemoteConditions(PlannerInfo *root,

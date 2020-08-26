@@ -35,7 +35,8 @@ address|localhost|t
 port|3050|t
 database|%s|t
 updatable|true|t
-quote_identifiers|false|f
+quote_identifiers|false|t
+implicit_bool_type|true|t
 disable_pushdowns|false|t
 EO_TXT
 	$node->{firebird_dbname},

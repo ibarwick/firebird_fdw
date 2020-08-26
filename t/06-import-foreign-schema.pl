@@ -63,24 +63,28 @@ if ($version < 100000) {
 	$q1_expected_output->{2} = <<EO_TXT;
 id|integer|not null|
 blob_type|text||
+implicit_bool_type|smallint||
 EO_TXT
 
     $q1_expected_output->{3} = <<EO_TXT;
 id|integer|not null|
 blob_type|text||
 bool_type|boolean||
+implicit_bool_type|smallint||
 EO_TXT
 }
 else {
     $q1_expected_output->{2} = <<EO_TXT;
 id|integer||not null||
 blob_type|text||||
+implicit_bool_type|smallint||||
 EO_TXT
 
     $q1_expected_output->{3} = <<EO_TXT;
 id|integer||not null||
 blob_type|text||||
 bool_type|boolean||||
+implicit_bool_type|smallint||||
 EO_TXT
 }
 

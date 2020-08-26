@@ -340,6 +340,7 @@ firebird_fdw_server_options(PG_FUNCTION_ARGS)
 	char	   *database = NULL;
 	bool		updatable = true;
 	bool		quote_identifiers = false;
+	bool		implicit_bool_type = false;
 	bool		disable_pushdowns = false;
 
 	ForeignServer *server;
@@ -365,6 +366,7 @@ firebird_fdw_server_options(PG_FUNCTION_ARGS)
 	server_options.database.opt.strptr = &database;
 	server_options.updatable.opt.boolptr = &updatable;
 	server_options.quote_identifiers.opt.boolptr = &quote_identifiers;
+	server_options.implicit_bool_type.opt.boolptr = &implicit_bool_type;
 	server_options.disable_pushdowns.opt.boolptr = &disable_pushdowns;
 
 	firebirdGetServerOptions(
@@ -447,6 +449,21 @@ firebird_fdw_server_options(PG_FUNCTION_ARGS)
 	values[0] = CStringGetTextDatum("quote_identifiers");
 	values[1] = CStringGetTextDatum(option.data);
 	values[2] = BoolGetDatum(server_options.quote_identifiers.provided);
+
+	tuplestore_putvalues(tupstore, tupdesc, values, nulls);
+	pfree(option.data);
+
+	/* implicit_bool_type */
+	memset(values, 0, sizeof(values));
+	memset(nulls, 0, sizeof(nulls));
+
+	initStringInfo(&option);
+	appendStringInfo(&option,
+					 "%s", implicit_bool_type ? "true" : "false");
+
+	values[0] = CStringGetTextDatum("implicit_bool_type");
+	values[1] = CStringGetTextDatum(option.data);
+	values[2] = BoolGetDatum(server_options.implicit_bool_type.provided);
 
 	tuplestore_putvalues(tupstore, tupdesc, values, nulls);
 	pfree(option.data);
@@ -844,6 +861,7 @@ getFdwState(Oid foreigntableid)
 
 	/* Server-level options which apply to the table */
 	fdw_state->disable_pushdowns = false;
+	fdw_state->implicit_bool_type = false;
 
 	/* Table-level options */
 	fdw_state->svr_query = NULL;
@@ -853,6 +871,7 @@ getFdwState(Oid foreigntableid)
 
 	/* Retrieve server options */
 	server_options.disable_pushdowns.opt.boolptr = &fdw_state->disable_pushdowns;
+	server_options.implicit_bool_type.opt.boolptr = &fdw_state->implicit_bool_type;
 	server_options.quote_identifiers.opt.boolptr = &fdw_state->quote_identifier;
 
 	firebirdGetServerOptions(
@@ -2108,6 +2127,8 @@ create_foreign_modify(EState *estate,
 	fmstate->conn->autocommit = true;
 	fmstate->conn->client_min_messages = DEBUG1;
 
+	fmstate->firebird_version = FQserverVersion(fmstate->conn);
+
 	fmstate->query = query;
 	fmstate->target_attrs = target_attrs;
 	fmstate->has_returning = has_returning;
@@ -3262,20 +3283,73 @@ convert_prep_stmt_params(FirebirdFdwModifyState *fmstate,
 			int			attnum = lfirst_int(lc);
 			Datum		value;
 			bool		isnull;
-
 			value = slot_getattr(slot, attnum, &isnull);
 
 			if (isnull)
+			{
 				p_values[pindex] = NULL;
+			}
 			else
 			{
-				/* include/fmgr.h:extern char *OutputFunctionCall(FmgrInfo *flinfo, Datum val); */
-				/* backend/utils/fmgr/fmgr.c */
+				/*
+				 * If the column is a boolean, we may need to convert it into an integer if
+				 * implicit_bool_type is in use
+				 */
+				Form_pg_attribute attr;
+				TupleDesc	tupdesc = RelationGetDescr(fmstate->rel);
+				bool		value_output = false;
 
-				// XXX need to determine type, if BOOLOID convert to TRUE/FALSE
+				attr = TupleDescAttr(tupdesc, attnum -1);
 
-				p_values[pindex] = OutputFunctionCall(&fmstate->p_flinfo[pindex],
-													  value);
+				if (attr->atttypid == BOOLOID)
+				{
+					ForeignTable *table = GetForeignTable(RelationGetRelid(fmstate->rel));
+					ForeignServer *server = GetForeignServer(table->serverid);
+					fbServerOptions server_options = fbServerOptions_init;
+					bool use_implicit_bool_type = false;
+
+					server_options.implicit_bool_type.opt.boolptr = &use_implicit_bool_type;
+
+					firebirdGetServerOptions(server, &server_options);
+
+					if (use_implicit_bool_type)
+					{
+						bool col_implicit_bool_type = false;
+
+						/* Firebird before 3.0 has no BOOLEAN datatype */
+						if (fmstate->firebird_version < 30000)
+						{
+							col_implicit_bool_type = true;
+						}
+						else
+						{
+							fbColumnOptions column_options = fbColumnOptions_init;
+
+							column_options.implicit_bool_type = &col_implicit_bool_type;
+
+							firebirdGetColumnOptions(table->relid, attnum,
+													 &column_options);
+						}
+
+
+						if (col_implicit_bool_type)
+						{
+							char *bool_value = OutputFunctionCall(&fmstate->p_flinfo[pindex],
+																  value);
+							if (bool_value[0] == 'f')
+								p_values[pindex] = "0";
+							else
+								p_values[pindex] = "1";
+
+							value_output = true;
+						}
+					}
+				}
+
+				if (value_output == false)
+					p_values[pindex] = OutputFunctionCall(&fmstate->p_flinfo[pindex],
+														  value);
+
 				elog(DEBUG1, " stmt param %i: %s", pindex, p_values[pindex]);
 			}
 			pindex++;

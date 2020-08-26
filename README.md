@@ -250,17 +250,17 @@ functions, `firebird_fdw` provides the following user-callable utility functions
   Returns the server-level option settings for the named server (either the options provided
   to `CREATE SERVER` or if not provided, the respective default values); example:
 
-
       postgres=# SELECT * FROM firebird_fdw_server_options('firebird_server');
-             name        |              value              | provided
-      -------------------+---------------------------------+----------
-       address           | localhost                       | t
-       port              | 3050                            | f
-       database          | /var/lib/firebird/data/test.fdb | t
-       updatable         | true                            | f
-       quote_identifiers | false                           | f
-       disable_pushdowns | false                           | f
-      (6 rows)
+              name        |                    value                     | provided
+      --------------------+----------------------------------------------+----------
+       address            | localhost                                    | t
+       port               | 3050                                         | f
+       database           | /var/lib/firebird/data/firebird_fdw_test.fdb | t
+       updatable          | true                                         | f
+       quote_identifiers  | false                                        | f
+       implicit_bool_type | false                                        | f
+       disable_pushdowns  | false                                        | t
+      (7 rows)
 
   (`firebird_fdw` 1.2.0 and later)
 

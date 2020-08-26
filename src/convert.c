@@ -70,6 +70,7 @@ typedef struct convert_expr_cxt
 	StringInfo	buf;			/* cumulative final output */
 	List	  **params_list;	/* exprs that will become remote Params */
 	int firebird_version;		/* Firebird version integer provided by libfq (e.g. 20501) */
+	bool check_implicit_bool;
 } convert_expr_cxt;
 
 static char *convertDatum(Datum datum, Oid type);
@@ -81,6 +82,7 @@ static void convertOperatorName(StringInfo buf, Form_pg_operator opform, char *l
 static void convertReturningList(StringInfo buf,
 								 RangeTblEntry *rte,
 								 Index rtindex, Relation rel,
+								 FirebirdFdwState *fdw_state,
 								 List *returningList,
 								 List **retrieved_attrs);
 static void convertTargetList(StringInfo buf,
@@ -88,6 +90,8 @@ static void convertTargetList(StringInfo buf,
 							  Index rtindex,
 							  Relation rel,
 							  Bitmapset *attrs_used,
+							  bool for_select,
+							  int firebird_version,
 							  List **retrieved_attrs,
 							  bool *db_key_used);
 
@@ -145,7 +149,8 @@ buildSelectSql(StringInfo buf,
 
 	/* Construct SELECT list */
 	appendStringInfoString(buf, "SELECT ");
-	convertTargetList(buf, rte, baserel->relid, rel, attrs_used,
+	convertTargetList(buf, rte, baserel->relid, rel, attrs_used, true,
+					  FQserverVersion(fdw_state->conn),
 					  retrieved_attrs, db_key_used);
 
 	/* Construct FROM clause */
@@ -203,7 +208,7 @@ buildInsertSql(StringInfo buf,
 
 	appendStringInfoString(buf, ")");
 
-	convertReturningList(buf, rte, rtindex, rel,
+	convertReturningList(buf, rte, rtindex, rel, fdw_state,
 						 returningList, retrieved_attrs);
 }
 
@@ -245,7 +250,7 @@ buildUpdateSql(StringInfo buf,
 
 	appendStringInfoString(buf, " WHERE rdb$db_key = ?");
 
-	convertReturningList(buf, rte, rtindex, rel,
+	convertReturningList(buf, rte, rtindex, rel, fdw_state,
 						 returningList, retrieved_attrs);
 }
 
@@ -283,7 +288,7 @@ buildDeleteSql(StringInfo buf,
 	convertRelation(buf, fdw_state);
 	appendStringInfoString(buf, " WHERE rdb$db_key = ?");
 
-	convertReturningList(buf, rte, rtindex, rel,
+	convertReturningList(buf, rte, rtindex, rel, fdw_state,
 						 returningList, retrieved_attrs);
 }
 
@@ -327,6 +332,7 @@ buildWhereClause(StringInfo output,
 	context.buf = output;
 	context.params_list = params;
 	context.firebird_version = FQserverVersion(fdw_state->conn);
+	context.check_implicit_bool = true;
 
 	foreach (lc, exprs)
 	{
@@ -941,15 +947,55 @@ convertVar(Var *node, convert_expr_cxt *context, char **result)
 
 		firebirdGetServerOptions(server, &server_options);
 #endif
+
 		convertColumnRef(&buf,
 						 rte->relid, node->varattno,
 						 quote_identifier);
+
+
+		/*
+		 * Handle an implicit boolean column var - but only if:
+		 *  - the caller wants us to do that
+		 *  - the server-level option "implicit_bool_type" is set to "true"
+		 *    (as this is still experimental)
+		 */
+		if (node->vartype == BOOLOID && context->check_implicit_bool == true)
+		{
+			FirebirdFdwState *fdw_state = (FirebirdFdwState *)context->foreignrel->fdw_private;
+
+			if (fdw_state->implicit_bool_type == true)
+			{
+				bool implicit_bool_type = false;
+
+				/* Firebird before 3.0 has no BOOLEAN datatype */
+				if (context->firebird_version < 30000)
+				{
+					implicit_bool_type = true;
+				}
+				else
+				{
+					fbColumnOptions column_options = fbColumnOptions_init;
+
+					column_options.implicit_bool_type = &implicit_bool_type;
+
+					firebirdGetColumnOptions(rte->relid, node->varattno,
+											 &column_options);
+				}
+
+				if (implicit_bool_type == true)
+				{
+					appendStringInfoString(&buf,
+										   " <> 0");
+				}
+			}
+		}
 	}
 	else
 	{
 		elog(ERROR, "%s: var does not belong to foreign table", __func__);
 	}
 
+	elog(DEBUG2, "leaving function %s: '%s'", __func__, buf.data);
 	*result = pstrdup(buf.data);
 }
 
@@ -1091,14 +1137,36 @@ convertNullTest(NullTest *node, convert_expr_cxt *context, char **result)
 {
 	StringInfoData	buf;
 	char *local_result;
+	FirebirdFdwState *fdw_state = (FirebirdFdwState *)context->foreignrel->fdw_private;
 
 	elog(DEBUG2, "entering function %s", __func__);
 
 	initStringInfo(&buf);
-
 	appendStringInfoChar(&buf, '(');
-	convertExprRecursor(node->arg, context, &local_result);
+
+	if (fdw_state->implicit_bool_type == false)
+	{
+		convertExprRecursor(node->arg, context, &local_result);
+	}
+	else
+	{
+		/*
+		 * If implicit boolean checks are configured, and the "child" node
+		 * is a Var, tell it not to generate an implicit boolean (by appending
+		 * " <> 0") as we don't need that here. See also convertBoolTest().
+		 */
+		bool check_implicit_bool_old = context->check_implicit_bool;
+
+		if (nodeTag(node->arg) == T_Var)
+			context->check_implicit_bool = false;
+
+		convertExprRecursor(node->arg, context, &local_result);
+
+		context->check_implicit_bool = check_implicit_bool_old;
+	}
+
 	appendStringInfoString(&buf, local_result);
+
 	if (node->nulltesttype == IS_NULL)
 		appendStringInfoString(&buf, " IS NULL)");
 	else
@@ -1111,46 +1179,150 @@ convertNullTest(NullTest *node, convert_expr_cxt *context, char **result)
 /**
  * convertBooleanTest()
  *
- * Firebird 3.0 and later.
+ * Push down boolean tests to Firebird.
  *
- * Not that Firebird appears to interpret "IS NOT TRUE" as "IS FALSE", whereas
- * PostgreSQL interprets it as "IS FALSE" or "IS NULL", and vice-versa, so
+ * Note that Firebird appears to interpret "IS NOT TRUE" as "IS FALSE", whereas
+ * PostgreSQL interprets it as "IS FALSE or IS NULL", and vice-versa, so
  * we can't pass the boolean test syntax verbatim for those cases.
+ *
+ * XXX here we're assuming that "node->arg" represents the foreign table
+ * column the boolean test is being performed on. We should check if there's
+ * any conceivable situation where this may not be the case.
  */
 static void
 convertBooleanTest(BooleanTest *node, convert_expr_cxt *context, char **result)
 {
 	StringInfoData	buf;
-	char *local_result;
+	char *local_result = NULL;
+	bool implicit_bool_type = false;
+	FirebirdFdwState *fdw_state = (FirebirdFdwState *)context->foreignrel->fdw_private;
 
 	initStringInfo(&buf);
 
-	appendStringInfoChar(&buf, '(');
-	convertExprRecursor(node->arg, context, &local_result);
-	appendStringInfoString(&buf, local_result);
-
-	switch (node->booltesttype)
+	if (fdw_state->implicit_bool_type == false)
 	{
-		case IS_TRUE:
-			appendStringInfoString(&buf, " IS TRUE)");
-			break;
-		case IS_NOT_TRUE:
-			appendStringInfo(&buf, " IS FALSE) OR (%s IS NULL)",
+		convertExprRecursor(node->arg, context, &local_result);
+	}
+	else
+	{
+		/*
+		 * Currently, implicit boolean handling is experimental so we'll
+		 * only check for them if the server-level option "implicit_bool_type"
+		 * is set to 'true'.
+		 *
+		 * Child expression is assumed to be a Var representing the
+		 * foreign table column the boolean test is being performed on.
+		 * We don't need it to check for an implicit boolean column
+		 * as we'll do that here.
+		 */
+
+		bool check_implicit_bool_old = context->check_implicit_bool;
+
+		if (nodeTag(node->arg) == T_Var)
+			context->check_implicit_bool = false;
+
+		convertExprRecursor(node->arg, context, &local_result);
+
+		context->check_implicit_bool = check_implicit_bool_old;
+
+		/* Firebird before 3.0 has no BOOLEAN datatype */
+		if (context->firebird_version < 30000)
+		{
+			implicit_bool_type = true;
+		}
+		else if (nodeTag(node->arg) == T_Var)
+		{
+			/*
+			 * Here we'll somewhat hackily interrogate the "child" Var to
+			 * get information about the column it represents; at this
+			 * point we can reasonably assume it's a BOOLOID.
+			 */
+			fbColumnOptions column_options = fbColumnOptions_init;
+			Var *child_node = (Var *)node->arg;
+
+			RangeTblEntry *rte = planner_rt_fetch(child_node->varno, context->root);
+
+			column_options.implicit_bool_type = &implicit_bool_type;
+
+			firebirdGetColumnOptions(rte->relid, child_node->varattno,
+									 &column_options);
+		}
+	}
+
+	/*
+	 * Remote column is assumed to be a Firebird 3.0+ BOOLEAN type -
+	 * we'll generate test clauses which return the same result as
+	 * PostgreSQL itself would return.
+	 */
+	if (implicit_bool_type == false)
+	{
+		appendStringInfoChar(&buf, '(');
+		appendStringInfoString(&buf, local_result);
+
+		switch (node->booltesttype)
+		{
+			case IS_TRUE:
+				appendStringInfoString(&buf, " IS TRUE)");
+				break;
+			case IS_NOT_TRUE:
+				appendStringInfo(&buf, " IS FALSE) OR (%s IS NULL)",
+								 local_result);
+				break;
+			case IS_FALSE:
+				appendStringInfoString(&buf, " IS FALSE)");
+				break;
+			case IS_NOT_FALSE:
+				appendStringInfo(&buf, " IS TRUE) OR (%s IS NULL)",
 							 local_result);
-			break;
-		case IS_FALSE:
-			appendStringInfoString(&buf, " IS FALSE)");
-			break;
-		case IS_NOT_FALSE:
-			appendStringInfo(&buf, " IS TRUE) OR (%s IS NULL)",
-							 local_result);
-			break;
-		case IS_UNKNOWN:
-			appendStringInfoString(&buf, " IS NULL)");
-			break;
-		case IS_NOT_UNKNOWN:
-			appendStringInfoString(&buf, " IS NOT NULL)");
-			break;
+				break;
+			case IS_UNKNOWN:
+				appendStringInfoString(&buf, " IS NULL)");
+				break;
+			case IS_NOT_UNKNOWN:
+				appendStringInfoString(&buf, " IS NOT NULL)");
+				break;
+		}
+	}
+	/*
+	 * The FDW configuration allows us to assume the remote column is some sort
+	 * of integer column, so we'll generate appropriate integer checks.
+	 * The original plan was to have convertVar() *always* generate "var <> 0",
+	 * but Firebird 2.5 and earlier don't support syntax like "((var <> 0) IS NULL)"
+	 * which means we need to pass "context->check_implicit_bool" set to "false"
+	 * to get the actual column name. (The alternative would be to strip off the
+	 * appended " <> 0", but that seems icky).
+	 */
+	else
+	{
+		switch (node->booltesttype)
+		{
+			case IS_TRUE:
+				appendStringInfo(&buf, "(%s <> 0)",
+								 local_result);
+				break;
+			case IS_NOT_TRUE:
+				appendStringInfo(&buf, "(%s = 0) OR (%s IS NULL)",
+								 local_result,
+								 local_result);
+				break;
+			case IS_FALSE:
+				appendStringInfo(&buf, "(%s = 0)",
+								 local_result);
+				break;
+			case IS_NOT_FALSE:
+				appendStringInfo(&buf, "(%s <> 0) OR (%s IS NULL)",
+								 local_result,
+								 local_result);
+				break;
+			case IS_UNKNOWN:
+				appendStringInfo(&buf, "(%s IS NULL)",
+								 local_result);
+				break;
+			case IS_NOT_UNKNOWN:
+				appendStringInfo(&buf, "(%s IS NOT NULL)",
+								 local_result);
+				break;
+		}
 	}
 
 	*result = pstrdup(buf.data);
@@ -1696,6 +1868,7 @@ convertFunctionTrim(FuncExpr *node, convert_expr_cxt *context, char *where)
 static void
 convertReturningList(StringInfo buf, RangeTblEntry *rte,
 					 Index rtindex, Relation rel,
+					 FirebirdFdwState *fdw_state,
 					 List *returningList,
 					 List **retrieved_attrs)
 {
@@ -1724,7 +1897,8 @@ convertReturningList(StringInfo buf, RangeTblEntry *rte,
 		/* Insert column names into the local query's RETURNING list */
 
 		appendStringInfoString(buf, " RETURNING ");
-		convertTargetList(buf, rte, rtindex, rel, attrs_used,
+		convertTargetList(buf, rte, rtindex, rel, attrs_used, false,
+						  FQserverVersion(fdw_state->conn),
 						  retrieved_attrs, &db_key_used);
 	}
 	else
@@ -1749,6 +1923,8 @@ convertTargetList(StringInfo buf,
 				  Index rtindex,
 				  Relation rel,
 				  Bitmapset *attrs_used,
+				  bool for_select,
+				  int firebird_version,
 				  List **retrieved_attrs,
 				  bool *db_key_used)
 {
@@ -1761,9 +1937,11 @@ convertTargetList(StringInfo buf,
 	ForeignServer *server = GetForeignServer(table->serverid);
 	fbServerOptions server_options = fbServerOptions_init;
 	bool		quote_identifier = false;
-
+	bool		use_implicit_bool_type = false;
 
 	server_options.quote_identifiers.opt.boolptr = &quote_identifier;
+	server_options.implicit_bool_type.opt.boolptr = &use_implicit_bool_type;
+
 	firebirdGetServerOptions(server, &server_options);
 
 	*retrieved_attrs = NIL;
@@ -1789,12 +1967,66 @@ convertTargetList(StringInfo buf,
 			bms_is_member(i - FirstLowInvalidHeapAttributeNumber,
 						  attrs_used))
 		{
+			bool column_converted = false;
+
 			if (first == false)
 				appendStringInfoString(buf, ", ");
 			else
 				first = false;
 
-			convertColumnRef(buf, rte->relid, i, quote_identifier);
+			if (use_implicit_bool_type == true && attr->atttypid == BOOLOID)
+			{
+				fbColumnOptions column_options = fbColumnOptions_init;
+				bool col_implicit_bool_type = false;
+
+				column_options.implicit_bool_type = &col_implicit_bool_type;
+
+				firebirdGetColumnOptions(rte->relid, i,
+										 &column_options);
+
+				/*
+				 * We'll need to mangle the column name into an expression
+				 * which returns a value which PostgreSQL can interpret as
+				 * a boolean.
+				 */
+				if (col_implicit_bool_type == true)
+				{
+					if (firebird_version >= 30000) {
+						convertColumnRef(buf, rte->relid, i, quote_identifier);
+						appendStringInfoString(buf,
+											   " <> 0");
+						column_converted = true;
+					}
+					else if (for_select == true)
+					{
+						/*
+						 * For Firebird 2.5 we'll need to construct a CASE
+						 * statement to cover all the bases. This will be relatively
+						 * expensive, but then hey you can't have everything...
+						 * Note we don't need to do that for RETURNING clauses as
+						 * the assumption is that we'll be inserting 0, 1 or NULL
+						 * which can be returned as-is. Which is lucky, as
+						 * Firebird 2.5 doesn't permit much in the way of expressions
+						 * in the RETURNING clause.
+						 */
+						StringInfoData column_name_buf;
+						initStringInfo(&column_name_buf);
+
+						convertColumnRef(&column_name_buf, rte->relid, i, quote_identifier);
+						appendStringInfo(buf,
+										 "CASE WHEN %s <> 0 THEN 1 ELSE %s END AS %s",
+										 column_name_buf.data,
+										 column_name_buf.data,
+										 column_name_buf.data);
+						pfree(column_name_buf.data);
+
+						column_converted = true;
+					}
+				}
+			}
+
+			if (column_converted == false)
+				convertColumnRef(buf, rte->relid, i, quote_identifier);
 
 			*retrieved_attrs = lappend_int(*retrieved_attrs, i);
 		}
@@ -1802,10 +2034,11 @@ convertTargetList(StringInfo buf,
 
 	/* Add rdb$db_key, if required */
 	if (bms_is_member(SelfItemPointerAttributeNumber - FirstLowInvalidHeapAttributeNumber,
-	attrs_used))
+					  attrs_used))
 	{
 		if (!first)
 			appendStringInfoString(buf, ", ");
+
 		first = false;
 
 		appendStringInfoString(buf, "rdb$db_key");
@@ -1850,7 +2083,7 @@ identifyRemoteConditions(PlannerInfo *root,
 	foreach (lc, baserel->baserestrictinfo)
 	{
 		RestrictInfo *ri = (RestrictInfo *) lfirst(lc);
-		elog(DEBUG3, "here XXX");
+
 		if (!disable_pushdowns && isFirebirdExpr(root, baserel, ri->clause, firebird_version))
 		{
 			*remote_conds = lappend(*remote_conds, ri);
@@ -2012,9 +2245,6 @@ foreign_expr_walker(Node *node,
 		{
 			BooleanTest   *bt = (BooleanTest *) node;
 
-			if (glob_cxt->firebird_version < 30000)
-				return false;
-
 			/* Recurse to input subexpressions	*/
 			if (!foreign_expr_walker((Node *) bt->arg,
 									 glob_cxt))
@@ -2068,6 +2298,11 @@ foreign_expr_walker(Node *node,
 
 			elog(DEBUG2, "ScalarArrayOpExpr: leftargtype is %i", leftargtype);
 
+			/*
+			 * TODO: consider supporting BOOLEAN type here too; however
+			 * "boolval IN (TRUE, NULL)" etc. can be just as easily
+			 * expressed by "boolval IS NOT FALSE" etc.
+			 */
 			if (!canConvertPgType(leftargtype))
 				return false;
 

@@ -27,26 +27,32 @@ my @boolean_pushdowns = (
 );
 
 
+my $test_cnt = 0;
+
 if ($node->{firebird_major_version} >= 3) {
-	plan tests => scalar @boolean_pushdowns;
+    $test_cnt += scalar @boolean_pushdowns;
+}
+
+if ($test_cnt) {
+    plan tests => $test_cnt;
 }
 else {
     plan skip_all => sprintf(
-        q|Firebird version is %i, no tests for this yet|,
+        q|No tests for Firebird version %s|,
         $node->{firebird_major_version},
     );
 }
 
-# Prepare table
-# --------------
+# 1. Boolean pushdowns (Firebird 3+)
+# ----------------------------------
 
 my $table_name = $node->init_data_type_table();
-
 
 if ($node->{firebird_major_version} >= 3) {
 
     # Prepare table data
     # ------------------
+
 
 	my $bool_insert_sql = sprintf(
 		<<EO_SQL,
@@ -57,9 +63,6 @@ EO_SQL
 	);
 
 	$node->safe_psql($bool_insert_sql);
-
-    # 1. Check boolean pushdowns
-    # --------------------------
 
     foreach my $boolean_pushdown (@boolean_pushdowns) {
         my $explain_q = sprintf(
@@ -86,12 +89,14 @@ EO_SQL
             ),
         );
     }
+
 }
+
+
 
 # Clean up
 # --------
 
 $node->drop_foreign_server();
-$node->firebird_drop_table($table_name);
 
 done_testing();

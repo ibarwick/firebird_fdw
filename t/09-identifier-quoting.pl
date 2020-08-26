@@ -22,7 +22,7 @@ my $node = FirebirdFDWNode->new();
 
 # Create Firebird table with quoted identifiers
 
-$node->add_server_option('quote_identifiers', 'true');
+$node->alter_server_option('quote_identifiers', 'true');
 
 my $table_name = $node->make_table_name();
 

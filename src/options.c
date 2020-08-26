@@ -23,6 +23,7 @@ static struct FirebirdFdwOption valid_options[] =
 	{ "disable_pushdowns",	 ForeignServerRelationId },
 	{ "updatable",			 ForeignServerRelationId },
 	{ "quote_identifiers",	 ForeignServerRelationId },
+	{ "implicit_bool_type",	 ForeignServerRelationId },
 	/* User options */
 	{ "username",			 UserMappingRelationId   },
 	{ "password",			 UserMappingRelationId   },
@@ -35,6 +36,7 @@ static struct FirebirdFdwOption valid_options[] =
 	/* Column options */
 	{ "column_name",		 AttributeRelationId	 },
 	{ "quote_identifier",	 AttributeRelationId     },
+	{ "implicit_bool_type",	 AttributeRelationId     },
 	{ NULL,					 InvalidOid }
 };
 
@@ -278,7 +280,6 @@ firebirdGetServerOptions(ForeignServer *server,
 			continue;
 		}
 
-
 		if (options->database.opt.strptr != NULL && strcmp(def->defname, "database") == 0)
 		{
 			*options->database.opt.strptr = defGetString(def);
@@ -304,6 +305,13 @@ firebirdGetServerOptions(ForeignServer *server,
 		{
 			*options->quote_identifiers.opt.boolptr = defGetBoolean(def);
 			options->quote_identifiers.provided = true;
+			continue;
+		}
+
+		if (options->implicit_bool_type.opt.boolptr != NULL && strcmp(def->defname, "implicit_bool_type") == 0 )
+		{
+			*options->implicit_bool_type.opt.boolptr = defGetBoolean(def);
+			options->implicit_bool_type.provided = true;
 			continue;
 		}
 	}
@@ -381,6 +389,7 @@ firebirdGetColumnOptions(Oid foreigntableid, int varattno,
 	ListCell   *lc;
 
 	options_list = GetForeignColumnOptions(foreigntableid, varattno);
+
 	foreach (lc, options_list)
 	{
 		DefElem	   *def = (DefElem *) lfirst(lc);
@@ -388,12 +397,18 @@ firebirdGetColumnOptions(Oid foreigntableid, int varattno,
 		if (options->column_name != NULL &&  strcmp(def->defname, "column_name") == 0)
 		{
 			*options->column_name = defGetString(def);
-			break;
+			continue;
 		}
 
 		if (options->quote_identifier != NULL && strcmp(def->defname, "quote_identifier") == 0 )
 		{
 			*options->quote_identifier = defGetBoolean(def);
+			continue;
+		}
+
+		if (options->implicit_bool_type != NULL && strcmp(def->defname, "implicit_bool_type") == 0 )
+		{
+			*options->implicit_bool_type = defGetBoolean(def);
 			continue;
 		}
 	}
