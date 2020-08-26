@@ -2954,12 +2954,16 @@ fbAcquireSampleRowsFunc(Relation relation, int elevel,
 	}
 
 	FQclear(res);
-	elog(DEBUG1, "%i rows collected", collected_rows);
 
 	*totalrows = (double)result_rows;
 
 	/* Firebird does not provide this information */
 	*totaldeadrows = 0;
+
+	elog(elevel,
+		 "table contains %d rows, %d rows in sample",
+		 result_rows,
+		 collected_rows);
 
 	return collected_rows;
 }
