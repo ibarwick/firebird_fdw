@@ -108,7 +108,7 @@ EO_SQL
 	is (
 		$q3_res,
 		qq/2|t/,
-		q|Check  BOOLEAN pushdowns with "IS TRUE"|,
+		q|Check BOOLEAN query with "IS TRUE"|,
 	);
 
 	# 4) Test BOOLEAN "IS NOT TRUE"
