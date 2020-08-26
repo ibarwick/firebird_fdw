@@ -34,8 +34,9 @@ my $options_e1 = sprintf(
 address|localhost|t
 port|3050|t
 database|%s|t
-disable_pushdowns|false|t
 updatable|true|t
+quote_identifiers|false|f
+disable_pushdowns|false|t
 EO_TXT
 	$node->{firebird_dbname},
 );
