@@ -192,6 +192,7 @@ firebirdInstantiateConnection(ForeignServer *server, UserMapping *user)
 
 		server_options.address.opt.strptr = &svr_address;
 		server_options.database.opt.strptr = &svr_database;
+		server_options.port.opt.strptr = &svr_port;
 
 		firebirdGetServerOptions(
 			server,
@@ -629,6 +630,8 @@ firebirdDbPath(char **address, char **database, int *port)
 
 	snprintf(path, len, "%s", buf.data);
 	pfree(buf.data);
+
+	elog(DEBUG2, "path: %s", path);
 
 	return path;
 }
