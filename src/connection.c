@@ -192,7 +192,7 @@ firebirdInstantiateConnection(ForeignServer *server, UserMapping *user)
 
 		server_options.address.opt.strptr = &svr_address;
 		server_options.database.opt.strptr = &svr_database;
-		server_options.port.opt.strptr = &svr_port;
+		server_options.port.opt.intptr = &svr_port;
 
 		firebirdGetServerOptions(
 			server,
