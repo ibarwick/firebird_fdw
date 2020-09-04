@@ -45,7 +45,7 @@
 #define FIREBIRD_DEFAULT_PORT 3050
 
 /*
- * In PostgreSQL 12 and earlier, "table_open|close()" were "heap_open|close()";
+ * In PostgreSQL 11 and earlier, "table_open|close()" were "heap_open|close()";
  * see core commits 4b21acf5 and f25968c4.
  */
 #if PG_VERSION_NUM < 120000

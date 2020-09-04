@@ -1958,11 +1958,7 @@ firebirdPlanForeignModify(PlannerInfo *root,
 	 * use NoLock here.
 	 */
 
-#if (PG_VERSION_NUM >= 120000)
 	rel = table_open(rte->relid, NoLock);
-#else
-	rel = heap_open(rte->relid, NoLock);
-#endif
 
 	relid = RelationGetRelid(rel);
 	fdw_state = getFdwState(relid);
