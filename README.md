@@ -56,17 +56,18 @@ Windows.
 Installation
 ------------
 
-## From packages
+Specific installation instructions for the following operating
+systems are provided separately:
 
-RPM packages for CentOS and derivatives are available via the Fedora "copr"
-build system; for details see here:
-<https://copr.fedorainfracloud.org/coprs/ibarwick/firebird_fdw/>
+- [CentOS/Redhat etc.](INSTALL-centos-redhat.md)
+- [Debian/Ubuntu etc.](INSTALL-debian-ubuntu.md)
+- [OS X](INSTALL-osx.md)
 
-## From source
+# Source installation
 
 Prerequisites:
 
-- Firebird client library (`libfbclient`) and API header file (`ibase.h`)
+- Firebird client library  and API header file (`ibase.h`)
 - `libfq`, a `libpq`-like API wrapper for the Firebird C API; see:
 
     https://github.com/ibarwick/libfq
@@ -76,11 +77,6 @@ Prerequisites:
 
 The Firebird include/library files often end up in non-standard locations;
 `PG_CPPFLAGS` and `SHLIB_LINK` can be used to provide the appropriate flags.
-For OS X they would look something like this:
-
-    export PG_CPPFLAGS="-I /Library/Frameworks/Firebird.framework/Versions/A/Headers/"
-    export SHLIB_LINK="-L/Library/Frameworks/Firebird.framework/Versions/A/Libraries/"
-
 The Firebird utility [fb_config](https://firebirdsql.org/manual/fbscripts-fb-config.html)
 can assist with locating the appropriate locations.
 
