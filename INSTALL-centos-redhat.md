@@ -11,7 +11,7 @@ build system; for details see here:
 Source installation
 -------------------
 
-# Prerequisites
+### Prerequisites
 
 - `libfq`, a `libpq`-like API wrapper for the Firebird C API; see:
 
@@ -37,7 +37,7 @@ is being built against (e.g.`12`, `96`).
 *IMPORTANT*: you *must* build `firebird_fdw` against the PostgreSQL version
 it will be installed on.
 
-# Building
+#### Building
 
 Ensure the `pg_config` binary for the taregt PostgreSQL version is in
 the shell path; then execute:

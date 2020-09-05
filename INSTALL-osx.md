@@ -9,7 +9,7 @@ Currently no packages are available for OS X.
 Source installation
 -------------------
 
-# Prerequisites
+### Prerequisites
 
 - `libfq`, a `libpq`-like API wrapper for the Firebird C API; see:
 
@@ -26,7 +26,7 @@ If PostgreSQL itself is not installed from source, the appropriate
 *IMPORTANT*: you *must* build `firebird_fdw` against the PostgreSQL version
 it will be installed on.
 
-# Building
+### Building
 
 Following environment variables should be set so that the PostgreSQL build system
 can find the required Firebird files:

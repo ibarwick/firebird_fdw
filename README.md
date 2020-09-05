@@ -63,7 +63,7 @@ systems are provided separately:
 - [Debian/Ubuntu etc.](INSTALL-debian-ubuntu.md)
 - [OS X](INSTALL-osx.md)
 
-# Source installation
+### Source installation
 
 Prerequisites:
 
