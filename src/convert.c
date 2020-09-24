@@ -365,7 +365,7 @@ buildWhereClause(StringInfo output,
 void
 convertFirebirdObject(char *server_name, char *schema, char *object_name, char object_type, bool import_not_null, bool updatable, FBresult *colres, StringInfoData *create_table)
 {
-	const char *table_identifier;
+	const char *table_name;
 	int colnr, coltotal;
 	List	   *table_options = NIL;
 
@@ -378,16 +378,16 @@ convertFirebirdObject(char *server_name, char *schema, char *object_name, char o
 	 * as PostgreSQL won't know to quote it.
 	 * XXX Currently we just check if the first character is lower case.
 	 */
-	table_identifier = quote_fb_identifier_for_import(object_name);
+	table_name = quote_fb_identifier_for_import(object_name);
 
-	if (table_identifier[0] == '"' && (table_identifier[1] >= 'a' && table_identifier[1] <= 'z'))
+	if (table_name[0] == '"' && (table_name[1] >= 'a' && table_name[1] <= 'z'))
 		table_options = lappend(table_options, "quote_identifier 'true'");
 
 	/* Generate SQL */
 	appendStringInfo(create_table,
 					 "CREATE FOREIGN TABLE %s.%s (\n",
 					 schema,
-					 table_identifier);
+					 quote_identifier(table_name));
 
 	coltotal = FQntuples(colres);
 	for (colnr = 0; colnr < coltotal; colnr++)
