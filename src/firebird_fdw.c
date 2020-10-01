@@ -3051,7 +3051,7 @@ firebirdImportForeignSchema(ImportForeignSchemaStmt *stmt,
 	/*
 	 * Query to list all non-system tables/views, potentially filtered by the values
 	 * specified in IMPORT FOREIGN SCHEMA's "LIMIT TO" or "EXCEPT" clauses. We won't
-	 * exclude views here so we can warn about any inclcded in "LIMIT TO"/"EXCEPT", which
+	 * exclude views here so we can warn about any included in "LIMIT TO"/"EXCEPT", which
 	 * will be excluded by "import_views = false".
 	 */
 	initStringInfo(&table_query);
