@@ -206,7 +206,7 @@ The following column-level options are available:
   corresponding column in the Firebird table is a integer column which
   should be treated as an implicit `BOOLEAN` type.
 
-  It is assumed that the Firebird column contain one of:
+  It is assumed that the Firebird column contains one of:
     - `0` to indicate `FALSE`
     - any other value to indicate `TRUE`
     - `NULL`
