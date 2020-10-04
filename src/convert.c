@@ -363,9 +363,10 @@ buildWhereClause(StringInfo output,
  * Convert table or view to PostgreSQL format to implement IMPORT FOREIGN SCHEMA
  */
 void
-convertFirebirdObject(char *server_name, char *schema, char *object_name, char object_type, bool import_not_null, bool updatable, FBresult *colres, StringInfoData *create_table)
+convertFirebirdObject(char *server_name, char *schema, char *object_name, char object_type, char *pg_name, bool import_not_null, bool updatable, FBresult *colres, StringInfoData *create_table)
 {
 	const char *table_name;
+	bool use_pg_name = false;
 	int colnr, coltotal;
 	List	   *table_options = NIL;
 
@@ -380,14 +381,48 @@ convertFirebirdObject(char *server_name, char *schema, char *object_name, char o
 	 */
 	table_name = quote_fb_identifier_for_import(object_name);
 
-	if (table_name[0] == '"' && (table_name[1] >= 'a' && table_name[1] <= 'z'))
-		table_options = lappend(table_options, "quote_identifier 'true'");
+	elog(DEBUG3, "object_name: %s; table_name: %s; pg_name: %s",
+		 object_name,
+		 table_name,
+		 pg_name ? pg_name : "NULL");
+
+	if (table_name[0] == '"')
+	{
+		if (table_name[1] >= 'a' && table_name[1] <= 'z')
+			table_options = lappend(table_options, "quote_identifier 'true'");
+	}
+	else if (pg_name != NULL)
+	{
+		/*
+		 * If "pg_name" == "table_name", i.e. the non-quoted folder-to-upper-case
+		 * version used in the Firebird metadata query, then that implies
+		 * the_name was quoted in the "LIMIT TO" clause, so we must
+		 * quote it here.
+		 *
+		 * E.g. LIMIT TO ("BAR")
+		 */
+		if (strcmp(table_name, pg_name) == 0)
+		{
+			table_name = quote_identifier(table_name);
+		}
+		else
+		{
+			/*
+			 * Otherwise use the name provided in the "LIMIT TO" clause
+			 * as-is, as the FDW API will reject the provided table definition.
+			 *
+			 * E.g. LIMIT TO (bar) -> must be "CREATE FOREIGN TABLE schema.bar",
+			 * not "CREATE FOREIGN TABLE schema.BAR".
+			 */
+			use_pg_name = true;
+		}
+	}
 
 	/* Generate SQL */
 	appendStringInfo(create_table,
 					 "CREATE FOREIGN TABLE %s.%s (\n",
 					 schema,
-					 quote_identifier(table_name));
+					 use_pg_name ? pg_name : table_name);
 
 	coltotal = FQntuples(colres);
 	for (colnr = 0; colnr < coltotal; colnr++)

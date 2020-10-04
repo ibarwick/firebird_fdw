@@ -307,7 +307,7 @@ unquoted_ident_to_upper(char *ident);
 
 #if (PG_VERSION_NUM >= 90500)
 void
-convertFirebirdObject(char *server_name, char *schema, char *object_name, char object_type, bool import_not_null, bool updatable, FBresult *colres, StringInfoData *create_table);
+convertFirebirdObject(char *server_name, char *schema, char *object_name, char object_type, char *pg_name, bool import_not_null, bool updatable, FBresult *colres, StringInfoData *create_table);
 extern char *
 _dataTypeSQL(char *table_name);
 #endif

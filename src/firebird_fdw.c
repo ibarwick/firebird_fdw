@@ -3013,12 +3013,15 @@ firebirdImportForeignSchema(ImportForeignSchemaStmt *stmt,
 	FBconn	   *conn;
 	FBresult *res;
 	int			row;
-	int		    params = 0;
+	/* number of table names specified in "LIMIT TO" or "EXCEPT" */
+	int		    specified_table_count = 0;
+	int			params_ix = 0;
+
 	StringInfoData table_query;
 
 	List *firebirdTables = NIL;
 	ListCell   *lc;
-	char **p_values;
+	char **p_values = NULL;
 
 	bool		import_not_null = true;
 	bool		import_views = true;
@@ -3055,26 +3058,90 @@ firebirdImportForeignSchema(ImportForeignSchemaStmt *stmt,
 	 * will be excluded by "import_views = false".
 	 */
 	initStringInfo(&table_query);
-	appendStringInfoString(&table_query,
-						   "   SELECT TRIM(rdb$relation_name) AS relname, \n"
-						   "          CASE WHEN rdb$view_blr IS NULL THEN 'r' ELSE 'v' END AS type \n"
-						   "     FROM rdb$relations \n"
-						   "    WHERE (rdb$system_flag IS NULL OR rdb$system_flag = 0) \n");
 
 
-	/* Apply restrictions for LIMIT TO and EXCEPT */
 	if (stmt->list_type == FDW_IMPORT_SCHEMA_LIMIT_TO ||
 		stmt->list_type == FDW_IMPORT_SCHEMA_EXCEPT)
 	{
+		foreach(lc, stmt->table_list)
+			specified_table_count++;
+	}
+
+	if (stmt->list_type == FDW_IMPORT_SCHEMA_LIMIT_TO)
+	{
+		/*
+		 * If "LIMIT TO" is specified, we'll need to associate the
+		 * provided table names with the corresponding names returned
+		 * from Firebird, as the FDW API will actually check that
+		 * the generated table definititions contain the exact same
+		 * name as provided in the "LIMIT TO" clause.
+		 *
+		 * This is IMHO an unnecessary restriction and it should be
+		 * optional for the FDW to decide whether it wants the PostgreSQL
+		 * FDW API to second-guess the "correctness" of the table
+		 * definitions it returns.
+		 *
+		 * CTEs available from at least Firebird 2.1.
+		 */
+
 		bool		first_item = true;
-		int			i = 0;
+
+		p_values = (char **) palloc0(sizeof(char *) * (specified_table_count * 2));
+
+		appendStringInfoString(&table_query,
+							   "WITH pg_tables AS ( \n");
+
+		foreach(lc, stmt->table_list)
+		{
+			RangeVar   *rv = (RangeVar *) lfirst(lc);
+
+			if (first_item)
+				first_item = false;
+			else
+				appendStringInfoString(&table_query, "   UNION \n");
+
+			appendStringInfoString(&table_query, "  SELECT CAST(? AS VARCHAR(32)) AS pg_name, CAST(? AS VARCHAR(32)) AS fb_name FROM rdb$database \n");
+
+			/* name as provided in LIMIT TO */
+			p_values[params_ix] = pstrdup(rv->relname);
+			params_ix++;
+
+			/* convert to UPPER if PostgreSQL would not quote this identifier */
+			p_values[params_ix] = pstrdup(rv->relname);
+			unquoted_ident_to_upper(p_values[params_ix]);
+			params_ix++;
+		}
+
+		appendStringInfoString(&table_query,
+							   ") \n");
+
+		appendStringInfoString(&table_query,
+							   "   SELECT TRIM(r.rdb$relation_name) AS relname, \n"
+							   "          CASE WHEN r.rdb$view_blr IS NULL THEN 'r' ELSE 'v' END AS type, \n"
+							   "          TRIM(t.pg_name) AS pg_name \n"
+							   "     FROM pg_tables t \n"
+							   "     JOIN rdb$relations r ON (TRIM(r.rdb$relation_name) = t.fb_name) \n"
+							   "    WHERE (r.rdb$system_flag IS NULL OR r.rdb$system_flag = 0) \n");
+
+	}
+	else
+	{
+		appendStringInfoString(&table_query,
+							   "   SELECT TRIM(r.rdb$relation_name) AS relname, \n"
+							   "          CASE WHEN r.rdb$view_blr IS NULL THEN 'r' ELSE 'v' END AS type \n"
+							   "     FROM r.rdb$relations \n"
+							   "    WHERE (r.rdb$system_flag IS NULL OR r.rdb$system_flag = 0) \n");
+	}
+
+
+	/* Apply restrictions for  EXCEPT */
+	if (stmt->list_type == FDW_IMPORT_SCHEMA_EXCEPT)
+	{
+		bool		first_item = true;
 
 		appendStringInfoString(&table_query, " AND TRIM(rdb$relation_name) ");
 
-		if (stmt->list_type == FDW_IMPORT_SCHEMA_EXCEPT)
-			appendStringInfoString(&table_query, "NOT ");
-
-		appendStringInfoString(&table_query, "IN (");
+		appendStringInfoString(&table_query, "NOT IN (");
 
 		/* Append list of table names within IN clause */
 		foreach(lc, stmt->table_list)
@@ -3085,11 +3152,9 @@ firebirdImportForeignSchema(ImportForeignSchemaStmt *stmt,
 				appendStringInfoString(&table_query, ", ");
 
 			appendStringInfoChar(&table_query, '?');
-
-			params++;
 		}
 
-		p_values = (char **) palloc0(sizeof(char *) * params);
+		p_values = (char **) palloc0(sizeof(char *) * specified_table_count);
 
 		foreach(lc, stmt->table_list)
 		{
@@ -3098,7 +3163,7 @@ firebirdImportForeignSchema(ImportForeignSchemaStmt *stmt,
 
 			/* convert to UPPER if PostgreSQL would not quote this identifier */
 			unquoted_ident_to_upper(relname);
-			p_values[i++] = relname;
+			p_values[params_ix++] = relname;
 		}
 
 		appendStringInfoChar(&table_query, ')');
@@ -3110,7 +3175,7 @@ firebirdImportForeignSchema(ImportForeignSchemaStmt *stmt,
 	elog(DEBUG3, "%s", table_query.data);
 
 	/* Loop through tables */
-	if (params == 0)
+	if (specified_table_count == 0)
 	{
 		res = FQexec(conn, table_query.data);
 	}
@@ -3118,7 +3183,7 @@ firebirdImportForeignSchema(ImportForeignSchemaStmt *stmt,
 	{
 		res = FQexecParams(conn,
 						   table_query.data,
-						   params,
+						   params_ix,
 						   NULL,
 						   (const char **)p_values,
 						   NULL,
@@ -3128,10 +3193,10 @@ firebirdImportForeignSchema(ImportForeignSchemaStmt *stmt,
 
 	pfree(table_query.data);
 
-	if (params > 0)
+	if (specified_table_count > 0)
 	{
 		int			i;
-		for (i = 0; i < params; i++)
+		for (i = 0; i < params_ix; i++)
 		{
 			pfree(p_values[i]);
 		}
@@ -3140,10 +3205,23 @@ firebirdImportForeignSchema(ImportForeignSchemaStmt *stmt,
 
 	if (FQresultStatus(res) != FBRES_TUPLES_OK)
 	{
+		StringInfoData detail;
+
+		initStringInfo(&detail);
+		appendStringInfoString(&detail,
+							   FQresultErrorField(res, FB_DIAG_MESSAGE_PRIMARY));
+
+		if (FQresultErrorField(res, FB_DIAG_MESSAGE_DETAIL) != NULL)
+			appendStringInfo(&detail,
+							 ": %s",
+							 FQresultErrorField(res, FB_DIAG_MESSAGE_DETAIL));
+
 		FQclear(res);
+
 		ereport(ERROR,
 				(errcode(ERRCODE_FDW_ERROR),
-				 errmsg("unable to execute metadata query on %s", server->servername)));
+				 errmsg("unable to execute metadata query on foreign server \"%s\"", server->servername),
+				 errdetail("%s", detail.data)));
 	}
 
 	elog(DEBUG3, "returned tuples: %i", FQntuples(res));
@@ -3159,12 +3237,22 @@ firebirdImportForeignSchema(ImportForeignSchemaStmt *stmt,
 	{
 		char *object_name;
 		char *object_type;
+		char *pg_name = NULL;
+
 		char *column_query;
 		FBresult *colres;
 		StringInfoData foreign_table_definition;
 
 		object_name = FQgetvalue(res, row, 0);
 		object_type = FQgetvalue(res, row, 1);
+
+		/*
+		 * If a LIMIT TO clause provided, transmit the name as provided
+		 * there, as we'll need to use exactly that to generate the foreign
+		 * table definition.
+		 */
+		if (params_ix > 0)
+			pg_name = FQgetvalue(res, row, 2);
 
 		elog(DEBUG3, "object: %s %c", object_name, object_type[0]);
 
@@ -3203,8 +3291,14 @@ firebirdImportForeignSchema(ImportForeignSchemaStmt *stmt,
 
 		convertFirebirdObject(
 			server->servername,
-			stmt->local_schema, object_name, object_type[0],
-			import_not_null, updatable, colres, &foreign_table_definition);
+			stmt->local_schema,
+			object_name,
+			object_type[0],
+			pg_name,
+			import_not_null,
+			updatable,
+			colres,
+			&foreign_table_definition);
 
 		firebirdTables = lappend(firebirdTables,
 								 pstrdup(foreign_table_definition.data));
