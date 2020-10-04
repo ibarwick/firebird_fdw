@@ -3129,7 +3129,7 @@ firebirdImportForeignSchema(ImportForeignSchemaStmt *stmt,
 		appendStringInfoString(&table_query,
 							   "   SELECT TRIM(r.rdb$relation_name) AS relname, \n"
 							   "          CASE WHEN r.rdb$view_blr IS NULL THEN 'r' ELSE 'v' END AS type \n"
-							   "     FROM r.rdb$relations \n"
+							   "     FROM rdb$relations r\n"
 							   "    WHERE (r.rdb$system_flag IS NULL OR r.rdb$system_flag = 0) \n");
 	}
 
