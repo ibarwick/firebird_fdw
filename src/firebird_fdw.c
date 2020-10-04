@@ -3270,13 +3270,25 @@ firebirdImportForeignSchema(ImportForeignSchemaStmt *stmt,
 
 		if (FQresultStatus(colres) != FBRES_TUPLES_OK)
 		{
+			StringInfoData detail;
+
+			initStringInfo(&detail);
+			appendStringInfoString(&detail,
+								   FQresultErrorField(colres, FB_DIAG_MESSAGE_PRIMARY));
+
+			if (FQresultErrorField(res, FB_DIAG_MESSAGE_DETAIL) != NULL)
+				appendStringInfo(&detail,
+								 ": %s",
+								 FQresultErrorField(colres, FB_DIAG_MESSAGE_DETAIL));
+
 			FQclear(res);
 			FQclear(colres);
 			ereport(ERROR,
 					(errcode(ERRCODE_FDW_ERROR),
-					 errmsg("unable to execute metadata query on %s for table %s",
+					 errmsg("unable to execute metadata query on foreign server \"%s\" for table \"%s\"",
 							server->servername,
-							object_name)));
+							object_name),
+					 errdetail("%s", detail.data)));
 		}
 
 		if (verbose == true)
