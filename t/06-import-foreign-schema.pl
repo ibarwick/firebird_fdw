@@ -29,19 +29,17 @@ if ($version < 90500) {
     );
 }
 else {
-    plan tests => 8;
+    plan tests => 11;
 }
-
-
-my $data_table_name = $node->init_data_type_table(firebird_only => 1);
-
 
 # 1) Test "IMPORT FOREIGN SCHEMA"
 # -------------------------------
 
+my $q1_table_name = $node->init_data_type_table(firebird_only => 1);
+
 my $q1_import_sql = sprintf(
     q|IMPORT FOREIGN SCHEMA foo LIMIT TO (%s) FROM SERVER %s INTO public|,
-    $data_table_name,
+    $q1_table_name,
     $node->server_name(),
 );
 
@@ -61,7 +59,7 @@ is (
 
 my $q1a_sql = sprintf(
     q|\d %s|,
-    $data_table_name,
+    $q1_table_name,
 );
 
 my $q1a_res = $node->safe_psql($q1a_sql);
@@ -108,11 +106,10 @@ is (
 );
 
 
-
 # 2) Test "import_not_null" option
 # --------------------------------
 
-my $table_name = $node->init_table(firebird_only => 1);
+my $q2_table_name = $node->init_table(firebird_only => 1);
 
 my $q2_import_foreign_schema_sql = sprintf(
     <<'EO_SQL',
@@ -122,7 +119,7 @@ my $q2_import_foreign_schema_sql = sprintf(
                    INTO public
                 OPTIONS (import_not_null 'false')
 EO_SQL
-    $table_name,
+    $q2_table_name,
     $node->server_name(),
 );
 
@@ -131,7 +128,7 @@ $node->safe_psql($q2_import_foreign_schema_sql);
 
 my $q2_sql = sprintf(
     q|\d %s|,
-    $table_name,
+    $q2_table_name,
 );
 
 my $q2_res = $node->safe_psql($q2_sql);
@@ -161,7 +158,7 @@ is (
     q|Check "import_not_null" option|,
 );
 
-$node->drop_foreign_table($table_name);
+$node->drop_foreign_table($q2_table_name);
 
 
 # 3) Test "updatable" option
@@ -175,7 +172,7 @@ my $q3_import_foreign_schema_sql = sprintf(
                    INTO public
                 OPTIONS (updatable 'false')
 EO_SQL
-    $table_name,
+    $q2_table_name,
     $node->server_name(),
 );
 
@@ -190,7 +187,7 @@ my $q3_sql = sprintf(
       ON c.oid=ft.ftrelid
    WHERE c.relname='%s'
 EO_SQL
-    $table_name,
+    $q2_table_name,
 );
 
 my $q3_res = $node->safe_psql($q3_sql);
@@ -209,7 +206,7 @@ is (
 # Here we'll just check the "IMPORT FOREIGN SCHEMA" operation
 # succeeds
 
-my $q4_tbl_name = $node->make_table_name(uc_prefix => 1);
+my $q4_table_name = $node->make_table_name(uc_prefix => 1);
 
 my $q4_fb_sql = sprintf(
     <<'EO_SQL',
@@ -220,7 +217,7 @@ CREATE TABLE "%s" (
    "lclc" INT
 )
 EO_SQL
-    $q4_tbl_name,
+    $q4_table_name,
 );
 
 $node->firebird_execute_sql($q4_fb_sql);
@@ -232,7 +229,7 @@ my $q4_import_sql = sprintf(
             FROM SERVER fb_test
                    INTO public
 EO_SQL
-    $q4_tbl_name,
+    $q4_table_name,
 );
 
 my ($q4_res, $q4_stdout, $q4_stderr) = $node->psql(
@@ -265,7 +262,7 @@ INNER JOIN pg_catalog.pg_namespace n
        AND a.attnum > 0
   ORDER BY a.attnum
 EO_SQL
-    $q4_tbl_name,
+    $q4_table_name,
 );
 
 my $q5_res = $node->safe_psql($q5_sql);
@@ -288,11 +285,11 @@ is (
 # 6) Test quoted identifier handling with all-upper case table name
 # -----------------------------------------------------------------
 
-my $q6_tbl_name = uc($node->make_table_name());
+my $q6_table_name = uc($node->make_table_name());
 
 $node->init_table(
     firebird_only => 1,
-    table_name => $q6_tbl_name,
+    table_name => $q6_table_name,
 );
 
 
@@ -303,7 +300,7 @@ my $q6_import_sql = sprintf(
             FROM SERVER fb_test
                    INTO public
 EO_SQL
-    $q6_tbl_name,
+    $q6_table_name,
 );
 
 my ($q6_res, $q6_stdout, $q6_stderr) = $node->psql(
@@ -332,7 +329,7 @@ my $q7_sql = sprintf(
       FROM pg_catalog.pg_class
      WHERE oid = '"%s"'::regclass
 EO_SQL
-    $q6_tbl_name,
+    $q6_table_name,
 );
 
 my $q7_res = $node->safe_psql($q7_sql);
@@ -343,14 +340,99 @@ is (
     q|Check table was imported|,
 );
 
+
+# 8) Test "IMPORT SCHEMA ... EXCEPT"
+# ----------------------------------
+
+$node->drop_foreign_table($q1_table_name);
+$node->drop_foreign_table($q2_table_name);
+$node->drop_foreign_table($q4_table_name);
+$node->drop_foreign_table($q6_table_name);
+
+my $q8_import_sql = sprintf(
+    <<'EO_SQL',
+  IMPORT FOREIGN SCHEMA foo
+                 EXCEPT (%s, "%s", "%s")
+            FROM SERVER fb_test
+                   INTO public
+EO_SQL
+    # Default case
+    $q1_table_name,
+    # UC prefix
+    $q4_table_name,
+    # All upper-case
+    $q6_table_name,
+);
+
+my ($q8_res, $q8_stdout, $q8_stderr) = $node->psql(
+    $q8_import_sql,
+);
+
+is (
+    $q8_res,
+    q|0|,
+    q|Check "IMPORT FOREIGN SCHEMA" operation succeeds|,
+);
+
+# 8a) Check expected table imported
+# --------------------------------
+
+my $q8a_sql = sprintf(
+    <<'EO_SQL',
+    SELECT COUNT(*)
+      FROM pg_catalog.pg_class
+     WHERE oid = '%s'::regclass
+EO_SQL
+    $q2_table_name,
+);
+
+my $q8a_res = $node->safe_psql($q8a_sql);
+
+is (
+    $q8a_res,
+    q|1|,
+    q|Check table was imported|,
+);
+
+# 8b) Check other tables not imported
+# -----------------------------------
+
+my $q8b_sql = sprintf(
+    <<'EO_SQL',
+    SELECT COUNT(*)
+      FROM pg_catalog.pg_class
+     WHERE relname IN (
+       '%s',
+       '%s',
+       '%s'
+     )
+EO_SQL
+    # Default case
+    $q1_table_name,
+    # UC prefix
+    $q4_table_name,
+    # All upper-case
+    $q6_table_name,
+);
+
+my $q8b_res = $node->safe_psql($q8b_sql);
+
+is (
+    $q8b_res,
+    q|0|,
+    q|Check table was imported|,
+);
+
+
+
 # Clean up
 # --------
 
 $node->drop_foreign_server();
 
-$node->firebird_drop_table($table_name);
-$node->firebird_drop_table($data_table_name);
-$node->firebird_drop_table($q4_tbl_name, 1);
-$node->firebird_drop_table($q6_tbl_name, 1);
+$node->firebird_drop_table($q1_table_name);
+$node->firebird_drop_table($q2_table_name);
+$node->firebird_drop_table($q4_table_name, 1);
+$node->firebird_drop_table($q6_table_name, 1);
 
 done_testing();

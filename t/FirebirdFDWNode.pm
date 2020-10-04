@@ -456,7 +456,7 @@ sub drop_foreign_table {
     my $table = shift;
 
     my $drop_foreign_table = sprintf(
-        q|DROP FOREIGN TABLE IF EXISTS %s CASCADE|,
+        q|DROP FOREIGN TABLE IF EXISTS "%s" CASCADE|,
         $table,
     );
 
