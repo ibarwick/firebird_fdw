@@ -17,6 +17,7 @@ Revision history for firebird_fdw
 	- Have EXPLAIN for a remote modify show the Firebird query used
 	- Add support for implicit boolean columns
 	- Add support for PostgreSQL 13
+	- Fix UPDATE statements where a BEFORE ROW UPDATE trigger is present
 
 1.1.0	2019-05-31
 	- Add utility function "firebird_fdw_close_connections()"

@@ -1969,14 +1969,26 @@ firebirdPlanForeignModify(PlannerInfo *root,
 				 errmsg("unable to modify a foreign table defined as a query")));
 
 	/*
-	 * In an INSERT, we transmit all columns that are defined in the foreign
-	 * table.  In an UPDATE, we transmit only columns that were explicitly
-	 * targets of the UPDATE, so as to avoid unnecessary data transmission.
-	 * (We can't do that for INSERT since we would miss sending default values
-	 * for columns not listed in the source statement.)
+	 * Determine which columns to transmit.
 	 */
-	if (operation == CMD_INSERT)
+	if (operation == CMD_INSERT ||
+		(operation == CMD_UPDATE &&
+		 rel->trigdesc &&
+		 rel->trigdesc->trig_update_before_row))
 	{
+		/*
+		 * For an INSERT, or UPDATE on a foreign table with BEFORE ROW UPDATE
+		 * triggers, transmit all columns.
+		 *
+		 * With an INSERT, it's necessary to transmit all columns to ensure
+		 * any default values on columns not contained in the source statement
+		 * are sent.
+		 *
+		 * With an UPDATE where a BEFORE ROW UPDATE trigger is present, it's
+		 * possible the trigger might modify columns not contained in the source
+		 * statement.
+		 */
+
 		TupleDesc	tupdesc = RelationGetDescr(rel);
 		int			attnum;
 
@@ -1997,6 +2009,11 @@ firebirdPlanForeignModify(PlannerInfo *root,
 	else if (operation == CMD_UPDATE)
 
 	{
+		/*
+		 * With an UPDATE, where no BEFORE ROW UPDATE triggers are present, send
+		 * only the columns contained in the source query, to avoid sending
+		 * data which won't be used anyway.
+		 */
 #if (PG_VERSION_NUM >= 120000)
 		Bitmapset  *tmpset = bms_union(rte->updatedCols, rte->extraUpdatedCols);
 #elif (PG_VERSION_NUM >= 90500)
