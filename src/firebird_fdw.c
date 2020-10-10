@@ -2693,7 +2693,7 @@ firebirdExplainForeignModify(ModifyTableState *mtstate,
 
 #if (PG_VERSION_NUM >= 110000)
 /**
- * firebidBeginForeignInsert()
+ * firebirdBeginForeignInsert()
  *
  * Initialize the FDW state for COPY to a foreign table.
  *
