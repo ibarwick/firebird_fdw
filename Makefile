@@ -44,6 +44,12 @@ DATA = sql/firebird_fdw--0.3.0.sql \
 PGXS := $(shell $(PG_CONFIG) --pgxs)
 include $(PGXS)
 
+# Sanity-check supported version
+
+ifeq (,$(findstring $(MAJORVERSION),9.3 9.4 9.5 9.6 10 11 12 13 14))
+$(error firebird_fdw supports PostgreSQL 9.3 and later)
+endif
+
 # Fix for OS X and libfq
 ifeq (-dead_strip_dylibs, $(findstring -dead_strip_dylibs, $(shell $(PG_CONFIG) --ldflags)))
 LDFLAGS := $(subst -dead_strip_dylibs,-flat_namespace,$(LDFLAGS))
