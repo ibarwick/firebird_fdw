@@ -21,9 +21,43 @@ my $version = $node->pg_version();
 
 my $tests = 0;
 
+my @on_conflict_tests = (
+    [
+        <<'EO_SQL',
+    INSERT INTO %s
+                (lang_id, name_english, name_native)
+         VALUES ('en', 'English', 'English')
+    ON CONFLICT DO NOTHING
+EO_SQL
+        q|INSERT with ON CONFLICT clause is not supported|,
+        q|Check INSERT with ON CONFLICT DO NOTHING clause fails|,
+    ],
+    [
+        <<'EO_SQL',
+    INSERT INTO %s
+                (lang_id, name_english, name_native)
+         VALUES ('en', 'English', 'English')
+    ON CONFLICT (lang_id) DO NOTHING
+EO_SQL
+        q|there is no unique or exclusion constraint matching the ON CONFLICT specification|,
+        q|Check INSERT with ON CONFLICT (col) DO NOTHING clause fails|,
+    ],
+    [
+        <<'EO_SQL',
+    INSERT INTO %s
+                (lang_id, name_english, name_native)
+         VALUES ('en', 'English', 'English')
+    ON CONFLICT (lang_id) DO UPDATE SET name_english = EXCLUDED.name_english
+EO_SQL
+        q|there is no unique or exclusion constraint matching the ON CONFLICT specification|,
+        q|Check INSERT with ON CONFLICT (col) DO NOTHING clause fails|,
+    ],
+);
+
+
 if ($version > 90500) {
     # INSERT ... ON CONFLICT
-    $tests ++;
+    $tests += scalar @on_conflict_tests;
 }
 
 if (!$tests) {
@@ -33,30 +67,27 @@ else {
     plan tests => $tests;
 }
 
+
 # 1. Check INSERT ... ON CONFLICT
 # -------------------------------
+
 if ($version > 90500) {
-    my $table_q1 = $node->init_table();
+    my $table_name = $node->init_table();
 
-    my $insert_q1 = sprintf(
-        <<'EO_SQL',
-    INSERT INTO %s
-                (lang_id, name_english, name_native)
-         VALUES ('en', 'English', 'English')
-    ON CONFLICT DO NOTHING
-EO_SQL
-        $table_q1,
-    );
+    foreach my $on_conflict_test (@on_conflict_tests) {
+        my $insert = sprintf(
+            $on_conflict_test->[0],
+            $table_name,
+        );
 
-    my ($insert_q1_res, $insert_q1_stdout, $insert_q1_stderr) = $node->psql(
-        $insert_q1,
-    );
+        my ($insert_res, $insert_stdout, $insert_stderr) = $node->psql(
+            $insert,
+        );
 
-    my $expected_q1_stderr = q|INSERT with ON CONFLICT clause is not supported|;
-
-    like (
-        $insert_q1_stderr,
-        qr/$expected_q1_stderr/,
-        q|Check INSERT with ON CONFLICT clause fails|,
-    );
+        like (
+            $insert_stderr,
+            qr/$on_conflict_test->[1]/,
+            $on_conflict_test->[2],
+        );
+    }
 }
