@@ -1941,7 +1941,12 @@ firebirdPlanForeignModify(PlannerInfo *root,
 	elog(DEBUG2, "entering function %s", __func__);
 
 #if PG_VERSION_NUM >= 90500
-	/* no support for INSERT ... ON CONFLICT */
+	/*
+	 * INSERT ... ON CONFLICT is not supported as there's no equivalent
+	 * in Firebird, and a workaround would be complex and possibly unreliable.
+	 * Speculatively trying to insert the row would mess up transaction
+	 * handling if it fails.
+	 */
 	if (plan->onConflictAction != ONCONFLICT_NONE)
 		ereport(ERROR,
 				(errcode(ERRCODE_FDW_UNABLE_TO_CREATE_EXECUTION),
