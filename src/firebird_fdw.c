@@ -2198,13 +2198,18 @@ create_foreign_modify(EState *estate,
 		}
 	}
 
-	if (operation == CMD_UPDATE || operation == CMD_DELETE)
+	/*
+	 * It's possible a top level UPDATE query is being executed which moves
+	 * a tuple from a local to a foreign partition; in that case the resulting
+	 * FDW-level action will actually be an INSERT, and we won't have a subplan.
+	 */
+
+	if (subplan && (operation == CMD_UPDATE || operation == CMD_DELETE))
 	{
 		/* Here we locate the resjunk columns containing the two
 		   halves of the 8-byte RDB$DB_KEY value so update and delete
 		   operations can locate the correct row
 		 */
-
 		fmstate->db_keyAttno_CtidPart = ExecFindJunkAttributeInTlist(
 			subplan->targetlist,
 			"db_key_ctidpart");
@@ -2732,6 +2737,23 @@ firebirdBeginForeignInsert(ModifyTableState *mtstate,
 	elog(DEBUG2, "%s: begin foreign table insert on %s",
 		 __func__,
 		 RelationGetRelationName(rel));
+
+	/*
+	 * If the foreign table we are about to insert routed rows into is also an
+	 * UPDATE subplan result rel that will be updated later, proceeding with
+	 * the INSERT will result in the later UPDATE incorrectly modifying those
+	 * routed rows, so prevent the INSERT --- it would be nice if we could
+	 * handle this case; but for now, throw an error for safety.
+	 */
+	if (plan && plan->operation == CMD_UPDATE &&
+		(resultRelInfo->ri_usesFdwDirectModify ||
+		 resultRelInfo->ri_FdwState) &&
+		resultRelInfo > mtstate->resultRelInfo + mtstate->mt_whichplan)
+		ereport(ERROR,
+				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+				 errmsg("cannot route tuples into foreign table to be updated \"%s\"",
+						RelationGetRelationName(rel))));
+
 
 	/* no support for INSERT ... ON CONFLICT (9.5 and later) */
 	if (plan && plan->onConflictAction != ONCONFLICT_NONE)
