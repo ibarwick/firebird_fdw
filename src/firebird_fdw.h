@@ -231,7 +231,7 @@ extern void fbSigInt(SIGNAL_ARGS);
 extern FBconn *firebirdInstantiateConnection(ForeignServer *server, UserMapping *user);
 extern void firebirdCloseConnections(bool verbose);
 extern int firebirdCachedConnectionsCount(void);
-extern void fbfdw_report_error(int errlevel, int pg_errcode, FBresult *res, FBconn *conn);
+extern void fbfdw_report_error(int errlevel, int pg_errcode, FBresult *res, FBconn *conn, char *query);
 
 
 /* option functions (in options.c) */

@@ -638,26 +638,18 @@ firebirdDbPath(char **address, char **database, int *port)
 
 
 void
-fbfdw_report_error(int errlevel, int pg_errcode, FBresult *res, FBconn *conn)
+fbfdw_report_error(int errlevel, int pg_errcode, FBresult *res, FBconn *conn, char *query)
 {
 	char *primary_message = FQresultErrorField(res, FB_DIAG_MESSAGE_PRIMARY);
 	char *detail_message = FQresultErrorField(res, FB_DIAG_MESSAGE_DETAIL);
 
 	PG_TRY();
 	{
-		if (detail_message != NULL)
-		{
-			ereport(errlevel,
-					(errcode(pg_errcode),
-					 errmsg("%s", primary_message),
-  					 errdetail("%s", detail_message)));
-		}
-		else
-		{
-			ereport(errlevel,
-					(errcode(pg_errcode),
-					 errmsg("%s", primary_message)));
-		}
+		ereport(errlevel,
+				(errcode(pg_errcode),
+				 errmsg("%s", primary_message),
+				 detail_message ? errdetail("%s", detail_message) : 0,
+				 query ? errcontext("remote SQL command: %s", query) : 0));
 	}
 	PG_CATCH();
 	{

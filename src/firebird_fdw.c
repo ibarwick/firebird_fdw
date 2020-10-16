@@ -1570,7 +1570,10 @@ firebirdIterateForeignScan(ForeignScanState *node)
 
 		if (FQresultStatus(fdw_state->result) != FBRES_TUPLES_OK)
 		{
-			fbfdw_report_error(ERROR, ERRCODE_FDW_ERROR, fdw_state->result, fdw_state->conn);
+			fbfdw_report_error(ERROR, ERRCODE_FDW_ERROR,
+							   fdw_state->result,
+							   fdw_state->conn,
+							   fdw_state->query);
 		}
 	}
 
@@ -2416,7 +2419,11 @@ firebirdExecForeignInsert(EState *estate,
 		case FBRES_BAD_RESPONSE:
 		case FBRES_NONFATAL_ERROR:
 		case FBRES_FATAL_ERROR:
-			fbfdw_report_error(ERROR, ERRCODE_FDW_UNABLE_TO_CREATE_EXECUTION, result, fmstate->conn);
+			fbfdw_report_error(ERROR,
+							   ERRCODE_FDW_UNABLE_TO_CREATE_EXECUTION,
+							   result,
+							   fmstate->conn,
+							   fmstate->query);
 			/* fbfdw_report_error() will never return here, but break anyway */
 			break;
 		default:
@@ -2523,7 +2530,11 @@ firebirdExecForeignUpdate(EState *estate,
 		case FBRES_BAD_RESPONSE:
 		case FBRES_NONFATAL_ERROR:
 		case FBRES_FATAL_ERROR:
-			fbfdw_report_error(ERROR, ERRCODE_FDW_UNABLE_TO_CREATE_EXECUTION, result, fmstate->conn);
+			fbfdw_report_error(ERROR,
+							   ERRCODE_FDW_UNABLE_TO_CREATE_EXECUTION,
+							   result,
+							   fmstate->conn,
+							   fmstate->query);
 			/* fbfdw_report_error() will never return here, but break anyway */
 			break;
 		default:
@@ -2629,7 +2640,11 @@ firebirdExecForeignDelete(EState *estate,
 		case FBRES_BAD_RESPONSE:
 		case FBRES_NONFATAL_ERROR:
 		case FBRES_FATAL_ERROR:
-			fbfdw_report_error(ERROR, ERRCODE_FDW_UNABLE_TO_CREATE_EXECUTION, result, fmstate->conn);
+			fbfdw_report_error(ERROR,
+							   ERRCODE_FDW_UNABLE_TO_CREATE_EXECUTION,
+							   result,
+							   fmstate->conn,
+							   fmstate->query);
 			/* fbfdw_report_error() will never return here, but break anyway */
 			break;
 		default:

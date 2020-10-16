@@ -15,6 +15,7 @@ Revision history for firebird_fdw
 	- When analyzing a foreign table, only retrieve the columns defined in
 	  that table
 	- Have EXPLAIN for a remote modify show the Firebird query used
+	- If a remote query fails, log the query as CONTEXT
 	- Add support for implicit boolean columns
 	- Add support for PostgreSQL 13
 	- Fix UPDATE statements where a BEFORE ROW UPDATE trigger is present
