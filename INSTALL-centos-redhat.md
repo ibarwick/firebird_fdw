@@ -20,8 +20,12 @@ Source installation
 
     https://github.com/ibarwick/libfq
 
-  This will need to be built from source too; see the instructions
-  in the `libfq` repository.
+  `libfq` packages are available via the Fedora "copr" build system.
+  see: <https://copr.fedorainfracloud.org/coprs/ibarwick/firebird_fdw/>
+
+  [Source installation instructions](https://github.com/ibarwick/libfq/blob/master/INSTALL.md)
+  are also available.
+
   *NOTE* the latest `libfq` version should be used with the current
   `firebird_fdw` version, as the two are usually developed in tandem.
 
