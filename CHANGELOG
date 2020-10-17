@@ -1,24 +1,24 @@
 Revision history for firebird_fdw
 
-1.2.0	2020-??-??
+1.2.0	2020-10-16
+	- Add support for PostgreSQL 13
+	- Add support for generated columns (PostgreSQL 12 and later)
+	- Add support for COPY and partition tuple routing (PostgreSQL 11 and later)
 	- Add table/column option "quote_identifier"
 	- Add server option "quote_identifiers"
 	- Have IMPORT FOREIGN SCHEMA add "quote_identifier" where appropriate
+	- Add support for implicit boolean columns
+	- Push down boolean tests in WHERE clauses where possible
 	- Add function firebird_fdw_server_options()
 	- Add function firebird_version()
-	- Apply CREATE SERVER's "port" option, if provided
-	- Add support for COPY and partition tuple routing (PostgreSQL 11 and later)
-	- Add support for generated columns (PostgreSQL 12 and later)
-	- Push down boolean tests in WHERE clauses where possible
-	- Prevent tables defined as queries from being set as "updatable = 'true'"
-	- Explicitly reject INSERT with ON CONFLICT clause
 	- When analyzing a foreign table, only retrieve the columns defined in
 	  that table
 	- Have EXPLAIN for a remote modify show the Firebird query used
 	- If a remote query fails, log the query as CONTEXT
-	- Add support for implicit boolean columns
-	- Add support for PostgreSQL 13
+	- Explicitly reject INSERT with ON CONFLICT clause
 	- Fix UPDATE statements where a BEFORE ROW UPDATE trigger is present
+	- Apply CREATE SERVER's "port" option, if provided
+	- Prevent tables defined as queries from being set as "updatable = 'true'"
 
 1.1.0	2019-05-31
 	- Add utility function "firebird_fdw_close_connections()"
