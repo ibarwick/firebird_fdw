@@ -26,7 +26,7 @@ if ($version < 110000) {
     );
 }
 else {
-    plan tests => 12;
+    plan tests => 14;
 }
 
 
@@ -119,6 +119,14 @@ check_update_local_to_foreign_list_success(
 );
 
 
+check_update_foreign_to_local_partition_fail(
+    'range',
+    $parent_range_table_name,
+    'boo', # currently in remote partition
+    205,
+);
+
+
 # 8. Check INSERT INTO ... RETURNING with table partitioned by LIST
 # ------------------------------------------------------------------
 
@@ -140,7 +148,7 @@ check_multiple_insert_into_returning_via_parent(
 );
 
 # 10. Check UPDATE which attempts to move tuple from local to foreign
-#    partition with table partitioned by LIST (invalid scenario)
+#     partition with table partitioned by LIST (invalid scenario)
 # -------------------------------------------------------------------
 
 check_update_local_to_foreign_partition_fail(
@@ -161,7 +169,18 @@ check_update_local_to_foreign_list_success(
     2,
 );
 
-# 12. Test triggers
+# 12. Check UPDATE which attempts to move tuple from foreign to local
+#     partition with table partitioned by LIST (invalid scenario)
+# -------------------------------------------------------------------
+
+check_update_foreign_to_local_partition_fail(
+    'list',
+    $parent_list_table_name,
+    'listqox', # currently in remote partition
+    2,
+);
+
+# 13. Test triggers
 # -----------------
 
 check_before_trigger();
@@ -409,8 +428,9 @@ EO_SQL
 # partition when local partition is "before" the foreign one
 # ---------------------------------------------------------------
 #
-# On a table partitioned by list/range, if the tuple is in a local partition
-# which is located "before" the foreign partition, the update will fail with
+# On a table partitioned by list/range (presumably hash, but not checked),
+# if the tuple is in a local partition which is located "before" the foreign
+# partition, the update will fail with
 # "cannot route tuples into foreign table to be updated" (postgres_fdw does
 # this too).
 
@@ -475,7 +495,37 @@ sub check_update_local_to_foreign_list_success {
             $partition_type,
         ),
     );
+}
 
+
+sub check_update_foreign_to_local_partition_fail {
+    my $partition_type = shift;
+    my $parent_table_name = shift;
+    my $strval = shift;
+    my $new_intval = shift;
+
+    my ($res, $res_stdout, $res_stderr) = $node->psql(
+        sprintf(
+            q|UPDATE %s SET id = %i WHERE val = '%s' RETURNING id, val|,
+            $parent_table_name,
+            $new_intval,
+            $strval,
+        ),
+    );
+
+    my $expected = sprintf(
+        q|Operation violates CHECK constraint \S+? on view or table %s|,
+        uc($parent_table_name),
+    );
+
+    like(
+        $res_stderr,
+        qr/$expected/,
+        sprintf(
+            q|Check UPDATE failure when moving tuple from foreign to local %s partition|,
+            $partition_type,
+        ),
+    );
 }
 
 
