@@ -1,6 +1,6 @@
 Revision history for firebird_fdw
 
-1.2.0	2020-10-16
+1.2.0	2020-10-17
 	- Add support for PostgreSQL 13
 	- Add support for generated columns (PostgreSQL 12 and later)
 	- Add support for COPY and partition tuple routing (PostgreSQL 11 and later)

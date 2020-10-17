@@ -52,6 +52,8 @@ rm -rf $RPM_BUILD_ROOT
 %{pgsql_path}/share/extension/firebird_fdw.control
 
 %changelog
+* Sat Oct 17 2020 Ian Barwick (barwick@gmail.com)
+- 1.2.0 release
 * Fri May 31 2019 Ian Barwick (barwick@gmail.com)
 - 1.1.0 release
 * Fri Nov 9 2018 Ian Barwick (barwick@gmail.com)

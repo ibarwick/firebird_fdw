@@ -8,6 +8,9 @@ RPM packages for CentOS/Redhat etc. are available via the Fedora "copr"
 build system; for details see here:
 <https://copr.fedorainfracloud.org/coprs/ibarwick/firebird_fdw/>
 
+Note that packages are generally only built for PostgreSQL versions
+currently under community support.
+
 Source installation
 -------------------
 

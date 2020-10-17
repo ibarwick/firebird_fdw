@@ -5,12 +5,12 @@
     "release_status": "stable",
     "maintainer": "Ian Barwick <barwick@gmail.com>",
     "license": {
-        "PostgreSQL": "http://www.postgresql.org/about/licence"
+        "PostgreSQL": "https://www.postgresql.org/about/licence"
     },
     "prereqs": {
         "runtime": {
             "requires": {
-                "PostgreSQL": "9.2.0"
+                "PostgreSQL": "9.3.0"
             }
         }
     },
@@ -23,7 +23,7 @@
         }
     },
     "resources": {
-        "homepage": "http://sql-info.de/postgresql/firebird-fdw/index.html",
+        "homepage": "https://sql-info.de/postgresql/firebird-fdw/index.html",
         "repository": {
             "url":  "git://github.com/ibarwick/firebird_fdw.git",
             "web":  "https://github.com/ibarwick/firebird_fdw",
