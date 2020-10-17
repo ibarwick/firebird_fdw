@@ -215,8 +215,13 @@ The following column-level options are available:
   `BOOLEAN` values. `WHERE` clauses with implicit boolean expressions will
   be pushed down to Firebird in the same way as normal boolean expressions.
 
+  Note that `firebird_fdw` will currently not push down a boolean scalar array
+  operation expression such as `WHERE boolcol IN (TRUE, NULL)`. However the
+  semantically equivalent `WHERE boolcol IS NOT FALSE` will be pushed down.
+
   This is an experimental feature in `firebird_fdw` 1.2.0 and requires
-  that the server-level option `implicit_bool_type` is also set to `true`.
+  that the server-level option `implicit_bool_type` is also set to `true`
+  (Firebird 3.0 and later).
 
   If the Firebird server is version 2.5.x, this option does not need to be
   set and `firebird_fdw` will automatically assume that the Firebird column
