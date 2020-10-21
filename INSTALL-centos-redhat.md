@@ -46,9 +46,13 @@ it will be installed on.
 
 #### Building
 
+Ensure the `PGXS` build system can locate the Firebird header files with:
+
+   export PG_CPPFLAGS="-I /usr/include/firebird"
+
 Ensure the `pg_config` binary for the taregt PostgreSQL version is in
 the shell path; then execute:
 
-    `make && sudo make install`
+    make && sudo make install
 
 which should build and install `firebird_fdw`.
