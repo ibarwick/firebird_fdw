@@ -63,7 +63,7 @@
 							 || (x) == NUMERICOID || (x) == DATEOID || (x) == TIMESTAMPOID \
 							 || (x) == TIMEOID)
 
-union opttype {
+typedef union opttype {
 	char **strptr;
 	int *intptr;
 	bool *boolptr;
