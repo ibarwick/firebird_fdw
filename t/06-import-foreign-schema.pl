@@ -371,7 +371,7 @@ my ($q8_res, $q8_stdout, $q8_stderr) = $node->psql(
 is (
     $q8_res,
     q|0|,
-    q|Check "IMPORT FOREIGN SCHEMA" operation succeeds|,
+    q|Check "IMPORT FOREIGN SCHEMA ... EXCEPT" operation succeeds|,
 );
 
 # 8a) Check expected table imported
@@ -391,7 +391,7 @@ my $q8a_res = $node->safe_psql($q8a_sql);
 is (
     $q8a_res,
     q|1|,
-    q|Check table was imported|,
+    q|Check expected table was imported after "IMPORT FOREIGN SCHEMA ... EXCEPT" operation|,
 );
 
 # 8b) Check other tables not imported
