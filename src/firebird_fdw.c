@@ -761,6 +761,10 @@ firebird_fdw_handler(PG_FUNCTION_ARGS)
 	fdwroutine->PlanForeignModify = firebirdPlanForeignModify;
 	fdwroutine->BeginForeignModify = firebirdBeginForeignModify;
 	fdwroutine->ExecForeignInsert = firebirdExecForeignInsert;
+#if (PG_VERSION_NUM >= 140000)
+	fdwroutine->ExecForeignBatchInsert = NULL;
+	fdwroutine->GetForeignModifyBatchSize = NULL;
+#endif
 	fdwroutine->ExecForeignUpdate = firebirdExecForeignUpdate;
 	fdwroutine->ExecForeignDelete = firebirdExecForeignDelete;
 	fdwroutine->EndForeignModify = firebirdEndForeignModify;
