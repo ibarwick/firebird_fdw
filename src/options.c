@@ -90,15 +90,11 @@ firebird_fdw_validator(PG_FUNCTION_ARGS)
 			initStringInfo(&buf);
 			for (opt = valid_options; opt->optname; opt++)
 			{
-				bool optcontext_matches = false;
 				if (catalog == opt->optcontext)
 				{
-					optcontext_matches = true;
-				}
-
-				if (optcontext_matches == true)
 					appendStringInfo(&buf, "%s%s", (buf.len > 0) ? ", " : "",
 									 opt->optname);
+				}
 			}
 
 			ereport(ERROR,
@@ -233,15 +229,11 @@ firebirdIsValidOption(const char *option, Oid context)
 
 	for (opt = valid_options; opt->optname; opt++)
 	{
-		bool optcontext_matches = false;
-
 		if (context == opt->optcontext)
 		{
-			optcontext_matches = true;
+			if (strcmp(opt->optname, option) == 0)
+				return true;
 		}
-
-		if (optcontext_matches == true && strcmp(opt->optname, option) == 0)
-			return true;
 	}
 
 	return false;
