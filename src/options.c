@@ -8,6 +8,8 @@
  */
 
 #include "postgres.h"
+#include "utils/builtins.h"
+
 #include "firebird_fdw.h"
 
 /*
@@ -121,7 +123,13 @@ firebird_fdw_validator(PG_FUNCTION_ARGS)
 					(errcode(ERRCODE_SYNTAX_ERROR),
 					errmsg("conflicting or redundant options: port (%s)", defGetString(def))));
 
-			svr_port = atoi(defGetString(def));
+			/* pg_atoi() will throw ereport() on bad input */
+			svr_port = pg_atoi(defGetString(def), sizeof(int32), '\0');
+
+			if (svr_port < 1 || svr_port > 65535)
+				ereport(ERROR,
+						(errcode(ERRCODE_SYNTAX_ERROR),
+						 errmsg("\"port\" must have a value between 1 and 65535")));
 		}
 
 		if (strcmp(def->defname, "username") == 0)
