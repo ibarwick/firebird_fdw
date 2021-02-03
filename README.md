@@ -535,8 +535,11 @@ TAP tests
 Simple TAP tests are provided in the `t/` directory. These require a running
 Firebird database to be available; provide connection details for this with
 the standard Firebird environment variables `ISC_DATABASE`, `ISC_USER` and
-`ISC_PASSWORD`. The tests are designed for PostgreSQL 9.5 and later, and
-require it to have been compiled with the `--enable-tap-tests` option.
+`ISC_PASSWORD`. Additionally, the non-standard environment variable `ISC_PORT`
+can be provided to specify a non-default port number.
+
+The tests are designed for PostgreSQL 9.5 and later, and require it to have
+been compiled with the `--enable-tap-tests` option.
 
 Run with
 
