@@ -46,19 +46,31 @@ sub new {
     #
     # (do this first to catch any problems connecting to Firebird)
 
-    croak "please set environment variables ISC_DATABASE, ISC_USER and ISC_PASSWORD"
-        unless defined($ENV{'ISC_DATABASE'});
+    foreach my $envvar (qw(ISC_DATABASE ISC_USER ISC_PASSWORD)) {
+        croak "please set environment variable $envvar"
+            unless defined($ENV{$envvar});
+    }
 
 	$self->{firebird_dbname} = $ENV{'ISC_DATABASE'};
 
+    # ISC_PORT is not a defined Interbase/Firebird variable, but we'll
+    # use it so as not to hard-code the port number.
+    $self->{firebird_dbport} = $ENV{'ISC_PORT'} // 3050;
+
+    my $dsn = sprintf(
+        q|dbi:Firebird:host=localhost;dbname=%s;port=%i|,
+        $self->{firebird_dbname},
+        $self->{firebird_dbport},
+    );
+
 	$self->{firebird_dbh} = DBI->connect(
-		"dbi:Firebird:host=localhost;dbname=".$self->{firebird_dbname},
+		$dsn,
 		undef,
 		undef,
 		{
 			PrintError => 1,
 			RaiseError => 1,
-			AutoCommit => 1
+			AutoCommit => 1,
 		}
 	);
 
@@ -99,7 +111,7 @@ CREATE SERVER %s
   OPTIONS (
     address 'localhost',
     database '%s',
-    port '3050',
+    port '%i',
     updatable 'true',
     quote_identifiers 'false',
     disable_pushdowns 'false',
@@ -108,6 +120,7 @@ CREATE SERVER %s
 EO_SQL
 			$self->{server_name},
             $self->{firebird_dbname},
+            $self->{firebird_dbport},
         )
     );
 
