@@ -17,6 +17,17 @@ Firebird 2.0 or later, and may work with earlier versions if the
 `disable_pushdowns` option is set (see below), but has never been tested
 with those versions.
 
+This `README` represents the documentation for the current development version
+of `firebird_fdw`. Stable documentation for previous releases is available
+at the following links:
+
+ - [1.2.1 README](https://github.com/ibarwick/firebird_fdw/blob/REL_1_2_STABLE/README.md) (2020-10-21)
+ - [1.1.0 README](https://github.com/ibarwick/firebird_fdw/blob/REL_1_1_STABLE/README.md) (2019-05-31)
+ - [1.0.0 README](https://github.com/ibarwick/firebird_fdw/blob/REL_1_0_STABLE/README.md) (2018-11-09)
+
+Contents
+--------
+
 1. [Features](#features)
 2. [Supported platforms](#supported-platforms)
 3. [Installation](#installation)
