@@ -644,11 +644,11 @@ firebird_version(PG_FUNCTION_ARGS)
 	initStringInfo(&buf);
 	appendStringInfoString(&buf,
 						   "     SELECT fs.oid, fs.srvname, um.umuser "
-						   "       FROM pg_foreign_data_wrapper fdw "
+						   "       FROM pg_catalog.pg_foreign_data_wrapper fdw "
 						   " INNER JOIN pg_catalog.pg_foreign_server fs "
 						   "         ON fs.srvfdw = fdw.oid "
-						   " INNER JOIN pg_catalog.pg_user_mapping um "
-						   "            ON um.umserver=fs.oid "
+						   " INNER JOIN pg_catalog.pg_user_mappings um "
+						   "            ON um.srvid = fs.oid "
 						   "      WHERE fdw.fdwname = 'firebird_fdw'");
 
 	SPI_connect();

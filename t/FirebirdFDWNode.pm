@@ -515,21 +515,41 @@ sub firebird_reconnect {
 	);
 }
 
+sub get_firebird_version {
+    my $self = shift;
 
-sub get_firebird_major_version {
-	my $self = shift;
+	my $version_sql = q|SELECT CAST(rdb$get_context('SYSTEM', 'ENGINE_VERSION') AS VARCHAR(10)) FROM rdb$database|;
 
-	my $version = q|SELECT CAST(rdb$get_context('SYSTEM', 'ENGINE_VERSION') AS VARCHAR(10)) FROM rdb$database|;
-
-	my $version_q = $self->firebird_conn()->prepare( $version );
+	my $version_q = $self->firebird_conn()->prepare( $version_sql );
 
 	$version_q->execute();
 
-	my $res = $version_q->fetchrow_array();
+	my $version = $version_q->fetchrow_array();
 	$version_q->finish();
 
+
+    if ($version !~ m|^(\d+)\.(\d+)\.(\d+)$|) {
+        return undef;
+    }
+
+    if (wantarray) {
+        my $version_int = sprintf(
+            q|%d%02d%02d|,
+            $1, $2, $3,
+        );
+        return ($version, $version_int);
+    }
+
+    return $version;
+}
+
+sub get_firebird_major_version {
+    my $self = shift;
+
+    my $version = $self->get_firebird_version();
+
 	# We're expecting something like "3.0.3"
-	if ($res =~ m|(\d)|) {
+	if ($version =~ m|^(\d)|) {
 		return $1;
 	}
 
