@@ -7,15 +7,18 @@ support, as well as pushdown of some operations. While it appears to be
 working reliably, please be aware this is still very much work-in-progress;
 *USE AT YOUR OWN RISK*.
 
-`firebird_fdw` is designed to be compatible with PostgreSQL 9.3 ~ 13,
-although in earlier PostgreSQL versions not all `firebird_fdw` options
-are available. It is not designed to work with forks of the core PostgreSQL
-community version.
+`firebird_fdw` is designed to be compatible with PostgreSQL 9.3 ~ 13.
+The range of `firebird_fdw` options available for a particular PostgreSQL
+version depends on the state of the Foreign Data Wrapper API for that
+version; the more recent the version, the more features will be available.
 
 `firebird_fdw` supports Firebird 2.5 and later. It will probably work with
 Firebird 2.0 or later, and may work with earlier versions if the
 `disable_pushdowns` option is set (see below), but has never been tested
 with those versions.
+
+`firebird_fdw` is developed against the core PostgreSQL community version
+and may not be compatible with commercial forks.
 
 This `README` represents the documentation for the current development version
 of `firebird_fdw`. Stable documentation for previous releases is available
