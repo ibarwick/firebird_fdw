@@ -16,14 +16,17 @@
  *----------------------------------------------------------------------
  */
 
-
 #include "postgres.h"
+#include "libfq.h"
 
 #include "fmgr.h"
-
 #include "funcapi.h"
+#if (PG_VERSION_NUM >= 90300)
+#include "access/htup_details.h"
+#endif
 #include "access/reloptions.h"
 #include "access/sysattr.h"
+#include "access/xact.h"
 #if (PG_VERSION_NUM >= 120000)
 #include "access/table.h"
 #endif
@@ -33,6 +36,7 @@
 #include "catalog/pg_type.h"
 #include "commands/explain.h"
 #include "commands/vacuum.h"
+#include "executor/spi.h"
 #include "foreign/fdwapi.h"
 #include "foreign/foreign.h"
 #include "miscadmin.h"
@@ -48,6 +52,7 @@
 #include "optimizer/var.h"
 #endif
 #include "parser/parsetree.h"
+#include "pgstat.h"
 #include "storage/fd.h"
 #include "storage/ipc.h"
 #include "utils/array.h"
@@ -55,17 +60,7 @@
 #include "utils/lsyscache.h"
 #include "utils/memutils.h"
 #include "utils/rel.h"
-
-#if (PG_VERSION_NUM >= 90300)
-#include "access/htup_details.h"
-#endif
-
-#include "access/xact.h"
-#include "executor/spi.h"
-#include "pgstat.h"
 #include "utils/snapmgr.h"
-
-#include "libfq.h"
 
 #include "firebird_fdw.h"
 
