@@ -17,9 +17,7 @@
 #include "postgres.h"
 
 #include "access/heapam.h"
-#if (PG_VERSION_NUM >= 90300)
 #include "access/htup_details.h"
-#endif
 #include "access/sysattr.h"
 #include "access/transam.h"
 #include "catalog/pg_collation.h"

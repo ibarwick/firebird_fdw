@@ -21,9 +21,7 @@
 
 #include "fmgr.h"
 #include "funcapi.h"
-#if (PG_VERSION_NUM >= 90300)
 #include "access/htup_details.h"
-#endif
 #include "access/reloptions.h"
 #include "access/sysattr.h"
 #include "access/xact.h"
@@ -90,8 +88,6 @@ enum FdwScanPrivateIndex
 	FdwScanDbKeyUsed
 };
 
-
-#if (PG_VERSION_NUM >= 90300)
 /*
  * This enum describes what's kept in the fdw_private list for
  * a ModifyTable node referencing a firebird_fdw foreign table.
@@ -107,7 +103,6 @@ enum FdwModifyPrivateIndex
 	/* Integer list of attribute numbers retrieved by RETURNING */
 	FdwModifyPrivateRetrievedAttrs
 };
-#endif
 
 /* FDW public functions */
 
@@ -172,7 +167,6 @@ static bool firebirdAnalyzeForeignTable(Relation relation,
 							 AcquireSampleRowsFunc *func,
 							 BlockNumber *totalpages);
 
-#if (PG_VERSION_NUM >= 90300)
 static void firebirdAddForeignUpdateTargets(Query *parsetree,
 								 RangeTblEntry *target_rte,
 								 Relation target_relation);
@@ -211,7 +205,6 @@ static void firebirdExplainForeignModify(ModifyTableState *mtstate,
 							  List *fdw_private,
 							  int subplan_index,
 							  struct ExplainState *es);
-#endif
 
 #if (PG_VERSION_NUM >= 90500)
 static List *firebirdImportForeignSchema(ImportForeignSchemaStmt *stmt,
@@ -744,12 +737,9 @@ firebird_fdw_handler(PG_FUNCTION_ARGS)
 	fdwroutine->ReScanForeignScan = firebirdReScanForeignScan;
 	fdwroutine->EndForeignScan = firebirdEndForeignScan;
 
-#if (PG_VERSION_NUM >= 90200)
 	/* support for ANALYZE */
 	fdwroutine->AnalyzeForeignTable = firebirdAnalyzeForeignTable;
-#endif
 
-#if (PG_VERSION_NUM >= 90300)
 	/* support for insert / update / delete */
 	fdwroutine->IsForeignRelUpdatable = firebirdIsForeignRelUpdatable;
 	fdwroutine->AddForeignUpdateTargets = firebirdAddForeignUpdateTargets;
@@ -764,7 +754,6 @@ firebird_fdw_handler(PG_FUNCTION_ARGS)
 	fdwroutine->ExecForeignDelete = firebirdExecForeignDelete;
 	fdwroutine->EndForeignModify = firebirdEndForeignModify;
 	fdwroutine->ExplainForeignModify = firebirdExplainForeignModify;
-#endif
 
 #if (PG_VERSION_NUM >= 90500)
 	/* support for IMPORT FOREIGN SCHEMA */
@@ -1803,7 +1792,6 @@ firebirdIsForeignRelUpdatable(Relation rel)
 }
 
 
-#if (PG_VERSION_NUM >= 90300)
 /**
  * firebirdAddForeignUpdateTargets()
  *
@@ -2713,7 +2701,7 @@ firebirdExplainForeignModify(ModifyTableState *mtstate,
 										FdwScanPrivateSelectSql)),
 						es);
 }
-#endif
+
 
 #if (PG_VERSION_NUM >= 110000)
 /**
