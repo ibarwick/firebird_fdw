@@ -428,8 +428,8 @@ firebird_fdw_server_options(PG_FUNCTION_ARGS)
 	memset(nulls, 0, sizeof(nulls));
 
 	initStringInfo(&option);
-	appendStringInfo(&option,
-					 "%s", updatable ? "true" : "false");
+	appendStringInfoString(&option,
+						   updatable ? "true" : "false");
 
 	values[0] = CStringGetTextDatum("updatable");
 	values[1] = CStringGetTextDatum(option.data);
@@ -443,8 +443,8 @@ firebird_fdw_server_options(PG_FUNCTION_ARGS)
 	memset(nulls, 0, sizeof(nulls));
 
 	initStringInfo(&option);
-	appendStringInfo(&option,
-					 "%s", quote_identifiers ? "true" : "false");
+	appendStringInfoString(&option,
+						   quote_identifiers ? "true" : "false");
 
 	values[0] = CStringGetTextDatum("quote_identifiers");
 	values[1] = CStringGetTextDatum(option.data);
@@ -458,8 +458,8 @@ firebird_fdw_server_options(PG_FUNCTION_ARGS)
 	memset(nulls, 0, sizeof(nulls));
 
 	initStringInfo(&option);
-	appendStringInfo(&option,
-					 "%s", implicit_bool_type ? "true" : "false");
+	appendStringInfoString(&option,
+						   implicit_bool_type ? "true" : "false");
 
 	values[0] = CStringGetTextDatum("implicit_bool_type");
 	values[1] = CStringGetTextDatum(option.data);
@@ -473,8 +473,8 @@ firebird_fdw_server_options(PG_FUNCTION_ARGS)
 	memset(nulls, 0, sizeof(nulls));
 
 	initStringInfo(&option);
-	appendStringInfo(&option,
-					 "%s", disable_pushdowns ? "true" : "false");
+	appendStringInfoString(&option,
+						   disable_pushdowns ? "true" : "false");
 
 	values[0] = CStringGetTextDatum("disable_pushdowns");
 	values[1] = CStringGetTextDatum(option.data);
