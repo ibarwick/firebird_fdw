@@ -40,6 +40,9 @@
 #include "miscadmin.h"
 #include "mb/pg_wchar.h"
 #include "nodes/makefuncs.h"
+#if (PG_VERSION_NUM >= 140000)
+#include "optimizer/appendinfo.h"
+#endif
 #include "optimizer/cost.h"
 #include "optimizer/pathnode.h"
 #include "optimizer/planmain.h"
@@ -167,9 +170,16 @@ static bool firebirdAnalyzeForeignTable(Relation relation,
 							 AcquireSampleRowsFunc *func,
 							 BlockNumber *totalpages);
 
+#if (PG_VERSION_NUM >= 140000)
+static void firebirdAddForeignUpdateTargets(PlannerInfo *root,
+								 Index rtindex,
+								 RangeTblEntry *target_rte,
+								 Relation target_relation);
+#else
 static void firebirdAddForeignUpdateTargets(Query *parsetree,
 								 RangeTblEntry *target_rte,
 								 Relation target_relation);
+#endif
 
 static List *firebirdPlanForeignModify(PlannerInfo *root,
 						   ModifyTable *plan,
@@ -1827,9 +1837,17 @@ firebirdIsForeignRelUpdatable(Relation rel)
  *    void
  */
 static void
+#if (PG_VERSION_NUM >= 140000)
+firebirdAddForeignUpdateTargets(PlannerInfo *root,
+								Index rtindex,
+                                RangeTblEntry *target_rte,
+                                Relation target_relation)
+
+#else
 firebirdAddForeignUpdateTargets(Query *parsetree,
                                 RangeTblEntry *target_rte,
                                 Relation target_relation)
+#endif
 {
 	Var		   *var_ctidjunk;
 	Var		   *var_xmaxjunk;
@@ -1837,17 +1855,26 @@ firebirdAddForeignUpdateTargets(Query *parsetree,
 	const char *attrname_ctid = "db_key_ctidpart";
 	const char *attrname_xmax = "db_key_xmaxpart";
 
+#if (PG_VERSION_NUM < 140000)
 	TargetEntry *tle;
+#endif /* (PG_VERSION_NUM < 140000) */
 
-	var_xmaxjunk = makeVar(parsetree->resultRelation,
-						   /* This is the XMAX header column */
+	/* This is the XMAX header column */
+#if (PG_VERSION_NUM >= 140000)
+	var_xmaxjunk = makeVar(rtindex,
 						   MaxTransactionIdAttributeNumber,
 						   INT4OID,
 						   -1,
 						   InvalidOid,
 						   0);
-
-	elog(DEBUG2, "list_length(parsetree->targetList) %i", list_length(parsetree->targetList));
+	add_row_identity_var(root, var_xmaxjunk, rtindex, attrname_xmax);
+#else
+	var_xmaxjunk = makeVar(parsetree->resultRelation,
+						   MaxTransactionIdAttributeNumber,
+						   INT4OID,
+						   -1,
+						   InvalidOid,
+						   0);
 
 	tle = makeTargetEntry((Expr *) var_xmaxjunk,
 						  list_length(parsetree->targetList) + 1,
@@ -1855,16 +1882,24 @@ firebirdAddForeignUpdateTargets(Query *parsetree,
 						  true);
 
 	parsetree->targetList = lappend(parsetree->targetList, tle);
+#endif  /* (PG_VERSION_NUM >= 140000) */
 
-	var_ctidjunk = makeVar(parsetree->resultRelation,
-						   /* This is the CTID attribute, which we are abusing to pass half the RDB$DB_KEY value */
+	/* This is the CTID attribute, which we are abusing to pass half the RDB$DB_KEY value */
+#if (PG_VERSION_NUM >= 140000)
+	var_ctidjunk = makeVar(rtindex,
 						   SelfItemPointerAttributeNumber,
 						   TIDOID,
 						   -1,
 						   InvalidOid,
 						   0);
-
-	elog(DEBUG2, "list_length(parsetree->targetList) %i", list_length(parsetree->targetList));
+	add_row_identity_var(root, var_ctidjunk, rtindex, attrname_ctid);
+#else
+	var_ctidjunk = makeVar(parsetree->resultRelation,
+						   SelfItemPointerAttributeNumber,
+						   TIDOID,
+						   -1,
+						   InvalidOid,
+						   0);
 
 	tle = makeTargetEntry((Expr *) var_ctidjunk,
 						  list_length(parsetree->targetList) + 1,
@@ -1872,6 +1907,7 @@ firebirdAddForeignUpdateTargets(Query *parsetree,
 						  true);
 
 	parsetree->targetList = lappend(parsetree->targetList, tle);
+#endif
 }
 
 
@@ -2304,7 +2340,11 @@ firebirdBeginForeignModify(ModifyTableState *mtstate,
 									rte,
 									resultRelInfo,
 									operation,
+#if (PG_VERSION_NUM >= 140000)
+									outerPlanState(mtstate)->plan,
+#else
 									mtstate->mt_plans[subplan_index]->plan,
+#endif
 									strVal(list_nth(fdw_private,
 													FdwModifyPrivateUpdateSql)),
 									(List *) list_nth(fdw_private,
@@ -2749,8 +2789,12 @@ firebirdBeginForeignInsert(ModifyTableState *mtstate,
 	 */
 	if (plan && plan->operation == CMD_UPDATE &&
 		(resultRelInfo->ri_usesFdwDirectModify ||
-		 resultRelInfo->ri_FdwState) &&
+#if (PG_VERSION_NUM >= 140000)
+		resultRelInfo->ri_FdwState))
+#else
+		resultRelInfo->ri_FdwState) &&
 		resultRelInfo > mtstate->resultRelInfo + mtstate->mt_whichplan)
+#endif
 		ereport(ERROR,
 				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
 				 errmsg("cannot route tuples into foreign table to be updated \"%s\"",
