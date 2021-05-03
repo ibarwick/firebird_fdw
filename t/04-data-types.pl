@@ -87,10 +87,10 @@ EO_SQL
 		$table_name,
 	);
 
-	my $q2_res = $node->safe_psql($q2_sql);
+	my ($q2_res, $q2_stdout, $q2_stderr) = $node->psql($q2_sql);
 
 	is (
-		$q2_res,
+		$q2_stdout,
 		qq/2|t\n3|f\n4|/,
 		q|Check BOOLEAN|,
 	);
@@ -103,10 +103,10 @@ EO_SQL
         $table_name,
     );
 
-    my $q3_res = $node->safe_psql($q3_sql);
+    my ($q3_res, $q3_stdout, $q3_stderr) = $node->psql($q3_sql);
 
 	is (
-		$q3_res,
+		$q3_stdout,
 		qq/2|t/,
 		q|Check BOOLEAN query with "IS TRUE"|,
 	);
@@ -119,10 +119,10 @@ EO_SQL
         $table_name,
     );
 
-    my $q4_res = $node->safe_psql($q4_sql);
+    my ($q4_res, $q4_stdout, $q4_stderr) = $node->psql($q4_sql);
 
 	is (
-		$q4_res,
+		$q4_stdout,
 		qq/3|f\n4|/,
 		q|Check BOOLEAN query with "IS NOT TRUE"|,
 	);
@@ -135,10 +135,10 @@ EO_SQL
         $table_name,
     );
 
-    my $q5_res = $node->safe_psql($q5_sql);
+    my ($q5_res, $q5_stdout, $q5_stderr) = $node->psql($q5_sql);
 
 	is (
-		$q5_res,
+		$q5_stdout,
 		qq/3|f/,
 		q|Check BOOLEAN query with "IS FALSE"|,
 	);
@@ -151,10 +151,10 @@ EO_SQL
         $table_name,
     );
 
-    my $q6_res = $node->safe_psql($q6_sql);
+    my ($q6_res, $q6_stdout, $q6_stderr) = $node->psql($q6_sql);
 
 	is (
-		$q6_res,
+		$q6_stdout,
 		qq/2|t\n4|/,
 		q|Check BOOLEAN query with "IS NOT FALSE"|,
 	);
@@ -167,10 +167,10 @@ EO_SQL
         $table_name,
     );
 
-    my $q7_res = $node->safe_psql($q7_sql);
+    my ($q7_res, $q7_stdout, $q7_stderr) = $node->psql($q7_sql);
 
 	is (
-		$q7_res,
+		$q7_stdout,
 		qq/4|/,
 		q|Check BOOLEAN query with "IS NULL"|,
 	);
@@ -183,10 +183,10 @@ EO_SQL
         $table_name,
     );
 
-    my $q8_res = $node->safe_psql($q8_sql);
+    my ($q8_res, $q8_stdout, $q8_stderr) = $node->psql($q8_sql);
 
 	is (
-		$q8_res,
+		$q8_stdout,
 		qq/2|t\n3|f/,
 		q|Check BOOLEAN query with "IS NOT NULL"|,
 	);

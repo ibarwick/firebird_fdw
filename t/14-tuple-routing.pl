@@ -296,7 +296,7 @@ EO_SQL
         ),
     );
 
-    my $res = $node->safe_psql(
+    my ($res, $res_stdout, $res_stderr) = $node->psql(
         sprintf(
             q|SELECT tableoid::regclass, * FROM %s|,
             $parent_range_table_name,
@@ -304,7 +304,7 @@ EO_SQL
     );
 
     is(
-        $res,
+        $res_stdout,
         '',
         'Check delete from parent partition',
     );
@@ -328,14 +328,14 @@ EO_SQL
         ),
     );
 
-    my $res3 = $node->safe_psql(
+    my ($res, $res_stdout, $res_stderr) = $node->psql(
         sprintf(
             q|SELECT tableoid::regclass, * FROM %s|,
             $parent_range_table_name,
         ),
     );
 
-    my $expected3 = sprintf(
+    my $expected = sprintf(
         <<'EO_TXT',
 %s|3|baa
 %s|103|bee
@@ -346,11 +346,11 @@ EO_TXT
         $child_range_table_2,
     );
 
-    chomp $expected3;
+    chomp $expected;
 
     is(
-        $res3,
-        $expected3,
+        $res_stdout,
+        $expected,
         'Check COPY into multiple partitions',
     );
 
@@ -364,7 +364,7 @@ sub check_insert_into_returning_via_parent {
     my $intval = shift;
     my $strval = shift;
 
-    my $res = $node->safe_psql(
+    my ($res, $res_stdout, $res_stderr) = $node->psql(
         sprintf(
             q|INSERT INTO %s VALUES (%i, '%s') RETURNING *|,
             $parent_table_name,
@@ -380,7 +380,7 @@ sub check_insert_into_returning_via_parent {
     );
 
     is(
-        $res,
+        $res_stdout,
         $expected,
         'Check INSERT INTO ... RETURNING with table partitioned by range',
     );
@@ -395,7 +395,7 @@ sub check_multiple_insert_into_returning_via_parent {
     my $parent_table_name = shift;
     my @items = @_;
 
-    my $res = $node->safe_psql(
+    my ($res, $res_stdout, $res_stderr) = $node->psql(
         sprintf(
             <<'EO_SQL',
 INSERT INTO %s VALUES
@@ -417,7 +417,7 @@ EO_SQL
     }
 
     is(
-        $res,
+        $res_stdout,
         join("\n", @expected),
         'Check multiple INSERT INTO ... RETURNING with table partitioned by range',
     );
@@ -472,7 +472,7 @@ sub check_update_local_to_foreign_list_success {
     my $strval = shift;
     my $new_intval = shift;
 
-    my $res = $node->safe_psql(
+    my ($res, $res_stdout, $res_stderr) = $node->psql(
         sprintf(
             q|UPDATE %s SET id = %i WHERE val = '%s' RETURNING id, val|,
             $parent_table_name,
@@ -488,7 +488,7 @@ sub check_update_local_to_foreign_list_success {
     );
 
     is (
-        $res,
+        $res_stdout,
         $expected,
         sprintf(
             q|Check UPDATE moving tuple from local to foreign %s partition|,
@@ -583,13 +583,12 @@ EO_SQL
         ),
     );
 
-    my $res = $node->safe_psql(
+    my ($res, $res_stdout, $res_stderr) = $node->psql(
         sprintf(
             q|SELECT * FROM %s WHERE id IN (198,298) ORDER BY id|,
             $parent_range_table_name,
         ),
     );
-
 
     my $expected = <<EO_TXT;
 198|xxx TRIGGER
@@ -599,7 +598,7 @@ EO_TXT
     chomp $expected;
 
     is (
-        $res,
+        $res_stdout,
         $expected,
         q|Check tuple routing with BEFORE INSERT trigger|
     );

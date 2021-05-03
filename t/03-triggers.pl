@@ -141,12 +141,12 @@ EO_SQL
 
 $node->safe_psql($after_insert_sql);
 
-my $after_insert_res = $node->safe_psql(
+my ($after_insert_res, $after_insert_stdout, $after_insert_stderr) = $node->psql(
     sprintf(q|SELECT * FROM results WHERE subtest = %i|, $subtest),
 );
 
 is (
-    $after_insert_res,
+    $after_insert_stdout,
     q/1||bar/,
     q|Check AFTER ... INSERT|,
 );
@@ -167,12 +167,12 @@ EO_SQL
 
 $node->safe_psql($after_update_sql);
 
-my $after_update_res = $node->safe_psql(
+my ($after_update_res, $after_update_stdout, $after_update_stderr) = $node->psql(
     sprintf(q|SELECT * FROM results WHERE subtest = %i|, $subtest),
 );
 
 is (
-    $after_update_res,
+    $after_update_stdout,
     q/2|bar|baz/,
     q|Check AFTER ... UPDATE|,
 );
@@ -192,12 +192,12 @@ EO_SQL
 
 $node->safe_psql($after_delete_sql);
 
-my $after_delete_res = $node->safe_psql(
+my ($after_delete_res, $after_delete_stdout, $after_delete_stderr)= $node->psql(
     sprintf(q|SELECT * FROM results WHERE subtest = %i|, $subtest),
 );
 
 is (
-    $after_delete_res,
+    $after_delete_stdout,
     q/3|baz|/,
     q|Check AFTER ... DELETE|,
 );

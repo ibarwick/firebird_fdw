@@ -31,10 +31,10 @@ my $version_expected = sprintf(
 
 
 my $q1_sql = q|SELECT * FROM firebird_version()|;
-my $q1_res = $node->safe_psql($q1_sql);
+my ($q1_res, $q1_stdout, $q1_stderr) = $node->psql($q1_sql);
 
 is (
-    $q1_res,
+    $q1_stdout,
     $version_expected,
     q|Check firebird_version() output|,
 );
@@ -47,10 +47,10 @@ is (
 $node->psql(q|CREATE USER foo|);
 
 my $q2_sql = q|SET session AUTHORIZATION foo; SELECT * FROM firebird_version()|;
-my $q2_res = $node->safe_psql($q2_sql);
+my ($q2_res, $q2_stdout, $q2_stderr) = $node->psql($q2_sql);
 
 is (
-    $q2_res,
+    $q2_stdout,
     $version_expected,
     q|Check firebird_version() output with non-superuser|,
 );

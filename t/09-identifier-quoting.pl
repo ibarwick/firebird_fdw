@@ -68,11 +68,11 @@ EO_SQL
 );
 
 
-my $res = $node->safe_psql($insert_q1);
+my ($res, $res_stdout, $res_stderr) = $node->psql($insert_q1);
 
 
 is(
-	$res,
+	$res_stdout,
 	'1|2|3|4',
 	'Default options OK',
 );

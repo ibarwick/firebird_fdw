@@ -29,10 +29,10 @@ my $node = FirebirdFDWNode->new();
 
 my $version = '10201';
 
-my $res = $node->safe_psql(q|SELECT firebird_fdw_version()|);
+my ($res, $res_stdout, $res_stderr) = $node->psql(q|SELECT firebird_fdw_version()|);
 
 is(
-	$res,
+	$res_stdout,
 	$version,
 	'version OK',
 );

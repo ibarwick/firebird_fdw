@@ -63,11 +63,11 @@ my $select_q1 = sprintf(
     $query_table_name,
 );
 
-my $res = $node->safe_psql( $select_q1 );
+my ($res, $res_stdout, $res_stderr) = $node->psql( $select_q1 );
 
 
 is(
-	$res,
+	$res_stdout,
 	'en|English|English',
 	'query OK',
 );
