@@ -62,7 +62,7 @@ my $q1a_sql = sprintf(
     $q1_table_name,
 );
 
-my $q1a_res = $node->safe_psql($q1a_sql);
+my ($q1a_res, $q1a_stdout, $q1a_stderr) = $node->psql($q1a_sql);
 
 my $q1a_expected_output = {};
 
@@ -100,7 +100,7 @@ my $q1a_expected = $q1a_expected_output->{$node->{firebird_major_version}};
 chomp $q1a_expected;
 
 is (
-    $q1a_res,
+    $q1a_stdout,
     $q1a_expected,
     q|Check IMPORT FOREIGN SCHEMA|,
 );
@@ -190,12 +190,12 @@ EO_SQL
     $q2_table_name,
 );
 
-my $q3_res = $node->safe_psql($q3_sql);
+my ($q3_res, $q3_stdout, $q3_stderr) = $node->psql($q3_sql);
 
 my $q3_expected = q|updatable=false|;
 
 is (
-    $q3_res,
+    $q3_stdout,
     $q3_expected,
     q|Check "updatable" option|,
 );
@@ -265,7 +265,7 @@ EO_SQL
     $q4_table_name,
 );
 
-my $q5_res = $node->safe_psql($q5_sql);
+my ($q5_res, $q5_stdout, $q5_stderr) = $node->psql($q5_sql);
 
 my $q5_expected = <<EO_TXT;
 col1
@@ -277,7 +277,7 @@ EO_TXT
 chomp $q5_expected;
 
 is (
-    $q5_res,
+    $q5_stdout,
     $q5_expected,
     q|Check table and column names created correctly|,
 );
@@ -332,10 +332,10 @@ EO_SQL
     $q6_table_name,
 );
 
-my $q7_res = $node->safe_psql($q7_sql);
+my ($q7_res, $q7_stdout, $q7_stderr) = $node->psql($q7_sql);
 
 is (
-    $q7_res,
+    $q7_stdout,
     q|1|,
     q|Check table was imported|,
 );
@@ -386,10 +386,10 @@ EO_SQL
     $q2_table_name,
 );
 
-my $q8a_res = $node->safe_psql($q8a_sql);
+my ($q8a_res, $q8a_stdout, $q8a_stderr) = $node->psql($q8a_sql);
 
 is (
-    $q8a_res,
+    $q8a_stdout,
     q|1|,
     q|Check expected table was imported after "IMPORT FOREIGN SCHEMA ... EXCEPT" operation|,
 );
@@ -415,10 +415,10 @@ EO_SQL
     $q6_table_name,
 );
 
-my $q8b_res = $node->safe_psql($q8b_sql);
+my ($q8b_res, $q8b_stdout, $q8b_stderr) = $node->psql($q8b_sql);
 
 is (
-    $q8b_res,
+    $q8b_stdout,
     q|0|,
     q|Check table was imported|,
 );

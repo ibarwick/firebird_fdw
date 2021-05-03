@@ -44,10 +44,10 @@ EO_TXT
 
 chomp($options_e1);
 
-my $res = $node->safe_psql($options_q1);
+my ($res, $res_stdout, $res_stderr) = $node->psql($options_q1);
 
 is(
-	$res,
+	$res_stdout,
 	$options_e1,
 	'Default options OK',
 );
@@ -64,10 +64,10 @@ my $options_q2 = sprintf(
 
 my $options_e2 = q/updatable|false|t/;
 
-$res = $node->safe_psql($options_q2);
+($res, $res_stdout, $res_stderr) = $node->psql($options_q2);
 
 is(
-	$res,
+	$res_stdout,
 	$options_e2,
 	q|Disable "updatable" option|,
 );
@@ -149,10 +149,10 @@ my $options_q5 = sprintf(
 
 my $options_e5 = q/updatable|true|f/;
 
-$res = $node->safe_psql($options_q5);
+($res, $res_stdout, $res_stderr) = $node->psql($options_q5);
 
 is(
-	$res,
+	$res_stdout,
 	$options_e5,
 	q|Drop "updatable" option|,
 );

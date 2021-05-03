@@ -129,10 +129,10 @@ my $query_2 = sprintf(
     $table_name,
 );
 
-my $q2_res = $node->safe_psql($query_2);
+my ($q2_res, $q2_stdout, $q2_stderr) = $node->psql($query_2);
 
 is (
-    $q2_res,
+    $q2_stdout,
     $expected_2,
     q|Check retrieval of implicit bool column values|,
 );
@@ -197,7 +197,7 @@ EO_SQL
 );
 
 
-my $res_4 = $node->safe_psql($insert_4);
+my ($res_4, $res_4_stdout, $res_4_stderr) = $node->psql($insert_4);
 
 my $expected_4 =  <<EO_TXT;
 9|f
@@ -208,7 +208,7 @@ EO_TXT
 chomp $expected_4;
 
 is (
-    $res_4,
+    $res_4_stdout,
     $expected_4,
     q|Check implicit boolean inserts with RETURNING|,
 );
