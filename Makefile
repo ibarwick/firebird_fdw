@@ -63,5 +63,7 @@ prove_installcheck: all
 
 installcheck: prove_installcheck
 
-# we put all the tests in a test subdir, but pgxs expects us not to, darn it
-override pg_regress_clean_files = test/results/ test/regression.diffs test/regression.out tmp_check/ log/
+clean: local_clean
+
+local_clean:
+	rm -rf tmp_check/
