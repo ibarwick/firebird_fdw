@@ -114,7 +114,7 @@ check_update_local_to_foreign_partition_fail(
 check_update_local_to_foreign_list_success(
     'range',
     $parent_range_table_name,
-    'boo', # currently in third partition (first local partition)
+    'boo', # currently in third partition (last local partition)
     150,
 );
 
@@ -159,14 +159,14 @@ check_update_local_to_foreign_partition_fail(
 );
 
 # 11. Check UPDATE which attempts to move tuple from local to foreign
-#    partition with table partitioned by LIST (valid scenario)
+#     partition with table partitioned by LIST (valid scenario)
 # -------------------------------------------------------------------
 
 check_update_local_to_foreign_list_success(
     'list',
     $parent_list_table_name,
-    'listqoz', # currently in third partition (first local partition)
-    2,
+    'listqoz', # currently in third partition (last local partition)
+    1,
 );
 
 # 12. Check UPDATE which attempts to move tuple from foreign to local
