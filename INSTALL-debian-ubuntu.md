@@ -37,7 +37,7 @@ it will be installed on.
 
 ### Building
 
-Ensure the `pg_config` binary for the taregt PostgreSQL version is in
+Ensure the `pg_config` binary for the target PostgreSQL version is in
 the shell path; then execute:
 
     `make && sudo make install`

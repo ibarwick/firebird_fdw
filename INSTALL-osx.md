@@ -38,7 +38,7 @@ Note that particularly on OS X, tthe Firebird include/library files often end up
 non-standard locations; the Firebird utility [fb_config](https://firebirdsql.org/manual/fbscripts-fb-config.html)
 can assist with locating them.
 
-Ensure the `pg_config` binary for the taregt PostgreSQL version is in
+Ensure the `pg_config` binary for the target PostgreSQL version is in
 the shell path; then execute:
 
     `make && sudo make install`
