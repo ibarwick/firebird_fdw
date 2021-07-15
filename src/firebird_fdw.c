@@ -2760,11 +2760,7 @@ firebirdBeginForeignInsert(ModifyTableState *mtstate,
 	FirebirdFdwModifyState *fmstate;
 
 	ModifyTable *plan = castNode(ModifyTable, mtstate->ps.plan);
-#if (PG_VERSION_NUM >= 110000)
 	Index		resultRelation;
-#else
-	Index		resultRelation = resultRelInfo->ri_RangeTableIndex;
-#endif
 	EState	   *estate = mtstate->ps.state;
 	Relation	rel = resultRelInfo->ri_RelationDesc;
 	RangeTblEntry *rte;
@@ -2812,6 +2808,7 @@ firebirdBeginForeignInsert(ModifyTableState *mtstate,
 				errmsg("INSERT with ON CONFLICT clause is not supported")));
 
 #if (PG_VERSION_NUM < 110000)
+	resultRelation = resultRelInfo->ri_RangeTableIndex;
 	rte = list_nth(estate->es_range_table, resultRelation - 1);
 #endif
 
