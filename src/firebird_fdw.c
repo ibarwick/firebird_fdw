@@ -2760,7 +2760,11 @@ firebirdBeginForeignInsert(ModifyTableState *mtstate,
 	FirebirdFdwModifyState *fmstate;
 
 	ModifyTable *plan = castNode(ModifyTable, mtstate->ps.plan);
+#if (PG_VERSION_NUM >= 110000)
+	Index		resultRelation;
+#else
 	Index		resultRelation = resultRelInfo->ri_RangeTableIndex;
+#endif
 	EState	   *estate = mtstate->ps.state;
 	Relation	rel = resultRelInfo->ri_RelationDesc;
 	RangeTblEntry *rte;
@@ -2807,14 +2811,24 @@ firebirdBeginForeignInsert(ModifyTableState *mtstate,
 				(errcode(ERRCODE_FDW_UNABLE_TO_CREATE_EXECUTION),
 				errmsg("INSERT with ON CONFLICT clause is not supported")));
 
-#if (PG_VERSION_NUM >= 120000)
-	rte = exec_rt_fetch(resultRelation, estate);
-#else
+#if (PG_VERSION_NUM < 110000)
 	rte = list_nth(estate->es_range_table, resultRelation - 1);
 #endif
 
+#if (PG_VERSION_NUM >= 110000)
+	if (resultRelInfo->ri_RangeTableIndex == 0)
+	{
+		ResultRelInfo *rootResultRelInfo = resultRelInfo->ri_RootResultRelInfo;
+#if (PG_VERSION_NUM > 120000)
+		rte = exec_rt_fetch(rootResultRelInfo->ri_RangeTableIndex, estate);
+#else
+		rte = list_nth(estate->es_range_table, rootResultRelInfo->ri_RangeTableIndex - 1);
+#endif
+#else
 	if (rte->relid != RelationGetRelid(rel))
 	{
+#endif
+
 		rte = copyObject(rte);
 		rte->relid = RelationGetRelid(rel);
 		rte->relkind = RELKIND_FOREIGN_TABLE;
@@ -2826,17 +2840,33 @@ firebirdBeginForeignInsert(ModifyTableState *mtstate,
 		 * Vars contained in those expressions.
 		 */
 
-#if (PG_VERSION_NUM >= 120000)
+#if (PG_VERSION_NUM >= 110000)
 		if (plan && plan->operation == CMD_UPDATE &&
-			resultRelation == plan->rootRelation)
+#if (PG_VERSION_NUM >= 120000)
+			rootResultRelInfo->ri_RangeTableIndex == plan->rootRelation)
+#else
+			rootResultRelInfo->ri_RangeTableIndex == plan->nominalRelation)
+#endif
 			resultRelation = mtstate->resultRelInfo[0].ri_RangeTableIndex;
+		else
+			resultRelation = rootResultRelInfo->ri_RangeTableIndex;
 #else
 		if (plan && plan->operation == CMD_UPDATE &&
 			resultRelation == plan->nominalRelation)
 			resultRelation = mtstate->resultRelInfo[0].ri_RangeTableIndex;
 #endif
 	}
-
+#if (PG_VERSION_NUM >= 110000)
+	else
+	{
+		resultRelation = resultRelInfo->ri_RangeTableIndex;
+#if (PG_VERSION_NUM >= 120000)
+		rte = exec_rt_fetch(resultRelation, estate);
+#else
+		rte = list_nth(estate->es_range_table, resultRelation - 1);
+#endif
+	}
+#endif
 
 	/* Transmit all columns that are defined in the foreign table. */
 	for (attnum = 1; attnum <= tupdesc->natts; attnum++)
