@@ -5,6 +5,8 @@ Revision history for firebird_fdw
 	- Enable provision of custom Firebird port for TAP tests
 	- Support PostgreSQL 14
 	- Adapt for API changes introduced in PostgreSQL 11+
+	- Support for versions earlier than PostgreSQL 9.3 removed
+	- Ensure non-superusers can execute firebird_version()
 
 1.2.1	2020-10-21
 	- Fix builds for recent Fedora versions
