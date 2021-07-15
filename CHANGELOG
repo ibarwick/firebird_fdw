@@ -3,6 +3,8 @@ Revision history for firebird_fdw
 1.3.0	2021-??-??
 	- Invalid Firebird server port numbers will be rejected
 	- Enable provision of custom Firebird port for TAP tests
+	- Support PostgreSQL 14
+	- Adapt for API changes introduced in PostgreSQL 11+
 
 1.2.1	2020-10-21
 	- Fix builds for recent Fedora versions
