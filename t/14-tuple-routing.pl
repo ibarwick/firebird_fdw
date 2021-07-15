@@ -26,7 +26,7 @@ if ($version < 110000) {
     );
 }
 else {
-    plan tests => 14;
+    plan tests => 12;
 }
 
 
@@ -68,11 +68,20 @@ create_list_partition_table(
 
 check_copy_via_parent();
 
+# Current contents:
+# 101|foo
+# 102|bar
 
 # 2. Check COPY directly into partition
 # -------------------------------------
 
 check_copy_into_partition();
+
+# Current contents:
+# 101|foo
+# 102|bar
+# 111|baz
+# 112|qux
 
 
 # 3. Check delete from parent partition
@@ -80,10 +89,18 @@ check_copy_into_partition();
 
 check_delete_all_from_parent();
 
+# Current contents:
+# (none)
+
 # 4. Check COPY into multiple partitions
 # --------------------------------------
 
 check_copy_into_multiple_partitions();
+
+# Current contents:
+# tbl_XXX_child1|3|baa
+# tbl_XXX_child2|103|bee
+# tbl_XXX_child3|203|boo
 
 # 5. Check INSERT INTO ... RETURNING with table partitioned by RANGE
 # ------------------------------------------------------------------
@@ -94,9 +111,14 @@ check_insert_into_returning_via_parent(
     'mooh',
 );
 
+# Current contents:
+# 3|baa
+# 103|bee
+# 203|boo
+# 204|mooh
 
 # 6. Check UPDATE which attempts to move tuple from local to foreign
-#    partition with table partitioned by RANGE (invalid scenario)
+#    partition with table partitioned by RANGE
 # ------------------------------------------------------------------
 
 check_update_local_to_foreign_partition_fail(
@@ -107,22 +129,14 @@ check_update_local_to_foreign_partition_fail(
 );
 
 
-# 7. Check UPDATE which attempts to move tuple from local to foreign
-#    partition with table partitioned by RANGE (valid scenario)
+# 7. Check UPDATE which attempts to move tuple from foreign to local
+#    partition with table partitioned by RANGE
 # ------------------------------------------------------------------
-
-check_update_local_to_foreign_list_success(
-    'range',
-    $parent_range_table_name,
-    'boo', # currently in third partition (last local partition)
-    150,
-);
-
 
 check_update_foreign_to_local_partition_fail(
     'range',
     $parent_range_table_name,
-    'boo', # currently in remote partition
+    'bee', # currently in remote partition
     205,
 );
 
@@ -136,6 +150,8 @@ check_insert_into_returning_via_parent(
     'mooh',
 );
 
+# Current contents:
+# 1|mooh
 
 # 9. Check multiple INSERT INTO ... RETURNING with table partitioned by LIST
 # ---------------------------------------------------------------------------
@@ -146,6 +162,12 @@ check_multiple_insert_into_returning_via_parent(
     [1, 'listqox'],
     [2, 'listqoz'],
 );
+
+# Current contents:
+# 1|mooh
+# 0|listqoo
+# 1|listqox
+# 2|listqoz
 
 # 10. Check UPDATE which attempts to move tuple from local to foreign
 #     partition with table partitioned by LIST (invalid scenario)
@@ -158,18 +180,7 @@ check_update_local_to_foreign_partition_fail(
     1,
 );
 
-# 11. Check UPDATE which attempts to move tuple from local to foreign
-#     partition with table partitioned by LIST (valid scenario)
-# -------------------------------------------------------------------
-
-check_update_local_to_foreign_list_success(
-    'list',
-    $parent_list_table_name,
-    'listqoz', # currently in third partition (last local partition)
-    1,
-);
-
-# 12. Check UPDATE which attempts to move tuple from foreign to local
+# 11. Check UPDATE which attempts to move tuple from foreign to local
 #     partition with table partitioned by LIST (invalid scenario)
 # -------------------------------------------------------------------
 
@@ -180,7 +191,7 @@ check_update_foreign_to_local_partition_fail(
     2,
 );
 
-# 13. Test triggers
+# 12. Test triggers
 # -----------------
 
 check_before_trigger();
