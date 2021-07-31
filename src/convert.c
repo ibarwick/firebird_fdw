@@ -2581,7 +2581,11 @@ foreign_expr_walker(Node *node,
 static bool
 is_builtin(Oid oid)
 {
+#if(PG_VERSION_NUM >= 120000)
+	return (oid < FirstGenbkiObjectId);
+#else
 	return (oid < FirstBootstrapObjectId);
+#endif
 }
 
 
