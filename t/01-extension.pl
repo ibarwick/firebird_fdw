@@ -27,7 +27,7 @@ my $node = FirebirdFDWNode->new();
 #
 # TODO: parse the value from "firebird_fdw.control" and check for a match
 
-my $version = '10201';
+my $version = '10202';
 
 my ($res, $res_stdout, $res_stderr) = $node->psql(q|SELECT firebird_fdw_version()|);
 
