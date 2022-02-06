@@ -1729,11 +1729,13 @@ firebirdReScanForeignScan(ForeignScanState *node)
     /* Clean up current query */
 
     if (fdw_state->result)
+    {
         FQclear(fdw_state->result);
+        fdw_state->result = NULL;
+    }
 
-    /* Begin new query */
-
-    fdw_state->result = FQexec(fdw_state->conn, fdw_state->query);
+    /* Indicate we should begin a new query */
+    fdw_state->row = 0;
 }
 
 
