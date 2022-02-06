@@ -275,8 +275,8 @@ firebirdInstantiateConnection(ForeignServer *server, UserMapping *user)
  * XXX need to improve error handling
  *
  * See also:
- *  - http://www.firebirdsql.org/manual/isql-transactions.html
- *  - http://www.firebirdsql.org/refdocs/langrefupd25-set-trans.html
+ *	- http://www.firebirdsql.org/manual/isql-transactions.html
+ *	- http://www.firebirdsql.org/refdocs/langrefupd25-set-trans.html
  */
 static void
 fb_begin_remote_xact(ConnCacheEntry *entry)
@@ -618,7 +618,7 @@ firebirdDbPath(char **address, char **database, int *port)
 							 ':');
 	}
 
-	/* Caller should ensure at least *database is not NULL  */
+	/* Caller should ensure at least *database is not NULL	*/
 	if (*database != NULL)
 	{
 		appendStringInfoString(&buf,

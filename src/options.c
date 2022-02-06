@@ -27,18 +27,18 @@ static struct FirebirdFdwOption valid_options[] =
 	{ "quote_identifiers",	 ForeignServerRelationId },
 	{ "implicit_bool_type",	 ForeignServerRelationId },
 	/* User options */
-	{ "username",			 UserMappingRelationId   },
-	{ "password",			 UserMappingRelationId   },
+	{ "username",			 UserMappingRelationId	 },
+	{ "password",			 UserMappingRelationId	 },
 	/* Table options */
-	{ "query",				 ForeignTableRelationId  },
-	{ "table_name",			 ForeignTableRelationId  },
-	{ "updatable",			 ForeignTableRelationId  },
-	{ "estimated_row_count", ForeignTableRelationId  },
-	{ "quote_identifier",	 ForeignTableRelationId  },
+	{ "query",				 ForeignTableRelationId	 },
+	{ "table_name",			 ForeignTableRelationId	 },
+	{ "updatable",			 ForeignTableRelationId	 },
+	{ "estimated_row_count", ForeignTableRelationId	 },
+	{ "quote_identifier",	 ForeignTableRelationId	 },
 	/* Column options */
 	{ "column_name",		 AttributeRelationId	 },
-	{ "quote_identifier",	 AttributeRelationId     },
-	{ "implicit_bool_type",	 AttributeRelationId     },
+	{ "quote_identifier",	 AttributeRelationId	 },
+	{ "implicit_bool_type",	 AttributeRelationId	 },
 	{ NULL,					 InvalidOid }
 };
 
@@ -394,7 +394,7 @@ firebirdGetColumnOptions(Oid foreigntableid, int varattno,
 	{
 		DefElem	   *def = (DefElem *) lfirst(lc);
 
-		if (options->column_name != NULL &&  strcmp(def->defname, "column_name") == 0)
+		if (options->column_name != NULL &&	 strcmp(def->defname, "column_name") == 0)
 		{
 			*options->column_name = defGetString(def);
 			continue;
