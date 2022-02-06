@@ -159,12 +159,12 @@ typedef struct FirebirdFdwState
 	char	   *svr_query;
 	char	   *svr_table;
 	bool		disable_pushdowns;	 /* true if server option "disable_pushdowns" supplied */
-	int 		estimated_row_count; /* set if server option "estimated_row_count" provided */
+	int			estimated_row_count; /* set if server option "estimated_row_count" provided */
 	bool		quote_identifier;
-	bool		implicit_bool_type;  /* true if server option "implicit_bool_type" supplied */
+	bool		implicit_bool_type;	 /* true if server option "implicit_bool_type" supplied */
 
 	FBconn	   *conn;
-	int		    firebird_version; /* cache Firebird version from connection */
+	int			firebird_version; /* cache Firebird version from connection */
 
 	List	   *remote_conds;
 	List	   *local_conds;

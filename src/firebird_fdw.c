@@ -11,7 +11,7 @@
  * Public repository: https://github.com/ibarwick/firebird_fdw
  *
  * IDENTIFICATION
- *        firebird_fdw/src/firebird_fdw.c
+ *		  firebird_fdw/src/firebird_fdw.c
  *
  *----------------------------------------------------------------------
  */
@@ -343,7 +343,7 @@ firebird_fdw_server_options(PG_FUNCTION_ARGS)
 
 	ForeignServer *server;
 	fbServerOptions server_options = fbServerOptions_init;
-	const char  *server_name;
+	const char	*server_name;
 
 	/* check to see if caller supports this function returning a tuplestore */
 	if (rsinfo == NULL || !IsA(rsinfo, ReturnSetInfo))
@@ -641,13 +641,13 @@ firebird_version(PG_FUNCTION_ARGS)
 
 	initStringInfo(&buf);
 	appendStringInfoString(&buf,
-						   "     SELECT fs.oid, fs.srvname, um.umuser "
-						   "       FROM pg_catalog.pg_foreign_data_wrapper fdw "
+						   "	 SELECT fs.oid, fs.srvname, um.umuser "
+						   "	   FROM pg_catalog.pg_foreign_data_wrapper fdw "
 						   " INNER JOIN pg_catalog.pg_foreign_server fs "
-						   "         ON fs.srvfdw = fdw.oid "
+						   "		 ON fs.srvfdw = fdw.oid "
 						   " INNER JOIN pg_catalog.pg_user_mappings um "
-						   "            ON um.srvid = fs.oid "
-						   "      WHERE fdw.fdwname = 'firebird_fdw'");
+						   "			ON um.srvid = fs.oid "
+						   "	  WHERE fdw.fdwname = 'firebird_fdw'");
 
 	SPI_connect();
 	PushActiveSnapshot(GetTransactionSnapshot());
@@ -940,16 +940,16 @@ firebirdEstimateCosts(PlannerInfo *root, RelOptInfo *baserel, Oid foreigntableid
  *
  * Parameters:
  * (PlannerInfo *)root
- *    The planner's global information about the query
+ *	  The planner's global information about the query
  *
  * (RelOptInfo *)baserel
- *    The planner's information about the foreign table
+ *	  The planner's information about the foreign table
  *
  * (Oid) foreigntableid
- *    The pg_class OID of the foreign table (provided for convenience)
+ *	  The pg_class OID of the foreign table (provided for convenience)
  *
  * Returns:
- *     void
+ *	   void
  *
  * This function should update baserel->rows to be the expected number of
  * rows returned by the table scan, after accounting for the filtering
@@ -1117,19 +1117,19 @@ firebirdGetForeignRelSize(PlannerInfo *root,
  * Parameters:
  *
  * (PlannerInfo *)root
- *    The planner's global information about the query
+ *	  The planner's global information about the query
  *
  * (RelOptInfo *)baserel
- *    The planner's information about the foreign table
+ *	  The planner's information about the foreign table
  *
  * (Oid) foreigntableid
- *    The pg_class OID of the foreign table (provided for convenience)
+ *	  The pg_class OID of the foreign table (provided for convenience)
  *
  * NOTE: The parameters are the same as for GetForeignRelSize(), which was
  * previously called.
  *
  * Returns:
- *     void
+ *	   void
  *
  * This function must generate at least one access path (ForeignPath node)
  * for a scan on the foreign table and must call add_path to add each such
@@ -1197,25 +1197,25 @@ firebirdGetForeignPaths(PlannerInfo *root,
  * Parameters:
  *
  * (PlannerInfo *) root
- *    The planner's global information about the query
+ *	  The planner's global information about the query
  *
  * (RelOptInfo *) baserel
- *    The planner's information about the foreign table
+ *	  The planner's information about the foreign table
  *
  * (Oid) foreigntableid
- *    The pg_class OID of the foreign table (provided for convenience)
+ *	  The pg_class OID of the foreign table (provided for convenience)
  *
  * (ForeignPath *) best_path
- *    the selected ForeignPath, previously produced by GetForeignPaths()
+ *	  the selected ForeignPath, previously produced by GetForeignPaths()
  *
  * (List *) tlist
- *    The target list to be emitted by the plan node
+ *	  The target list to be emitted by the plan node
  *
  * (List *) scan_clauses
- *    The restriction clauses to be enforced by the plan node.
+ *	  The restriction clauses to be enforced by the plan node.
  *
  * Returns:
- *    ForeignScan *
+ *	  ForeignScan *
  */
 
 static ForeignScan *
@@ -1328,7 +1328,7 @@ firebirdGetForeignPlan(PlannerInfo *root,
  * somewhat rudimentary PLAN output.
  *
  * See also:
- *   include/commands/explain.h
+ *	 include/commands/explain.h
  */
 static void
 firebirdExplainForeignScan(ForeignScanState *node,
@@ -1553,7 +1553,7 @@ firebirdIterateForeignScan(ForeignScanState *node)
 	int last_field = 0;
 
 	uint32_t key_ctid_part = 0;
-	uint32_t key_xmax_part  = 0;
+	uint32_t key_xmax_part	= 0;
 
 	elog(DEBUG2, "entering function %s", __func__);
 
@@ -1722,20 +1722,20 @@ convertDbKeyValue(char *p, uint32_t *key_ctid_part, uint32_t *key_xmax_part)
 static void
 firebirdReScanForeignScan(ForeignScanState *node)
 {
-    FirebirdFdwScanState *fdw_state = (FirebirdFdwScanState *) node->fdw_state;
+	FirebirdFdwScanState *fdw_state = (FirebirdFdwScanState *) node->fdw_state;
 
-    elog(DEBUG2, "entering function %s", __func__);
+	elog(DEBUG2, "entering function %s", __func__);
 
-    /* Clean up current query */
+	/* Clean up current query */
 
-    if (fdw_state->result)
-    {
-        FQclear(fdw_state->result);
-        fdw_state->result = NULL;
-    }
+	if (fdw_state->result)
+	{
+		FQclear(fdw_state->result);
+		fdw_state->result = NULL;
+	}
 
-    /* Indicate we should begin a new query */
-    fdw_state->row = 0;
+	/* Begin new query */
+	fdw_state->row = 0;
 }
 
 
@@ -1820,35 +1820,35 @@ firebirdIsForeignRelUpdatable(Relation rel)
  * implies.
  *
  * See:
- *   - https://www.postgresql.org/message-id/flat/A737B7A37273E048B164557ADEF4A58B53860913%40ntex2010i.host.magwien.gv.at
- *   - https://www.postgresql.org/message-id/flat/0389EF2F-BF41-4925-A5EB-1E9CF28CC171%40postgrespro.ru
- *   - https://www.postgresql.org/docs/current/fdw-callbacks.html#FDW-CALLBACKS-UPDATE
+ *	 - https://www.postgresql.org/message-id/flat/A737B7A37273E048B164557ADEF4A58B53860913%40ntex2010i.host.magwien.gv.at
+ *	 - https://www.postgresql.org/message-id/flat/0389EF2F-BF41-4925-A5EB-1E9CF28CC171%40postgrespro.ru
+ *	 - https://www.postgresql.org/docs/current/fdw-callbacks.html#FDW-CALLBACKS-UPDATE
  *
  * Note: in previous firebird_fdw releases, the tuple header OID was used
  * together with the CTID, however from PostgreSQL 12 this is no longer possible.
  *
  * Parameters:
  * (Query *)parsetree
- *     The parse tree for the UPDATE or DELETE command
+ *	   The parse tree for the UPDATE or DELETE command
  *
  * (RangeTblEntry *)
  * (Relation)
- *     These describe the target foreign table
+ *	   These describe the target foreign table
  *
  * Returns:
- *    void
+ *	  void
  */
 static void
 #if (PG_VERSION_NUM >= 140000)
 firebirdAddForeignUpdateTargets(PlannerInfo *root,
 								Index rtindex,
-                                RangeTblEntry *target_rte,
-                                Relation target_relation)
+								RangeTblEntry *target_rte,
+								Relation target_relation)
 
 #else
 firebirdAddForeignUpdateTargets(Query *parsetree,
-                                RangeTblEntry *target_rte,
-                                Relation target_relation)
+								RangeTblEntry *target_rte,
+								Relation target_relation)
 #endif
 {
 	Var		   *var_ctidjunk;
@@ -1884,7 +1884,7 @@ firebirdAddForeignUpdateTargets(Query *parsetree,
 						  true);
 
 	parsetree->targetList = lappend(parsetree->targetList, tle);
-#endif  /* (PG_VERSION_NUM >= 140000) */
+#endif	/* (PG_VERSION_NUM >= 140000) */
 
 	/* This is the CTID attribute, which we are abusing to pass half the RDB$DB_KEY value */
 #if (PG_VERSION_NUM >= 140000)
@@ -1925,19 +1925,19 @@ firebirdAddForeignUpdateTargets(Query *parsetree,
  *
  * Parameters:
  * (PlannerInfo *) root
- *    The planner's global information about the query
+ *	  The planner's global information about the query
  *
  * (ModifyTable *) plan
- *    The ModifyTable plan node, which is complete except for the
- *    fdwPrivLists field generated in this function.
+ *	  The ModifyTable plan node, which is complete except for the
+ *	  fdwPrivLists field generated in this function.
  *
  * (Index) resultRelation
- *    Identifies the target foreign table by its rangetable index
+ *	  Identifies the target foreign table by its rangetable index
  *
  * (int) subplan_index
- *    Identifies which target of the ModifyTable plan node this is,
- *    counting from zero. This can be used for indexing into plan->plans
- *    or another substructure of the plan node.
+ *	  Identifies which target of the ModifyTable plan node this is,
+ *	  counting from zero. This can be used for indexing into plan->plans
+ *	  or another substructure of the plan node.
  */
 static List *
 firebirdPlanForeignModify(PlannerInfo *root,
@@ -1979,7 +1979,7 @@ firebirdPlanForeignModify(PlannerInfo *root,
 		ereport(ERROR,
 				(errcode(ERRCODE_FDW_UNABLE_TO_CREATE_EXECUTION),
 				errmsg("INSERT with ON CONFLICT clause is not supported")));
-#endif  /* PG_VERSION_NUM */
+#endif	/* PG_VERSION_NUM */
 
 
 	elog(DEBUG2, "RTE rtekind: %i; operation %i", rte->rtekind, operation);
@@ -2284,27 +2284,27 @@ create_foreign_modify(EState *estate,
  *
  * Parameters:
  * (ModifyTableState *) mtstate
- *    overall state of the ModifyTable plan node being executed;
- *    provides global data about the plan and execution state
+ *	  overall state of the ModifyTable plan node being executed;
+ *	  provides global data about the plan and execution state
  *
  * (ResultRelInfo) *resultRelInfo
- *    The ResultRelInfo struct describing the  target foreign table.
- *    The ri_FdwState field of ResultRelInfo can be used to store
- *    the FDW's private state.
+ *	  The ResultRelInfo struct describing the  target foreign table.
+ *	  The ri_FdwState field of ResultRelInfo can be used to store
+ *	  the FDW's private state.
  *
  * (List *)fdw_private
- *    contains private data generated by firebirdPlanForeignModify(), if any.
+ *	  contains private data generated by firebirdPlanForeignModify(), if any.
  *
  * (int) subplan_index
- *    identifies which target of the ModifyTable plan node this is.
+ *	  identifies which target of the ModifyTable plan node this is.
  *
  * (int) eflags
- *    contains flag bits describing the executor's operating mode for
- *    this plan node. See also comment about (eflags & EXEC_FLAG_EXPLAIN_ONLY)
- *    in function body.
+ *	  contains flag bits describing the executor's operating mode for
+ *	  this plan node. See also comment about (eflags & EXEC_FLAG_EXPLAIN_ONLY)
+ *	  in function body.
  *
  * Returns:
- *     void
+ *	   void
  */
 
 static void
@@ -2372,22 +2372,22 @@ firebirdBeginForeignModify(ModifyTableState *mtstate,
  *
  * Parameters:
  * (Estate*) estate
- *    Global execution state for the query
+ *	  Global execution state for the query
 
  * (ResultRelInfo*) resultRelInfo
- *    ResultRelInfo struct describing the target foreign table
+ *	  ResultRelInfo struct describing the target foreign table
  *
  * (TupleTableSlot*) slot
- *    Contains the tuple to be inserted
+ *	  Contains the tuple to be inserted
  *
  * (TupleTableSlot*) planSlot
- *    Contains the tuple generated by the ModifyTable plan node's subplan;
- *    it will carry any junk columns that were requested by
- *    AddForeignUpdateTargets(). However this parameter is not
- *    relevant for INSERT operations and can be ignored.
+ *	  Contains the tuple generated by the ModifyTable plan node's subplan;
+ *	  it will carry any junk columns that were requested by
+ *	  AddForeignUpdateTargets(). However this parameter is not
+ *	  relevant for INSERT operations and can be ignored.
  *
  * Returns:
- *    TupleTableSlot or NULL
+ *	  TupleTableSlot or NULL
  *
  * The return value is either a slot containing the data that was actually
  * inserted (this might differ from the data supplied, for example as a
@@ -2481,22 +2481,22 @@ firebirdExecForeignInsert(EState *estate,
  *
  * Parameters:
  * (Estate*) estate
- *    Global execution state for the query
+ *	  Global execution state for the query
  *
  * (ResultRelInfo*) resultRelInfo
- *    ResultRelInfo struct describing the target foreign table
+ *	  ResultRelInfo struct describing the target foreign table
  *
  * (TupleTableSlot*) slot
- *    contains the new data for the tuple; this will match the foreign table's
- *    rowtype definition.
+ *	  contains the new data for the tuple; this will match the foreign table's
+ *	  rowtype definition.
  *
  * (TupleTableSlot*) planSlot
- *    contains the tuple that was generated by the ModifyTable plan node's
- *    subplan; it may will carry any junk columns that were requested by
- *    AddForeignUpdateTargets().
+ *	  contains the tuple that was generated by the ModifyTable plan node's
+ *	  subplan; it may will carry any junk columns that were requested by
+ *	  AddForeignUpdateTargets().
  *
  * Returns:
- *    TupleTableSlot or NULL
+ *	  TupleTableSlot or NULL
  *
  * The return value is either a slot containing the row as it was actually
  * updated (this might differ from the data supplied, for example as a
@@ -2592,22 +2592,22 @@ firebirdExecForeignUpdate(EState *estate,
  *
  * Parameters:
  * (Estate*) estate
- *    Global execution state for the query.
+ *	  Global execution state for the query.
  *
  * (ResultRelInfo*) resultRelInfo
- *    ResultRelInfo struct describing the target foreign table
+ *	  ResultRelInfo struct describing the target foreign table
  *
  * (TupleTableSlot*) slot
- *    Contains nothing useful, but can  be used to hold the returned tuple.
+ *	  Contains nothing useful, but can	be used to hold the returned tuple.
  *
  * (TupleTableSlot*) planSlot
- *    Contains the tuple generated by the ModifyTable plan node's subplan;
- *    in particular, it will carry any junk columns that were requested by
- *    AddForeignUpdateTargets(). The junk column(s) must be used to
- *    identify the tuple to be deleted.
+ *	  Contains the tuple generated by the ModifyTable plan node's subplan;
+ *	  in particular, it will carry any junk columns that were requested by
+ *	  AddForeignUpdateTargets(). The junk column(s) must be used to
+ *	  identify the tuple to be deleted.
  *
  * Returns:
- *    TupleTableSlot or NULL
+ *	  TupleTableSlot or NULL
  *
  * The return value is either a slot containing the row that was deleted,
  * or NULL if no row was deleted (typically as a result of triggers). The
@@ -3118,10 +3118,10 @@ fbAcquireSampleRowsFunc(Relation relation, int elevel,
  * Generate table definitions for import into PostgreSQL
  *
  * TODO:
- *  - verify data types, warn about ones which can't be imported
- *  - verify object names (FB is generally somewhat stricter than Pg,
- *    so range of names valid in FB but not in Pg should be fairly small)
- *  - warn about comments
+ *	- verify data types, warn about ones which can't be imported
+ *	- verify object names (FB is generally somewhat stricter than Pg,
+ *	  so range of names valid in FB but not in Pg should be fairly small)
+ *	- warn about comments
  */
 List *
 firebirdImportForeignSchema(ImportForeignSchemaStmt *stmt,
@@ -3133,7 +3133,7 @@ firebirdImportForeignSchema(ImportForeignSchemaStmt *stmt,
 	FBresult *res;
 	int			row;
 	/* number of table names specified in "LIMIT TO" or "EXCEPT" */
-	int		    specified_table_count = 0;
+	int			specified_table_count = 0;
 	int			params_ix = 0;
 
 	StringInfoData table_query;
@@ -3150,7 +3150,7 @@ firebirdImportForeignSchema(ImportForeignSchemaStmt *stmt,
 	/* Parse statement options */
 	foreach(lc, stmt->options)
 	{
-		DefElem    *def = (DefElem *) lfirst(lc);
+		DefElem	   *def = (DefElem *) lfirst(lc);
 
 		if (strcmp(def->defname, "import_not_null") == 0)
 			import_not_null = defGetBoolean(def);
@@ -3217,9 +3217,9 @@ firebirdImportForeignSchema(ImportForeignSchemaStmt *stmt,
 			if (first_item)
 				first_item = false;
 			else
-				appendStringInfoString(&table_query, "   UNION \n");
+				appendStringInfoString(&table_query, "	 UNION \n");
 
-			appendStringInfoString(&table_query, "  SELECT CAST(? AS VARCHAR(32)) AS pg_name, CAST(? AS VARCHAR(32)) AS fb_name FROM rdb$database \n");
+			appendStringInfoString(&table_query, "	SELECT CAST(? AS VARCHAR(32)) AS pg_name, CAST(? AS VARCHAR(32)) AS fb_name FROM rdb$database \n");
 
 			/* name as provided in LIMIT TO */
 			p_values[params_ix] = pstrdup(rv->relname);
@@ -3236,20 +3236,20 @@ firebirdImportForeignSchema(ImportForeignSchemaStmt *stmt,
 
 		appendStringInfoString(&table_query,
 							   "   SELECT TRIM(r.rdb$relation_name) AS relname, \n"
-							   "          CASE WHEN r.rdb$view_blr IS NULL THEN 'r' ELSE 'v' END AS type, \n"
-							   "          TRIM(t.pg_name) AS pg_name \n"
-							   "     FROM pg_tables t \n"
-							   "     JOIN rdb$relations r ON (TRIM(r.rdb$relation_name) = t.fb_name) \n"
-							   "    WHERE (r.rdb$system_flag IS NULL OR r.rdb$system_flag = 0) \n");
+							   "		  CASE WHEN r.rdb$view_blr IS NULL THEN 'r' ELSE 'v' END AS type, \n"
+							   "		  TRIM(t.pg_name) AS pg_name \n"
+							   "	 FROM pg_tables t \n"
+							   "	 JOIN rdb$relations r ON (TRIM(r.rdb$relation_name) = t.fb_name) \n"
+							   "	WHERE (r.rdb$system_flag IS NULL OR r.rdb$system_flag = 0) \n");
 
 	}
 	else
 	{
 		appendStringInfoString(&table_query,
 							   "   SELECT TRIM(r.rdb$relation_name) AS relname, \n"
-							   "          CASE WHEN r.rdb$view_blr IS NULL THEN 'r' ELSE 'v' END AS type \n"
-							   "     FROM rdb$relations r\n"
-							   "    WHERE (r.rdb$system_flag IS NULL OR r.rdb$system_flag = 0) \n");
+							   "		  CASE WHEN r.rdb$view_blr IS NULL THEN 'r' ELSE 'v' END AS type \n"
+							   "	 FROM rdb$relations r\n"
+							   "	WHERE (r.rdb$system_flag IS NULL OR r.rdb$system_flag = 0) \n");
 	}
 
 
@@ -3660,7 +3660,7 @@ get_stmt_param_formats(FirebirdFdwModifyState *fmstate,
  */
 static void
 store_returning_result(FirebirdFdwModifyState *fmstate,
-                       TupleTableSlot *slot, FBresult *res)
+					   TupleTableSlot *slot, FBresult *res)
 {
 	/* FBresult must be released before leaving this function. */
 	PG_TRY();
@@ -3701,26 +3701,26 @@ store_returning_result(FirebirdFdwModifyState *fmstate,
  *
  * Parameters:
  * (FBresult *) res
- *     Pointer to the libfq result object
+ *	   Pointer to the libfq result object
  *
  * (int) row
- *     Row number to process
+ *	   Row number to process
  *
  * (Relation) rel
- *     Local representation of the foreign table
+ *	   Local representation of the foreign table
  *
  * (AttInMetadata *) attinmeta
- *     conversion data for the rel's tupdesc
+ *	   conversion data for the rel's tupdesc
  *
  * (List *)retrieved_attrs
- *     An integer list of the table column numbers present in the
- *     FBresult object
+ *	   An integer list of the table column numbers present in the
+ *	   FBresult object
  *
  * (MemoryContext) tmp_context
- *     A working context that can be reset after each tuple.
+ *	   A working context that can be reset after each tuple.
  *
  * Returns:
- *     HeapTuple
+ *	   HeapTuple
  */
 static HeapTuple
 create_tuple_from_result(FBresult *res,
@@ -3814,9 +3814,9 @@ create_tuple_from_result(FBresult *res,
  */
 void
 extractDbKeyParts(TupleTableSlot *planSlot,
-                  FirebirdFdwModifyState *fmstate,
-                  Datum *datum_ctid,
-                  Datum *datum_oid)
+				  FirebirdFdwModifyState *fmstate,
+				  Datum *datum_ctid,
+				  Datum *datum_oid)
 {
 	bool		isNull;
 

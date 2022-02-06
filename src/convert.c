@@ -3,13 +3,13 @@
  * convert.c
  *
  * Helper functions to:
- *   - examine WHERE clauses for expressions which can be sent to Firebird
- *     for execution;
- *   - for these expressions, generate Firebird SQL queries from the
- *     PostgreSQL parse tree
- *   - convert Firebird table definitions to PostgreSQL foreign table
- *     definitions to support IMPORT FOREIGN SCHEMA (PostgreSQL 9.5 and
- *     later)
+ *	 - examine WHERE clauses for expressions which can be sent to Firebird
+ *	   for execution;
+ *	 - for these expressions, generate Firebird SQL queries from the
+ *	   PostgreSQL parse tree
+ *	 - convert Firebird table definitions to PostgreSQL foreign table
+ *	   definitions to support IMPORT FOREIGN SCHEMA (PostgreSQL 9.5 and
+ *	   later)
  *
  *-------------------------------------------------------------------------
  */
@@ -218,9 +218,9 @@ void
 buildUpdateSql(StringInfo buf,
 			   RangeTblEntry *rte,
 			   FirebirdFdwState *fdw_state,
-               Index rtindex, Relation rel,
-               List *targetAttrs, List *returningList,
-               List **retrieved_attrs)
+			   Index rtindex, Relation rel,
+			   List *targetAttrs, List *returningList,
+			   List **retrieved_attrs)
 {
 	bool		first;
 	ListCell   *lc;
@@ -257,18 +257,18 @@ buildUpdateSql(StringInfo buf,
  * build Firebird DELETE statement
  *
  * NOTE:
- *   Firebird only seems to support DELETE ... RETURNING ...
- *   but raises an error if more than one row is returned:
- *     SQL> delete from module where module_id>10000 returning module_id;
- *     Statement failed, SQLSTATE = 21000
- *     multiple rows in singleton select
- *     SQL> delete from module where module_id=2000 returning module_id;
- *     MODULE_ID
- *     =========
- *     2000
+ *	 Firebird only seems to support DELETE ... RETURNING ...
+ *	 but raises an error if more than one row is returned:
+ *	   SQL> delete from module where module_id>10000 returning module_id;
+ *	   Statement failed, SQLSTATE = 21000
+ *	   multiple rows in singleton select
+ *	   SQL> delete from module where module_id=2000 returning module_id;
+ *	   MODULE_ID
+ *	   =========
+ *	   2000
  *
- *  However the FDW deletes each row individually based on the RDB$DB_KEY
- *  value, so the syntax works as expected.
+ *	However the FDW deletes each row individually based on the RDB$DB_KEY
+ *	value, so the syntax works as expected.
  */
 
 void
@@ -520,7 +520,7 @@ convertFirebirdObject(char *server_name, char *schema, char *object_name, char o
 									 ",\n");
 
 			appendStringInfo(create_table,
-							 "  %s",
+							 "	%s",
 							 (char *)lfirst(lc));
 		}
 
@@ -986,9 +986,9 @@ convertVar(Var *node, convert_expr_cxt *context, char **result)
 
 		/*
 		 * Handle an implicit boolean column var - but only if:
-		 *  - the caller wants us to do that
-		 *  - the server-level option "implicit_bool_type" is set to "true"
-		 *    (as this is still experimental)
+		 *	- the caller wants us to do that
+		 *	- the server-level option "implicit_bool_type" is set to "true"
+		 *	  (as this is still experimental)
 		 */
 		if (node->vartype == BOOLOID && context->check_implicit_bool == true)
 		{
@@ -2092,8 +2092,8 @@ convertTargetList(StringInfo buf,
  *
  * Examine each restriction clause in baserel's baserestrictinfo list,
  * and classify them into two groups, which are returned as two lists:
- *  - remote_conds contains expressions that can be evaluated remotely
- *  - local_conds contains expressions that can't be evaluated remotely
+ *	- remote_conds contains expressions that can be evaluated remotely
+ *	- local_conds contains expressions that can't be evaluated remotely
  *
  * Adapted from postgres_fdw
  */
@@ -2181,7 +2181,7 @@ isFirebirdExpr(PlannerInfo *root,
  */
 static bool
 foreign_expr_walker(Node *node,
-                    foreign_glob_cxt *glob_cxt)
+					foreign_glob_cxt *glob_cxt)
 {
 	/* Need do nothing for empty subexpressions */
 	if (node == NULL)
@@ -2274,7 +2274,7 @@ foreign_expr_walker(Node *node,
 
 		case T_BooleanTest:
 		{
-			BooleanTest   *bt = (BooleanTest *) node;
+			BooleanTest	  *bt = (BooleanTest *) node;
 
 			/* Recurse to input subexpressions	*/
 			if (!foreign_expr_walker((Node *) bt->arg,
@@ -2573,7 +2573,7 @@ foreign_expr_walker(Node *node,
  *
  * XXX there is a problem with this, which is that the set of built-in
  * objects expands over time.  Something that is built-in to us might not
- * be known to the remote server, if it's of an older version.  But keeping
+ * be known to the remote server, if it's of an older version.	But keeping
  * track of that would be a huge exercise.
  *
  * Adapted from postgres_fdw
@@ -2596,7 +2596,7 @@ is_builtin(Oid oid)
  * Firebird equivalent
  *
  * See:
- *   http://ibexpert.net/ibe/index.php?n=Doc.ComparisonOperators
+ *	 http://ibexpert.net/ibe/index.php?n=Doc.ComparisonOperators
  *
  * Synchronize with convertOperatorName().
  */
@@ -2667,7 +2667,7 @@ canConvertOp(OpExpr *oe, int firebird_version)
  * IMPORT FOREIGN SCHEMA.
  *
  * TODO:
- *  - verify all types can be converted to their PostgreSQL equivalents
+ *	- verify all types can be converted to their PostgreSQL equivalents
  */
 char *
 _dataTypeSQL(char *table_name)
@@ -2676,54 +2676,54 @@ _dataTypeSQL(char *table_name)
 
 	initStringInfo(&data_type_sql);
 	appendStringInfo(&data_type_sql,
-"   SELECT TRIM(rf.rdb$field_name) AS column_name,\n"
-"          f.rdb$field_type, \n"
-"          CASE f.rdb$field_type\n"
-"            WHEN 261 THEN \n"
-"              CASE f.rdb$field_sub_type \n"
-"                WHEN 1 THEN 'TEXT' \n"
-"                ELSE 'BYTEA' \n"
-"              END \n"
-"            WHEN 14  THEN 'CHAR(' || f.rdb$field_length|| ')'\n"
-"            WHEN 40  THEN 'CSTRING'\n"
-"            WHEN 11  THEN 'D_FLOAT'\n"
-"            WHEN 27  THEN 'DOUBLE PRECISION'\n"
-"            WHEN 10  THEN 'FLOAT'\n"
-"            WHEN 16  THEN \n"
-"              CASE f.rdb$field_sub_type \n"
-"                WHEN 1 THEN 'NUMERIC(' || f.rdb$field_precision || ',' || (-f.rdb$field_scale) || ')' \n"
-"                WHEN 2 THEN 'DECIMAL(' || f.rdb$field_precision || ',' || (-f.rdb$field_scale) || ')' \n"
-"                ELSE 'BIGINT' \n"
-"              END \n"
-"            WHEN 8   THEN \n"
-"              CASE f.rdb$field_sub_type \n"
-"                WHEN 1 THEN 'NUMERIC(' || f.rdb$field_precision || ',' || (-f.rdb$field_scale) || ')' \n"
-"                WHEN 2 THEN 'DECIMAL(' || f.rdb$field_precision || ',' || (-f.rdb$field_scale) || ')' \n"
-"                ELSE 'INTEGER' \n"
-"              END \n"
-"            WHEN 9   THEN 'QUAD'\n"
-"            WHEN 7   THEN \n"
-"              CASE f.rdb$field_sub_type \n"
-"                WHEN 1 THEN 'NUMERIC(' || f.rdb$field_precision || ',' || (-f.rdb$field_scale) || ')' \n"
-"                WHEN 2 THEN 'DECIMAL(' || f.rdb$field_precision || ',' || (-f.rdb$field_scale) || ')' \n"
-"                ELSE 'SMALLINT' \n"
-"              END \n"
-"            WHEN 12  THEN 'DATE'\n"
-"            WHEN 13  THEN 'TIME'\n"
-"            WHEN 35  THEN 'TIMESTAMP'\n"
-"            WHEN 37  THEN 'VARCHAR(' || f.rdb$field_length|| ')'\n"
-"            WHEN 23  THEN 'BOOLEAN' \n"
-"            ELSE 'UNKNOWN'\n"
-"          END AS data_type,\n"
-"         COALESCE(CAST(rf.rdb$default_source AS VARCHAR(80)), '') \n"
-"           AS \"Default value\", \n"
-"         rf.rdb$null_flag AS null_flag, \n"
-"         COALESCE(CAST(rf.rdb$description AS VARCHAR(80)), '') \n"
-"           AS \"Description\" \n"
-"      FROM rdb$relation_fields rf \n"
+"	SELECT TRIM(rf.rdb$field_name) AS column_name,\n"
+"		   f.rdb$field_type, \n"
+"		   CASE f.rdb$field_type\n"
+"			 WHEN 261 THEN \n"
+"			   CASE f.rdb$field_sub_type \n"
+"				 WHEN 1 THEN 'TEXT' \n"
+"				 ELSE 'BYTEA' \n"
+"			   END \n"
+"			 WHEN 14  THEN 'CHAR(' || f.rdb$field_length|| ')'\n"
+"			 WHEN 40  THEN 'CSTRING'\n"
+"			 WHEN 11  THEN 'D_FLOAT'\n"
+"			 WHEN 27  THEN 'DOUBLE PRECISION'\n"
+"			 WHEN 10  THEN 'FLOAT'\n"
+"			 WHEN 16  THEN \n"
+"			   CASE f.rdb$field_sub_type \n"
+"				 WHEN 1 THEN 'NUMERIC(' || f.rdb$field_precision || ',' || (-f.rdb$field_scale) || ')' \n"
+"				 WHEN 2 THEN 'DECIMAL(' || f.rdb$field_precision || ',' || (-f.rdb$field_scale) || ')' \n"
+"				 ELSE 'BIGINT' \n"
+"			   END \n"
+"			 WHEN 8	  THEN \n"
+"			   CASE f.rdb$field_sub_type \n"
+"				 WHEN 1 THEN 'NUMERIC(' || f.rdb$field_precision || ',' || (-f.rdb$field_scale) || ')' \n"
+"				 WHEN 2 THEN 'DECIMAL(' || f.rdb$field_precision || ',' || (-f.rdb$field_scale) || ')' \n"
+"				 ELSE 'INTEGER' \n"
+"			   END \n"
+"			 WHEN 9	  THEN 'QUAD'\n"
+"			 WHEN 7	  THEN \n"
+"			   CASE f.rdb$field_sub_type \n"
+"				 WHEN 1 THEN 'NUMERIC(' || f.rdb$field_precision || ',' || (-f.rdb$field_scale) || ')' \n"
+"				 WHEN 2 THEN 'DECIMAL(' || f.rdb$field_precision || ',' || (-f.rdb$field_scale) || ')' \n"
+"				 ELSE 'SMALLINT' \n"
+"			   END \n"
+"			 WHEN 12  THEN 'DATE'\n"
+"			 WHEN 13  THEN 'TIME'\n"
+"			 WHEN 35  THEN 'TIMESTAMP'\n"
+"			 WHEN 37  THEN 'VARCHAR(' || f.rdb$field_length|| ')'\n"
+"			 WHEN 23  THEN 'BOOLEAN' \n"
+"			 ELSE 'UNKNOWN'\n"
+"		   END AS data_type,\n"
+"		  COALESCE(CAST(rf.rdb$default_source AS VARCHAR(80)), '') \n"
+"			AS \"Default value\", \n"
+"		  rf.rdb$null_flag AS null_flag, \n"
+"		  COALESCE(CAST(rf.rdb$description AS VARCHAR(80)), '') \n"
+"			AS \"Description\" \n"
+"	   FROM rdb$relation_fields rf \n"
 " LEFT JOIN rdb$fields f \n"
-"        ON rf.rdb$field_source = f.rdb$field_name\n"
-"     WHERE TRIM(rf.rdb$relation_name) = '%s'\n"
+"		 ON rf.rdb$field_source = f.rdb$field_name\n"
+"	  WHERE TRIM(rf.rdb$relation_name) = '%s'\n"
 "  ORDER BY rf.rdb$field_position\n",
 					 table_name
 		);
