@@ -2409,7 +2409,6 @@ firebirdExecForeignInsert(EState *estate,
 {
 	FirebirdFdwModifyState *fmstate;
 	const char * const *p_values;
-	int			 i;
 	FBresult	 *result;
 
 	elog(DEBUG2, "entering function %s", __func__);
@@ -2424,10 +2423,15 @@ firebirdExecForeignInsert(EState *estate,
 
 	elog(DEBUG1, "Executing: %s", fmstate->query);
 
-	for (i = 0; i < fmstate->p_nums; i++)
+#ifdef DEBUG_BUILD
 	{
-		elog(DEBUG2, "Param %i: %s", i, p_values[i] ? p_values[i] : "NULL");
+		int i;
+		for (i = 0; i < fmstate->p_nums; i++)
+		{
+			elog(DEBUG2, "Param %i: %s", i, p_values[i] ? p_values[i] : "NULL");
+		}
 	}
+#endif
 
 	result = FQexecParams(fmstate->conn,
 						  fmstate->query,

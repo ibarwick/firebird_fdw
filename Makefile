@@ -23,6 +23,10 @@ MODULE_big      = $(EXTENSION)
 
 OBJS         =  $(patsubst %.c,%.o,$(wildcard src/*.c))
 
+ifdef FIREBIRD_FDW_DEBUG_BUILD
+DEBUG_BUILD  = 1
+endif
+
 ifndef PG_CONFIG
 PG_CONFIG    = pg_config
 endif
