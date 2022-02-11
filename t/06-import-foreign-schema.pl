@@ -32,6 +32,10 @@ else {
     plan tests => 11;
 }
 
+my $min_compat_version = $node->{firebird_major_version} >= 3
+        ? 3
+        : 2;
+
 # 1) Test "IMPORT FOREIGN SCHEMA"
 # -------------------------------
 
@@ -95,7 +99,7 @@ implicit_bool_type|smallint||||
 EO_TXT
 }
 
-my $q1a_expected = $q1a_expected_output->{$node->{firebird_major_version}};
+my $q1a_expected = $q1a_expected_output->{$min_compat_version};
 
 chomp $q1a_expected;
 
