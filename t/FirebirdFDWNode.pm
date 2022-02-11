@@ -280,6 +280,11 @@ sub init_data_type_table {
 
     $params{firebird_only} //= 0;
 
+    # XXX make a more generic lookup version table of available data types
+    my $min_compat_version = $self->{firebird_major_version} >= 3
+        ? 3
+        : 2;
+
     my $table_name = sprintf(
         q|%s_data_type|,
 		$self->make_table_name(),
@@ -311,10 +316,8 @@ EO_SQL
         ),
 	};
 
-	my $fb_major_version = $self->{firebird_major_version};
-
     my $tbl_query = $self->firebird_conn()->prepare(
-        $fb_tables->{$fb_major_version},
+        $fb_tables->{$min_compat_version},
     );
 
     $tbl_query->execute();
@@ -353,7 +356,7 @@ CREATE FOREIGN TABLE %s (
   OPTIONS (table_name '%s')
 EO_SQL
             $table_name,
-			$pg_column_defs->{$fb_major_version},
+			$pg_column_defs->{$min_compat_version},
 			$self->{server_name},
             $table_name,
         ),
