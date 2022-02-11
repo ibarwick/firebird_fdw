@@ -2426,8 +2426,7 @@ firebirdExecForeignInsert(EState *estate,
 
 	for (i = 0; i < fmstate->p_nums; i++)
 	{
-		if (p_values[i] != NULL)
-			elog(DEBUG2, "Param %i: %s", i, p_values[i]);
+		elog(DEBUG2, "Param %i: %s", i, p_values[i] ? p_values[i] : "NULL");
 	}
 
 	result = FQexecParams(fmstate->conn,
@@ -3473,15 +3472,16 @@ convertResToArray(FBresult *res, int row, char **values)
  *
  * Create array of text strings representing parameter values
  *
- * tupleid is db_key to send, or NULL if none
- * slot is slot to get remaining parameters from, or NULL if none
+ * "tupleid_ctid" and "tupleid_oid" are used to form the generated RDB$DB_KEY
+ * NULL if none.
+ * "slot" is slot to get remaining parameters from, or NULL if none.
  *
  * Data is constructed in temp_cxt; caller should reset that after use.
  */
 static const char **
 convert_prep_stmt_params(FirebirdFdwModifyState *fmstate,
-						 ItemPointer tupleid,
-						 ItemPointer tupleid2,
+						 ItemPointer tupleid_ctid,
+						 ItemPointer tupleid_oid,
 						 TupleTableSlot *slot)
 {
 	const char **p_values;
@@ -3577,17 +3577,20 @@ convert_prep_stmt_params(FirebirdFdwModifyState *fmstate,
 	}
 
 	/* last parameter should be db_key, if used */
-	if (tupleid != NULL)
+	if (tupleid_ctid != NULL && tupleid_oid != NULL)
 	{
 		char *oidout;
 		char *db_key = (char *)palloc0(FB_DB_KEY_LEN + 1);
+
 		elog(DEBUG2, "extracting RDB$DB_KEY...");
 
-
 		oidout = OutputFunctionCall(&fmstate->p_flinfo[pindex],
-								 PointerGetDatum(tupleid2));
+								 PointerGetDatum(tupleid_oid));
 
-		sprintf(db_key, "%08x%08x", BlockIdGetBlockNumber(&tupleid->ip_blkid), (unsigned int)atol(oidout));
+		sprintf(db_key,
+				"%08x%08x",
+				BlockIdGetBlockNumber(&tupleid_ctid->ip_blkid),
+				(unsigned int)atol(oidout));
 
 		p_values[pindex] = db_key;
 		elog(DEBUG2, "RDB$DB_KEY is: %s", db_key);
