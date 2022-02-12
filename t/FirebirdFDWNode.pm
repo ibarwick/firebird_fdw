@@ -16,8 +16,9 @@ use warnings;
 
 use v5.10.0;
 
-use PostgresNode;
-
+use if $ENV{VERSION_NUM} >= 150000, 'PostgreSQL::Test::Cluster';
+use if $ENV{VERSION_NUM} >= 150000, 'PostgreSQL::Test::Utils';
+use if $ENV{VERSION_NUM}  < 150000, 'PostgresNode';
 
 use Exporter 'import';
 use vars qw(@EXPORT @EXPORT_OK);
@@ -39,7 +40,13 @@ sub new {
 
     srand();
 
-	$self->{postgres_node} = get_new_node('pg_node');
+    if ($ENV{VERSION_NUM} >= 150000) {
+        $self->{postgres_node} = PostgreSQL::Test::Cluster->new('pg_node');
+    }
+    else {
+        $self->{postgres_node} = get_new_node('pg_node');
+    }
+
 
     # Set up Firebird connection
     # --------------------------

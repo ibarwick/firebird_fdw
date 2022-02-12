@@ -2,6 +2,7 @@ Revision history for firebird_fdw
 
 1.2.3	2022-02-11
 	- Fix bug in rescan handling
+	- Adapt TAP tests to support PostgreSQL 15
 
 1.2.2	2021-09-15
 	- Invalid Firebird server port numbers will be rejected

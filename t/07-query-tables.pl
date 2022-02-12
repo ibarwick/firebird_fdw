@@ -7,7 +7,6 @@
 use strict;
 use warnings;
 
-use TestLib;
 use Test::More tests => 2;
 
 use FirebirdFDWNode;
