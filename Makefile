@@ -28,9 +28,6 @@ else
 DEBUG_BUILD  = 0
 endif
 
-TAP_TESTS    = 1
-
-
 SHLIB_LINK += -lfq -lfbclient
 
 DATA = sql/firebird_fdw--0.3.0.sql \
@@ -69,7 +66,7 @@ PG_PROVE_FLAGS += -I $(srcdir)/t
 
 prove_installcheck: all
 	rm -rf $(srcdir)/tmp_check/log
-	cd $(srcdir) && VERSION_NUM='$(VERSION_NUM)' TESTDIR='$(CURDIR)' PATH="$(bindir):$$PATH" PGPORT='6$(DEF_PGPORT)' PG_REGRESS='$(top_builddir)/src/test/regress/pg_regress' $(PROVE) $(PG_PROVE_FLAGS) $(PROVE_FLAGS) $(if $(PROVE_TESTS),$(PROVE_TESTS),t/*.pl)
+	cd $(srcdir) && PG_VERSION_NUM='$(VERSION_NUM)' TESTDIR='$(CURDIR)' PATH="$(bindir):$$PATH" PGPORT='6$(DEF_PGPORT)' PG_REGRESS='$(top_builddir)/src/test/regress/pg_regress' $(PROVE) $(PG_PROVE_FLAGS) $(PROVE_FLAGS) $(if $(PROVE_TESTS),$(PROVE_TESTS),t/*.pl)
 
 installcheck: prove_installcheck
 

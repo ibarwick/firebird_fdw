@@ -16,9 +16,9 @@ use warnings;
 
 use v5.10.0;
 
-use if $ENV{VERSION_NUM} >= 150000, 'PostgreSQL::Test::Cluster';
-use if $ENV{VERSION_NUM} >= 150000, 'PostgreSQL::Test::Utils';
-use if $ENV{VERSION_NUM}  < 150000, 'PostgresNode';
+use if $ENV{PG_VERSION_NUM} >= 150000, 'PostgreSQL::Test::Cluster';
+use if $ENV{PG_VERSION_NUM} >= 150000, 'PostgreSQL::Test::Utils';
+use if $ENV{PG_VERSION_NUM}  < 150000, 'PostgresNode';
 
 use Exporter 'import';
 use vars qw(@EXPORT @EXPORT_OK);
@@ -40,7 +40,7 @@ sub new {
 
     srand();
 
-    if ($ENV{VERSION_NUM} >= 150000) {
+    if ($ENV{PG_VERSION_NUM} >= 150000) {
         $self->{postgres_node} = PostgreSQL::Test::Cluster->new('pg_node');
     }
     else {
