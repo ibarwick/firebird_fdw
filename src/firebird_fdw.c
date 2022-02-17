@@ -481,9 +481,6 @@ firebird_fdw_server_options(PG_FUNCTION_ARGS)
 	tuplestore_putvalues(tupstore, tupdesc, values, nulls);
 	pfree(option.data);
 
-	/* no more rows */
-	tuplestore_donestoring(tupstore);
-
 	return (Datum) 0;
 }
 
@@ -593,9 +590,6 @@ firebird_fdw_diag(PG_FUNCTION_ARGS)
 
 	tuplestore_putvalues(tupstore, tupdesc, values, nulls);
 	pfree(setting.data);
-
-	/* no more rows */
-	tuplestore_donestoring(tupstore);
 
 	return (Datum) 0;
 }
@@ -715,10 +709,6 @@ firebird_version(PG_FUNCTION_ARGS)
 	PopActiveSnapshot();
 	pgstat_report_stat(false);
 	pgstat_report_activity(STATE_IDLE, NULL);
-
-
-	/* no more rows */
-	tuplestore_donestoring(tupstore);
 
 	return (Datum) 0;
 }
