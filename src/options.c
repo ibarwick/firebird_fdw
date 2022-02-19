@@ -9,6 +9,7 @@
 
 #include "postgres.h"
 #include "utils/builtins.h"
+#include "utils/guc.h"
 
 #include "firebird_fdw.h"
 
@@ -45,10 +46,6 @@ static struct FirebirdFdwOption valid_options[] =
 extern Datum firebird_fdw_validator(PG_FUNCTION_ARGS);
 PG_FUNCTION_INFO_V1(firebird_fdw_validator);
 static bool firebirdIsValidOption(const char *option, Oid context);
-
-#if (PG_VERSION_NUM >= 150000)
-static int32 pg_atoi(const char *s, int size, int c);
-#endif
 
 /**
  * firebird_fdw_validator()
@@ -127,13 +124,23 @@ firebird_fdw_validator(PG_FUNCTION_ARGS)
 					(errcode(ERRCODE_SYNTAX_ERROR),
 					errmsg("conflicting or redundant options: port (%s)", defGetString(def))));
 
-			/* pg_atoi() will throw ereport() on bad input */
-			svr_port = pg_atoi(defGetString(def), sizeof(int32), '\0');
-
-			if (svr_port < 1 || svr_port > 65535)
+			/*
+			 * parse_int() accepts a pointer which may be set to a hint message,
+			 * but for our use-case the only likely one is a general integer range check,
+			 * which is not really exciting for us.
+			 */
+			if (parse_int(defGetString(def), &svr_port, 0, NULL) == false)
+			{
+				ereport(ERROR,
+						(errcode(ERRCODE_SYNTAX_ERROR),
+						 errmsg("an error was encountered when parsing the provided \"port\" value")));
+			}
+			else if (svr_port < 1 || svr_port > 65535)
+			{
 				ereport(ERROR,
 						(errcode(ERRCODE_SYNTAX_ERROR),
 						 errmsg("\"port\" must have a value between 1 and 65535")));
+			}
 		}
 
 		if (strcmp(def->defname, "username") == 0)
@@ -419,93 +426,3 @@ firebirdGetColumnOptions(Oid foreigntableid, int varattno,
 }
 
 
-#if (PG_VERSION_NUM >= 150000)
-/*
- * pg_atoi: convert string to integer
- *
- * allows any number of leading or trailing whitespace characters.
- *
- * 'size' is the sizeof() the desired integral result (1, 2, or 4 bytes).
- *
- * c, if not 0, is a terminator character that may appear after the
- * integer (plus whitespace).  If 0, the string must end after the integer.
- *
- * Unlike plain atoi(), this will throw ereport() upon bad input format or
- * overflow.
- */
-static int32
-pg_atoi(const char *s, int size, int c)
-{
-	long		l;
-	char	   *badp;
-
-	/*
-	 * Some versions of strtol treat the empty string as an error, but some
-	 * seem not to.  Make an explicit test to be sure we catch it.
-	 */
-	if (s == NULL)
-		elog(ERROR, "NULL pointer");
-	if (*s == 0)
-		ereport(ERROR,
-				(errcode(ERRCODE_INVALID_TEXT_REPRESENTATION),
-				 errmsg("invalid input syntax for type %s: \"%s\"",
-						"integer", s)));
-
-	errno = 0;
-	l = strtol(s, &badp, 10);
-
-	/* We made no progress parsing the string, so bail out */
-	if (s == badp)
-		ereport(ERROR,
-				(errcode(ERRCODE_INVALID_TEXT_REPRESENTATION),
-				 errmsg("invalid input syntax for type %s: \"%s\"",
-						"integer", s)));
-
-	switch (size)
-	{
-		case sizeof(int32):
-			if (errno == ERANGE
-#if defined(HAVE_LONG_INT_64)
-			/* won't get ERANGE on these with 64-bit longs... */
-				|| l < INT_MIN || l > INT_MAX
-#endif
-				)
-				ereport(ERROR,
-						(errcode(ERRCODE_NUMERIC_VALUE_OUT_OF_RANGE),
-						 errmsg("value \"%s\" is out of range for type %s", s,
-								"integer")));
-			break;
-		case sizeof(int16):
-			if (errno == ERANGE || l < SHRT_MIN || l > SHRT_MAX)
-				ereport(ERROR,
-						(errcode(ERRCODE_NUMERIC_VALUE_OUT_OF_RANGE),
-						 errmsg("value \"%s\" is out of range for type %s", s,
-								"smallint")));
-			break;
-		case sizeof(int8):
-			if (errno == ERANGE || l < SCHAR_MIN || l > SCHAR_MAX)
-				ereport(ERROR,
-						(errcode(ERRCODE_NUMERIC_VALUE_OUT_OF_RANGE),
-						 errmsg("value \"%s\" is out of range for 8-bit integer", s)));
-			break;
-		default:
-			elog(ERROR, "unsupported result size: %d", size);
-	}
-
-	/*
-	 * Skip any trailing whitespace; if anything but whitespace remains before
-	 * the terminating character, bail out
-	 */
-	while (*badp && *badp != c && isspace((unsigned char) *badp))
-		badp++;
-
-	if (*badp && *badp != c)
-		ereport(ERROR,
-				(errcode(ERRCODE_INVALID_TEXT_REPRESENTATION),
-				 errmsg("invalid input syntax for type %s: \"%s\"",
-						"integer", s)));
-
-	return (int32) l;
-}
-
-#endif
