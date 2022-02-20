@@ -1,6 +1,6 @@
 Revision history for firebird_fdw
 
-1.2.3	2022-02-11
+1.2.3	2022-02-20
 	- Fix bug in rescan handling
 	- Adapt TAP tests to support PostgreSQL 15
 
