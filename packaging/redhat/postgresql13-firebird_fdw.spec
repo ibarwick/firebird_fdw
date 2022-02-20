@@ -1,6 +1,6 @@
 Summary: A PostgreSQL foreign data wrapper (FDW) for Firebird
 Name: postgresql13-firebird_fdw
-Version: 1.2.1
+Version: 1.3.0
 Release: 1
 Source: firebird_fdw-%{version}.tar.gz
 URL: https://github.com/ibarwick/firebird_fdw
@@ -62,6 +62,10 @@ rm -rf $RPM_BUILD_ROOT
 %endif
 
 %changelog
+* Sun Feb 20 2022 Ian Barwick (barwick@gmail.com)
+- 1.2.3 release
+* Tue Sep 14 2021 Ian Barwick (barwick@gmail.com)
+- 1.2.2 release
 * Wed Oct 21 2020 Ian Barwick (barwick@gmail.com)
 - 1.2.1 release
 * Sat Oct 17 2020 Ian Barwick (barwick@gmail.com)
