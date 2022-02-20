@@ -1,6 +1,6 @@
 Revision history for firebird_fdw
 
-1.2.3	2022-02-11
+1.2.3	2022-02-20
 	- Fix bug in rescan handling
 
 1.2.2	2021-09-15
