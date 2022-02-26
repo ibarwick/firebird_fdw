@@ -27,6 +27,9 @@ static struct FirebirdFdwOption valid_options[] =
 	{ "updatable",			 ForeignServerRelationId },
 	{ "quote_identifiers",	 ForeignServerRelationId },
 	{ "implicit_bool_type",	 ForeignServerRelationId },
+#if (PG_VERSION_NUM >= 140000)
+	{ "batch_size",			 ForeignServerRelationId },
+#endif
 	/* User options */
 	{ "username",			 UserMappingRelationId	 },
 	{ "password",			 UserMappingRelationId	 },
@@ -36,6 +39,9 @@ static struct FirebirdFdwOption valid_options[] =
 	{ "updatable",			 ForeignTableRelationId	 },
 	{ "estimated_row_count", ForeignTableRelationId	 },
 	{ "quote_identifier",	 ForeignTableRelationId	 },
+#if (PG_VERSION_NUM >= 140000)
+	{ "batch_size",			 ForeignTableRelationId  },
+#endif
 	/* Column options */
 	{ "column_name",		 AttributeRelationId	 },
 	{ "quote_identifier",	 AttributeRelationId	 },
@@ -60,6 +66,10 @@ firebird_fdw_validator(PG_FUNCTION_ARGS)
 	Oid			 catalog = PG_GETARG_OID(1);
 	ListCell	*cell;
 
+	/*
+	 * If an option is specified, store it in one of these variables so
+	 * we can determine if it gets specified more than once.
+	 */
 	char		*svr_address = NULL;
 	int			 svr_port = 0;
 	char		*svr_username = NULL;
@@ -67,6 +77,9 @@ firebird_fdw_validator(PG_FUNCTION_ARGS)
 	char		*svr_database = NULL;
 	char		*svr_query = NULL;
 	char		*svr_table = NULL;
+#if (PG_VERSION_NUM >= 140000)
+	int			svr_batch_size = NO_BATCH_SIZE_SPECIFIED;
+#endif
 
 	bool		 disable_pushdowns_set = false;
 	bool		 updatable_set = false;
@@ -229,6 +242,29 @@ firebird_fdw_validator(PG_FUNCTION_ARGS)
 						(errcode(ERRCODE_SYNTAX_ERROR),
 						 errmsg("foreign tables defined with the \"query\" option cannot be set as \"updatable\"")));
 		}
+#if (PG_VERSION_NUM >= 140000)
+		else if (strcmp(def->defname, "batch_size") == 0)
+		{
+			if (svr_batch_size != NO_BATCH_SIZE_SPECIFIED)
+				ereport(ERROR,
+						(errcode(ERRCODE_SYNTAX_ERROR),
+						 errmsg("redundant option: \"batch_size\" set more than once")));
+
+			if (parse_int(defGetString(def), &svr_batch_size, 0, NULL) == false)
+			{
+				ereport(ERROR,
+						(errcode(ERRCODE_SYNTAX_ERROR),
+						 errmsg("an error was encountered when parsing the provided \"batch_size\" value")));
+			}
+			else if (svr_batch_size < 1)
+			{
+				ereport(ERROR,
+						(errcode(ERRCODE_SYNTAX_ERROR),
+						 errmsg("\"batch_size\" must have a value of 1 or greater")));
+			}
+		}
+#endif
+
 	}
 
 	PG_RETURN_VOID();
@@ -325,6 +361,14 @@ firebirdGetServerOptions(ForeignServer *server,
 			options->implicit_bool_type.provided = true;
 			continue;
 		}
+#if (PG_VERSION_NUM >= 140000)
+		if (options->batch_size.opt.intptr != NULL && strcmp(def->defname, "batch_size") == 0 )
+		{
+			*options->batch_size.opt.intptr = strtod(defGetString(def), NULL);
+			options->batch_size.provided = true;
+			continue;
+		}
+#endif
 	}
 }
 
@@ -378,6 +422,13 @@ firebirdGetTableOptions(ForeignTable *table,
 			*options->quote_identifier = defGetBoolean(def);
 			continue;
 		}
+#if (PG_VERSION_NUM >= 140000)
+		if (options->batch_size != NULL && strcmp(def->defname, "batch_size") == 0 )
+		{
+			*options->batch_size = strtod(defGetString(def), NULL);
+			continue;
+		}
+#endif
 	}
 
 	/*
@@ -424,5 +475,3 @@ firebirdGetColumnOptions(Oid foreigntableid, int varattno,
 		}
 	}
 }
-
-

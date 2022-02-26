@@ -53,6 +53,10 @@
 #define table_close(x, y) heap_close(x, y)
 #endif
 
+#if (PG_VERSION_NUM >= 140000)
+#define NO_BATCH_SIZE_SPECIFIED -1
+#endif
+
 /*
  * Macro to indicate if a given PostgreSQL datatype can be
  * converted to a Firebird type
@@ -82,8 +86,23 @@ typedef struct fbServerOptions {
 	fbServerOpt updatable;
 	fbServerOpt quote_identifiers;
 	fbServerOpt implicit_bool_type;
+#if (PG_VERSION_NUM >= 140000)
+	fbServerOpt batch_size;
+#endif
 } fbServerOptions;
 
+#if (PG_VERSION_NUM >= 140000)
+#define fbServerOptions_init { \
+	{ { NULL }, false }, \
+	{ { NULL }, false }, \
+	{ { NULL }, false }, \
+	{ { NULL }, false }, \
+	{ { NULL }, false }, \
+	{ { NULL }, false }, \
+	{ { NULL }, false }, \
+	{ { NULL }, false } \
+}
+#else
 #define fbServerOptions_init { \
 	{ { NULL }, false }, \
 	{ { NULL }, false }, \
@@ -93,6 +112,7 @@ typedef struct fbServerOptions {
 	{ { NULL }, false }, \
 	{ { NULL }, false } \
 }
+#endif
 
 
 typedef struct fbTableOptions {
@@ -101,8 +121,21 @@ typedef struct fbTableOptions {
 	bool *updatable;
 	int *estimated_row_count;
 	bool *quote_identifier;
+#if (PG_VERSION_NUM >= 140000)
+	int *batch_size;
+#endif
 } fbTableOptions;
 
+#if (PG_VERSION_NUM >= 140000)
+#define fbTableOptions_init { \
+	NULL, \
+	NULL, \
+	NULL, \
+	NULL, \
+	NULL, \
+	NULL \
+}
+#else
 #define fbTableOptions_init { \
 	NULL, \
 	NULL, \
@@ -110,6 +143,7 @@ typedef struct fbTableOptions {
 	NULL, \
 	NULL \
 }
+#endif
 
 typedef struct fbColumnOptions {
 	char **column_name;
@@ -162,6 +196,9 @@ typedef struct FirebirdFdwState
 	int			estimated_row_count; /* set if server option "estimated_row_count" provided */
 	bool		quote_identifier;
 	bool		implicit_bool_type;	 /* true if server option "implicit_bool_type" supplied */
+#if (PG_VERSION_NUM >= 140000)
+	int			batch_size;
+#endif
 
 	FBconn	   *conn;
 	int			firebird_version; /* cache Firebird version from connection */
@@ -220,6 +257,10 @@ typedef struct FirebirdFdwModifyState
 
 	/* working memory context */
 	MemoryContext temp_cxt;		  /* context for per-tuple temporary data */
+
+#if (PG_VERSION_NUM >= 140000)
+	int			batch_size;
+#endif
 } FirebirdFdwModifyState;
 
 

@@ -153,6 +153,13 @@ Usage
 
   `firebird_fdw` 1.2.0 and later.
 
+- **batch_size**
+
+  Specifies the number of rows which should be inserted in a single `INSERT`
+  operation. This setting can be overridden for individual tables.
+
+  `firebird_fdw` 1.3.0 and later / PostgreSQL 14 and later.
+
 ## CREATE USER MAPPING options
 
 `firebird_fdw` accepts the following options via the `CREATE USER MAPPING`
@@ -242,6 +249,12 @@ The following column-level options are available:
   set and `firebird_fdw` will automatically assume that the Firebird column
   represents an implicit boolean. This functionality may work on earlier
   Firebird versions but has not been tested with them.
+
+- **batch_size*
+
+  See `CREATE SERVER options` section for details.
+
+  `firebird_fdw` 1.3.0 and later / PostgreSQL 14 and later.
 
 Note that while PostgreSQL allows a foreign table to be defined without
 any columns, `firebird_fdw` will raise an error as soon as any operations

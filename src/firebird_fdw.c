@@ -197,6 +197,16 @@ static TupleTableSlot *firebirdExecForeignInsert(EState *estate,
 						   TupleTableSlot *slot,
 						   TupleTableSlot *planSlot);
 
+#if (PG_VERSION_NUM >= 140000)
+static int firebirdGetForeignModifyBatchSize(ResultRelInfo *resultRelInfo);
+static TupleTableSlot **firebirdExecForeignBatchInsert(EState *estate,
+													   ResultRelInfo *resultRelInfo,
+													   TupleTableSlot **slots,
+													   TupleTableSlot **planSlots,
+													   int *numSlots);
+#endif
+
+
 static TupleTableSlot *firebirdExecForeignUpdate(EState *estate,
 						   ResultRelInfo *rinfo,
 						   TupleTableSlot *slot,
@@ -287,6 +297,9 @@ extractDbKeyParts(TupleTableSlot *planSlot,
 				  Datum *datum_ctid,
 				  Datum *datum_oid);
 
+#if (PG_VERSION_NUM >= 140000)
+static int get_batch_size_option(Relation rel);
+#endif
 
 /**
  * firebird_fdw_version()
@@ -340,6 +353,9 @@ firebird_fdw_server_options(PG_FUNCTION_ARGS)
 	bool		quote_identifiers = false;
 	bool		implicit_bool_type = false;
 	bool		disable_pushdowns = false;
+#if (PG_VERSION_NUM >= 140000)
+	int			batch_size = NO_BATCH_SIZE_SPECIFIED;
+#endif
 
 	ForeignServer *server;
 	fbServerOptions server_options = fbServerOptions_init;
@@ -366,6 +382,9 @@ firebird_fdw_server_options(PG_FUNCTION_ARGS)
 	server_options.quote_identifiers.opt.boolptr = &quote_identifiers;
 	server_options.implicit_bool_type.opt.boolptr = &implicit_bool_type;
 	server_options.disable_pushdowns.opt.boolptr = &disable_pushdowns;
+#if (PG_VERSION_NUM >= 140000)
+	server_options.batch_size.opt.intptr = &batch_size;
+#endif
 
 	firebirdGetServerOptions(
 		server,
@@ -435,6 +454,24 @@ firebird_fdw_server_options(PG_FUNCTION_ARGS)
 
 	tuplestore_putvalues(tupstore, tupdesc, values, nulls);
 	pfree(option.data);
+
+#if (PG_VERSION_NUM >= 140000)
+	/* batch size */
+	memset(values, 0, sizeof(values));
+	memset(nulls, 0, sizeof(nulls));
+
+	initStringInfo(&option);
+	appendStringInfo(&option,
+					 "%i", batch_size);
+
+	values[0] = CStringGetTextDatum("batch_size");
+	values[1] = CStringGetTextDatum(option.data);
+	values[2] = BoolGetDatum(server_options.batch_size.provided);
+
+	tuplestore_putvalues(tupstore, tupdesc, values, nulls);
+	pfree(option.data);
+
+#endif
 
 	/* quote_identifiers */
 	memset(values, 0, sizeof(values));
@@ -747,8 +784,8 @@ firebird_fdw_handler(PG_FUNCTION_ARGS)
 	fdwroutine->BeginForeignModify = firebirdBeginForeignModify;
 	fdwroutine->ExecForeignInsert = firebirdExecForeignInsert;
 #if (PG_VERSION_NUM >= 140000)
-	fdwroutine->ExecForeignBatchInsert = NULL;
-	fdwroutine->GetForeignModifyBatchSize = NULL;
+	fdwroutine->GetForeignModifyBatchSize = firebirdGetForeignModifyBatchSize;
+	fdwroutine->ExecForeignBatchInsert = firebirdExecForeignBatchInsert;
 #endif
 	fdwroutine->ExecForeignUpdate = firebirdExecForeignUpdate;
 	fdwroutine->ExecForeignDelete = firebirdExecForeignDelete;
@@ -856,21 +893,33 @@ getFdwState(Oid foreigntableid)
 	fdw_state->svr_table = NULL;
 	fdw_state->estimated_row_count = -1;
 	fdw_state->quote_identifier = false;
+#if (PG_VERSION_NUM >= 140000)
+	fdw_state->batch_size = 1;
+#endif
 
 	/* Retrieve server options */
 	server_options.disable_pushdowns.opt.boolptr = &fdw_state->disable_pushdowns;
 	server_options.implicit_bool_type.opt.boolptr = &fdw_state->implicit_bool_type;
 	server_options.quote_identifiers.opt.boolptr = &fdw_state->quote_identifier;
+#if (PG_VERSION_NUM >= 140000)
+	server_options.batch_size.opt.intptr = &fdw_state->batch_size;
+#endif
 
 	firebirdGetServerOptions(
 		server,
 		&server_options);
 
-	/* Retrieve table options */
+	/*
+	 * Retrieve table options; these may override server-level options
+	 * retrieved in the previous step.
+	 */
 	table_options.query = &fdw_state->svr_query;
 	table_options.table_name = &fdw_state->svr_table;
 	table_options.estimated_row_count = &fdw_state->estimated_row_count;
 	table_options.quote_identifier = &fdw_state->quote_identifier;
+#if (PG_VERSION_NUM >= 140000)
+	table_options.batch_size = &fdw_state->batch_size;
+#endif
 
 	firebirdGetTableOptions(
 		table,
@@ -2257,6 +2306,12 @@ create_foreign_modify(EState *estate,
 		fmstate->p_nums++;
 	}
 
+#if (PG_VERSION_NUM >= 140000)
+	/* Set batch_size from foreign server/table options. */
+	if (operation == CMD_INSERT)
+		fmstate->batch_size = get_batch_size_option(rel);
+#endif
+
 	elog(DEBUG2, "	p_nums %i; n_params: %i", fmstate->p_nums, n_params);
 	Assert(fmstate->p_nums <= n_params);
 
@@ -2465,6 +2520,94 @@ firebirdExecForeignInsert(EState *estate,
 
 	return slot;
 }
+
+
+#if (PG_VERSION_NUM >= 140000)
+/**
+ * firebirdExecForeignBatchInsert()
+ *
+ */
+TupleTableSlot **
+firebirdExecForeignBatchInsert(EState *estate,
+							   ResultRelInfo *resultRelInfo,
+							   TupleTableSlot **slots,
+							   TupleTableSlot **planSlots,
+							   int *numSlots)
+{
+	FirebirdFdwModifyState *fmstate;
+	const char * const *p_values;
+	FBresult	 *result;
+	int			i;
+
+	elog(DEBUG2, "entering function %s", __func__);
+	elog(DEBUG2, "firebirdExecForeignBatchInsert(): %i slots", *numSlots);
+
+	fmstate = (FirebirdFdwModifyState *) resultRelInfo->ri_FdwState;
+	elog(DEBUG1, "Executing: %s", fmstate->query);
+
+	result = FQprepare(fmstate->conn,
+					   fmstate->query,
+					   fmstate->p_nums,
+					   NULL);
+
+	for (i = 0; i < *numSlots; i++)
+	{
+
+		/* Convert parameters needed by prepared statement to text form */
+		p_values = convert_prep_stmt_params(fmstate,
+											NULL,
+											NULL,
+											slots[i]);
+
+		result = FQexecPrepared(fmstate->conn,
+								result,
+								fmstate->p_nums,
+								p_values,
+								NULL,
+								NULL,
+								0);
+
+		elog(DEBUG2, " result status: %s", FQresStatus(FQresultStatus(result)));
+		elog(DEBUG1, " returned rows: %i", FQntuples(result));
+	}
+
+	FQdeallocatePrepared(fmstate->conn, result);
+	FQclear(result);
+
+	return slots;
+}
+
+
+/**
+ * firebirdGetForeignModifyBatchSize()
+ *
+ */
+static int
+firebirdGetForeignModifyBatchSize(ResultRelInfo *resultRelInfo)
+{
+	FirebirdFdwModifyState *fmstate = (FirebirdFdwModifyState *) resultRelInfo->ri_FdwState;
+
+	int			batch_size = 1;
+
+	/* Disable batching when we have to use RETURNING. */
+	if (resultRelInfo->ri_projectReturning != NULL ||
+		(resultRelInfo->ri_TrigDesc &&
+		 resultRelInfo->ri_TrigDesc->trig_insert_after_row))
+		return 1;
+
+	/*
+	 * In EXPLAIN without ANALYZE, ri_FdwState is NULL, so we have to lookup
+	 * the option directly in server/table options. Otherwise just use the
+	 * value we determined earlier.
+	 */
+	if (fmstate)
+		batch_size = fmstate->batch_size;
+	else
+		batch_size = get_batch_size_option(resultRelInfo->ri_RelationDesc);
+
+	return batch_size;
+}
+#endif
 
 
 /**
@@ -2735,6 +2878,18 @@ firebirdExplainForeignModify(ModifyTableState *mtstate,
 						strVal(list_nth(fdw_private,
 										FdwScanPrivateSelectSql)),
 						es);
+
+#if (PG_VERSION_NUM >= 140000)
+	if (es->verbose)
+	{
+		/*
+		 * For INSERT we should always have batch size >= 1, but UPDATE and
+		 * DELETE don't support batching so don't show the property.
+		 */
+		if (resultRelInfo->ri_BatchSize > 0)
+			ExplainPropertyInteger("Batch Size", NULL, resultRelInfo->ri_BatchSize, es);
+	}
+#endif
 }
 
 
@@ -3833,3 +3988,19 @@ extractDbKeyParts(TupleTableSlot *planSlot,
 	if (isNull)
 		elog(ERROR, "db_key (XMAX part) is NULL");
 }
+
+
+#if (PG_VERSION_NUM >= 140000)
+/*
+ * Return the determined batch size established when the FDW state
+ * was created.
+ */
+static int
+get_batch_size_option(Relation rel)
+{
+	Oid			foreigntableid = RelationGetRelid(rel);
+	FirebirdFdwState *fdw_state = getFdwState(foreigntableid);
+
+	return fdw_state->batch_size;
+}
+#endif

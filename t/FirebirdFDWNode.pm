@@ -110,12 +110,9 @@ EO_SQL
 	# easily execute "ALTER SERVER ... OPTION (SET foo 'bar')".
     # We'll set "implicit_bool_type" to "true" by default to increase
     # the chance of catching any general issues it may cause.
-    $self->safe_psql(
-        sprintf(
-            <<EO_SQL,
-CREATE SERVER %s
-  FOREIGN DATA WRAPPER firebird_fdw
-  OPTIONS (
+
+    my $options = sprintf(
+        <<EO_SQL,
     address 'localhost',
     database '%s',
     port '%i',
@@ -123,14 +120,34 @@ CREATE SERVER %s
     quote_identifiers 'false',
     disable_pushdowns 'false',
     implicit_bool_type 'true'
- );
 EO_SQL
-			$self->{server_name},
-            $self->{firebird_dbname},
-            $self->{firebird_dbport},
-        )
+        $self->{firebird_dbname},
+        $self->{firebird_dbport},
     );
 
+    if ($ENV{PG_VERSION_NUM} >= 140000) {
+        $options = sprintf(
+            <<EO_SQL,
+%s,
+    batch_size '1'
+EO_SQL
+            $options,
+        );
+    }
+
+    $self->safe_psql(
+        sprintf(
+            <<EO_SQL,
+CREATE SERVER %s
+  FOREIGN DATA WRAPPER firebird_fdw
+  OPTIONS (
+%s
+  );
+EO_SQL
+			$self->{server_name},
+            $options,
+        )
+    );
 
     $self->safe_psql(
         sprintf(
@@ -191,6 +208,18 @@ sub init_table {
 
     $table_options{table_name} //= $self->make_table_name();
 
+    $table_options{definition_fb} //= [
+        ['LANG_ID',      'CHAR(2) NOT NULL PRIMARY KEY'],
+        ['NAME_ENGLISH', 'VARCHAR(64) NOT NULL'],
+        ['NAME_NATIVE',  'VARCHAR(64) NOT NULL'],
+    ];
+
+    $table_options{definition_pg} //= [
+        ['LANG_ID',      'CHAR(2) NOT NULL'],
+        ['NAME_ENGLISH', 'VARCHAR(64) NOT NULL'],
+        ['NAME_NATIVE',  'VARCHAR(64) NOT NULL'],
+    ];
+
     # Check if Firebird table exists (might have been left behind from a
     # previous test run) and if so, delete it.
     my $exists_query = $self->firebird_conn()->prepare(
@@ -221,12 +250,11 @@ sub init_table {
         sprintf(
             <<EO_SQL,
 CREATE TABLE %s (
-  LANG_ID                         CHAR(2) NOT NULL PRIMARY KEY,
-  NAME_ENGLISH                    VARCHAR(64) NOT NULL,
-  NAME_NATIVE                     VARCHAR(64) NOT NULL
+  %s
 )
 EO_SQL
             $table_options{table_name},
+            $self->format_table_definition($table_options{definition_fb}),
         ),
     );
 
@@ -261,14 +289,13 @@ EO_SQL
     my $sql = sprintf(
         <<EO_SQL,
 CREATE FOREIGN TABLE %s (
-  lang_id                         CHAR(2) NOT NULL,
-  name_english                    VARCHAR(64) NOT NULL,
-  name_native                     VARCHAR(64) NOT NULL
+  %s
 )
   SERVER %s
   OPTIONS (%s)
 EO_SQL
         $table_options{table_name},
+        $self->format_table_definition($table_options{definition_pg}),
 		$self->{server_name},
         join(",\n", @options),
     );
@@ -278,6 +305,23 @@ EO_SQL
     return $table_options{table_name};
 }
 
+# Format a table definition from the provided nested arrayref
+
+sub format_table_definition {
+    my $self = shift;
+    my $definition = shift;
+
+    my @columns = ();
+
+    foreach my $column (@{$definition}) {
+        push @columns, sprintf(
+            q|%s %s|,
+            $column->[0],
+            $column->[1],
+        );
+    }
+    return join(",\n", @columns);
+}
 
 # Tables for testing data type handling
 
@@ -372,6 +416,17 @@ EO_SQL
     return $table_name;
 }
 
+sub truncate_table {
+    my $self = shift;
+    my $table_name = shift;
+
+    $self->safe_psql(
+        sprintf(
+            q|DELETE FROM %s|,
+            $table_name,
+        ),
+    );
+}
 
 
 #-----------------------------------------------------------------------
@@ -429,7 +484,7 @@ sub add_server_option {
         sprintf(
             <<EO_SQL,
     ALTER SERVER %s
-       OPTIONS (ADD %s '%s')
+         OPTIONS (ADD %s '%s')
 EO_SQL
 			$self->{server_name},
 			$option,
@@ -474,6 +529,57 @@ EO_SQL
 }
 
 
+sub drop_foreign_server {
+    my $self = shift;
+
+    my $drop_foreign_server = sprintf(
+        q|DROP SERVER IF EXISTS %s CASCADE|,
+        $self->{server_name},
+    );
+
+    $self->safe_psql( $drop_foreign_server );
+}
+
+
+sub add_foreign_table_option {
+    my $self = shift;
+    my $table = shift;
+    my $option = shift;
+	my $value = shift;
+
+	$self->safe_psql(
+        sprintf(
+            <<EO_SQL,
+  ALTER FOREIGN TABLE %s
+              OPTIONS (ADD %s '%s')
+EO_SQL
+			$table,
+			$option,
+			$value,
+		),
+	);
+}
+
+sub alter_foreign_table_option {
+    my $self = shift;
+    my $table = shift;
+    my $option = shift;
+	my $value = shift;
+
+	$self->safe_psql(
+        sprintf(
+            <<EO_SQL,
+  ALTER FOREIGN TABLE %s
+              OPTIONS (SET %s '%s')
+EO_SQL
+			$table,
+			$option,
+			$value,
+		),
+	);
+}
+
+
 sub drop_foreign_table {
     my $self = shift;
     my $table = shift;
@@ -486,17 +592,6 @@ sub drop_foreign_table {
     $self->safe_psql( $drop_foreign_table );
 }
 
-
-sub drop_foreign_server {
-    my $self = shift;
-
-    my $drop_foreign_server = sprintf(
-        q|DROP SERVER IF EXISTS %s CASCADE|,
-        $self->{server_name},
-    );
-
-    $self->safe_psql( $drop_foreign_server );
-}
 
 #-----------------------------------------------------------------------
 #

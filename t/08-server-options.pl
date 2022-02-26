@@ -34,11 +34,32 @@ address|localhost|t
 port|3050|t
 database|%s|t
 updatable|true|t
+EO_TXT
+	$node->{firebird_dbname},
+);
+
+chomp($options_e1);
+
+if ($node->pg_version() >= 140000) {
+    $options_e1 = sprintf(
+        <<EO_TXT,
+%s
+batch_size|1|t
+EO_TXT
+        $options_e1,
+    );
+}
+
+chomp($options_e1);
+
+$options_e1 = sprintf(
+    <<EO_TXT,
+%s
 quote_identifiers|false|t
 implicit_bool_type|true|t
 disable_pushdowns|false|t
 EO_TXT
-	$node->{firebird_dbname},
+    $options_e1,
 );
 
 chomp($options_e1);
