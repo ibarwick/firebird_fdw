@@ -393,39 +393,45 @@ firebirdGetTableOptions(ForeignTable *table,
 		elog(DEBUG3, "table option: \"%s\"", def->defname);
 
 		/* table-level options */
-		if (options->query != NULL && strcmp(def->defname, "query") == 0)
+		if (options->query.opt.strptr != NULL && strcmp(def->defname, "query") == 0)
 		{
-			*options->query = defGetString(def);
+			*options->query.opt.strptr = defGetString(def);
+			options->query.provided = true;
 			continue;
 		}
 
-		if (options->table_name != NULL && strcmp(def->defname, "table_name") == 0)
+		if (options->table_name.opt.strptr != NULL && strcmp(def->defname, "table_name") == 0)
 		{
-			*options->table_name = defGetString(def);
+			*options->table_name.opt.strptr = defGetString(def);
+			options->table_name.provided = true;
 			continue;
 		}
 
-		if (options->updatable != NULL && strcmp(def->defname, "updatable") == 0)
+		if (options->updatable.opt.boolptr != NULL && strcmp(def->defname, "updatable") == 0)
 		{
-			*options->updatable = defGetBoolean(def);
+			*options->updatable.opt.boolptr = defGetBoolean(def);
+			options->updatable.provided = true;
 			continue;
 		}
 
-		if (options->estimated_row_count != NULL && strcmp(def->defname, "estimated_row_count") == 0)
+		if (options->estimated_row_count.opt.intptr != NULL && strcmp(def->defname, "estimated_row_count") == 0)
 		{
-			*options->estimated_row_count = strtod(defGetString(def), NULL);
+			*options->estimated_row_count.opt.intptr = strtod(defGetString(def), NULL);
+			options->estimated_row_count.provided = true;
 			continue;
 		}
 
-		if (options->quote_identifier != NULL && strcmp(def->defname, "quote_identifier") == 0 )
+		if (options->quote_identifier.opt.boolptr != NULL && strcmp(def->defname, "quote_identifier") == 0 )
 		{
-			*options->quote_identifier = defGetBoolean(def);
+			*options->quote_identifier.opt.boolptr = defGetBoolean(def);
+			options->quote_identifier.provided = true;
 			continue;
 		}
 #if (PG_VERSION_NUM >= 140000)
-		if (options->batch_size != NULL && strcmp(def->defname, "batch_size") == 0 )
+		if (options->batch_size.opt.intptr != NULL && strcmp(def->defname, "batch_size") == 0 )
 		{
-			*options->batch_size = strtod(defGetString(def), NULL);
+			*options->batch_size.opt.intptr = strtod(defGetString(def), NULL);
+			options->batch_size.provided = true;
 			continue;
 		}
 #endif
@@ -435,10 +441,10 @@ firebirdGetTableOptions(ForeignTable *table,
 	 * If no query and no table name specified, default to the PostgreSQL
 	 * table name.
 	 */
-	if (options->table_name != NULL && options->query != NULL)
+	if (options->table_name.opt.strptr != NULL && options->query.opt.strptr != NULL)
 	{
-		if (!*options->table_name && !*options->query)
-			*options->table_name = get_rel_name(table->relid);
+		if (!*options->table_name.opt.strptr && !*options->query.opt.strptr)
+			*options->table_name.opt.strptr = get_rel_name(table->relid);
 	}
 }
 

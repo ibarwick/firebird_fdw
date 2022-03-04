@@ -73,21 +73,21 @@ typedef union opttype {
 	bool *boolptr;
 } opttype;
 
-typedef struct fbServerOpt {
+typedef struct fdwOption {
 	union opttype opt;
 	bool provided;
-} fbServerOpt;
+} fdwOption;
 
 typedef struct fbServerOptions {
-	fbServerOpt address;
-	fbServerOpt port;
-	fbServerOpt database;
-	fbServerOpt disable_pushdowns;
-	fbServerOpt updatable;
-	fbServerOpt quote_identifiers;
-	fbServerOpt implicit_bool_type;
+	fdwOption address;
+	fdwOption port;
+	fdwOption database;
+	fdwOption disable_pushdowns;
+	fdwOption updatable;
+	fdwOption quote_identifiers;
+	fdwOption implicit_bool_type;
 #if (PG_VERSION_NUM >= 140000)
-	fbServerOpt batch_size;
+	fdwOption batch_size;
 #endif
 } fbServerOptions;
 
@@ -116,32 +116,32 @@ typedef struct fbServerOptions {
 
 
 typedef struct fbTableOptions {
-	char **query;
-	char **table_name;
-	bool *updatable;
-	int *estimated_row_count;
-	bool *quote_identifier;
+	fdwOption query;
+	fdwOption table_name;
+	fdwOption updatable;
+	fdwOption estimated_row_count;
+	fdwOption quote_identifier;
 #if (PG_VERSION_NUM >= 140000)
-	int *batch_size;
+	fdwOption batch_size;
 #endif
 } fbTableOptions;
 
 #if (PG_VERSION_NUM >= 140000)
 #define fbTableOptions_init { \
-	NULL, \
-	NULL, \
-	NULL, \
-	NULL, \
-	NULL, \
-	NULL \
+	{ { NULL }, false }, \
+	{ { NULL }, false }, \
+	{ { NULL }, false }, \
+	{ { NULL }, false }, \
+	{ { NULL }, false }, \
+	{ { NULL }, false } \
 }
 #else
 #define fbTableOptions_init { \
-	NULL, \
-	NULL, \
-	NULL, \
-	NULL, \
-	NULL \
+	{ { NULL }, false }, \
+	{ { NULL }, false }, \
+	{ { NULL }, false }, \
+	{ { NULL }, false }, \
+	{ { NULL }, false } \
 }
 #endif
 

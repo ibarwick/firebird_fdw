@@ -913,12 +913,12 @@ getFdwState(Oid foreigntableid)
 	 * Retrieve table options; these may override server-level options
 	 * retrieved in the previous step.
 	 */
-	table_options.query = &fdw_state->svr_query;
-	table_options.table_name = &fdw_state->svr_table;
-	table_options.estimated_row_count = &fdw_state->estimated_row_count;
-	table_options.quote_identifier = &fdw_state->quote_identifier;
+	table_options.query.opt.strptr = &fdw_state->svr_query;
+	table_options.table_name.opt.strptr = &fdw_state->svr_table;
+	table_options.estimated_row_count.opt.intptr = &fdw_state->estimated_row_count;
+	table_options.quote_identifier.opt.boolptr = &fdw_state->quote_identifier;
 #if (PG_VERSION_NUM >= 140000)
-	table_options.batch_size = &fdw_state->batch_size;
+	table_options.batch_size.opt.intptr = &fdw_state->batch_size;
 #endif
 
 	firebirdGetTableOptions(
@@ -1454,8 +1454,8 @@ firebirdBeginForeignScan(ForeignScanState *node,
 	user = GetUserMapping(userid, server->serverid);
 
 	/* needed for svr_query */
-	table_options.query = &svr_query;
-	table_options.table_name = &svr_table;
+	table_options.query.opt.strptr = &svr_query;
+	table_options.table_name.opt.strptr = &svr_table;
 
 	firebirdGetTableOptions(table, &table_options);
 
@@ -1830,7 +1830,7 @@ firebirdIsForeignRelUpdatable(Relation rel)
 
 	/* Table setting overrides server setting */
 
-	table_options.updatable = &updatable;
+	table_options.updatable.opt.boolptr = &updatable;
 
 	firebirdGetTableOptions(
 		table,
