@@ -129,7 +129,8 @@ EO_SQL
         $options = sprintf(
             <<EO_SQL,
 %s,
-    batch_size '1'
+    batch_size '1',
+    truncatable 'true'
 EO_SQL
             $options,
         );

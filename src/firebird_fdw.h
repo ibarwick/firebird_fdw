@@ -88,11 +88,13 @@ typedef struct fbServerOptions {
 	fdwOption implicit_bool_type;
 #if (PG_VERSION_NUM >= 140000)
 	fdwOption batch_size;
+	fdwOption truncatable;
 #endif
 } fbServerOptions;
 
 #if (PG_VERSION_NUM >= 140000)
 #define fbServerOptions_init { \
+	{ { NULL }, false }, \
 	{ { NULL }, false }, \
 	{ { NULL }, false }, \
 	{ { NULL }, false }, \
@@ -123,11 +125,13 @@ typedef struct fbTableOptions {
 	fdwOption quote_identifier;
 #if (PG_VERSION_NUM >= 140000)
 	fdwOption batch_size;
+	fdwOption truncatable;
 #endif
 } fbTableOptions;
 
 #if (PG_VERSION_NUM >= 140000)
 #define fbTableOptions_init { \
+	{ { NULL }, false }, \
 	{ { NULL }, false }, \
 	{ { NULL }, false }, \
 	{ { NULL }, false }, \
@@ -306,6 +310,10 @@ extern void buildDeleteSql(StringInfo buf, RangeTblEntry *rte,
 						   Index rtindex, Relation rel,
 						   List *returningList,
 						   List **retrieved_attrs);
+
+extern void buildTruncateSQL(StringInfo buf,
+							 FirebirdFdwState *fdw_state,
+							 Relation rel);
 
 extern void buildSelectSql(StringInfo buf, RangeTblEntry *rte,
 						   FirebirdFdwState *fdw_state,

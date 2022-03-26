@@ -29,6 +29,8 @@ static struct FirebirdFdwOption valid_options[] =
 	{ "implicit_bool_type",	 ForeignServerRelationId },
 #if (PG_VERSION_NUM >= 140000)
 	{ "batch_size",			 ForeignServerRelationId },
+	{ "truncatable",		 ForeignServerRelationId },
+
 #endif
 	/* User options */
 	{ "username",			 UserMappingRelationId	 },
@@ -41,6 +43,7 @@ static struct FirebirdFdwOption valid_options[] =
 	{ "quote_identifier",	 ForeignTableRelationId	 },
 #if (PG_VERSION_NUM >= 140000)
 	{ "batch_size",			 ForeignTableRelationId  },
+	{ "truncatable",		 ForeignTableRelationId  },
 #endif
 	/* Column options */
 	{ "column_name",		 AttributeRelationId	 },
@@ -79,6 +82,7 @@ firebird_fdw_validator(PG_FUNCTION_ARGS)
 	char		*svr_table = NULL;
 #if (PG_VERSION_NUM >= 140000)
 	int			svr_batch_size = NO_BATCH_SIZE_SPECIFIED;
+	bool		truncatable_set = false;
 #endif
 
 	bool		 disable_pushdowns_set = false;
@@ -218,8 +222,7 @@ firebird_fdw_validator(PG_FUNCTION_ARGS)
 			if (disable_pushdowns_set)
 				ereport(ERROR,
 					(errcode(ERRCODE_SYNTAX_ERROR),
-					errmsg("redundant option: 'disable_pushdowns' set more than once")
-					));
+					 errmsg("redundant option: 'disable_pushdowns' set more than once")));
 			(void) defGetBoolean(def);
 
 			disable_pushdowns_set = true;
@@ -263,8 +266,17 @@ firebird_fdw_validator(PG_FUNCTION_ARGS)
 						 errmsg("\"batch_size\" must have a value of 1 or greater")));
 			}
 		}
-#endif
+		else if (strcmp(def->defname, "truncatable") == 0)
+		{
+			if (truncatable_set)
+				ereport(ERROR,
+					(errcode(ERRCODE_SYNTAX_ERROR),
+					 errmsg("redundant option: 'truncatable' set more than once")));
+			(void) defGetBoolean(def);
 
+			truncatable_set = true;
+		}
+#endif
 	}
 
 	PG_RETURN_VOID();
@@ -368,6 +380,12 @@ firebirdGetServerOptions(ForeignServer *server,
 			options->batch_size.provided = true;
 			continue;
 		}
+		if (options->truncatable.opt.boolptr != NULL && strcmp(def->defname, "truncatable") == 0 )
+		{
+			*options->truncatable.opt.boolptr = defGetBoolean(def);
+			options->truncatable.provided = true;
+			continue;
+		}
 #endif
 	}
 }
@@ -427,11 +445,19 @@ firebirdGetTableOptions(ForeignTable *table,
 			options->quote_identifier.provided = true;
 			continue;
 		}
+
 #if (PG_VERSION_NUM >= 140000)
 		if (options->batch_size.opt.intptr != NULL && strcmp(def->defname, "batch_size") == 0 )
 		{
 			*options->batch_size.opt.intptr = strtod(defGetString(def), NULL);
 			options->batch_size.provided = true;
+			continue;
+		}
+
+		if (options->truncatable.opt.boolptr != NULL && strcmp(def->defname, "truncatable") == 0 )
+		{
+			*options->truncatable.opt.boolptr = defGetBoolean(def);
+			options->truncatable.provided = true;
 			continue;
 		}
 #endif

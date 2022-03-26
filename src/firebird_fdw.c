@@ -225,6 +225,11 @@ static void firebirdExplainForeignModify(ModifyTableState *mtstate,
 							  List *fdw_private,
 							  int subplan_index,
 							  struct ExplainState *es);
+#if (PG_VERSION_NUM >= 140000)
+static void firebirdExecForeignTruncate(List *rels,
+										DropBehavior behavior,
+										bool restart_seqs);
+#endif
 
 #if (PG_VERSION_NUM >= 90500)
 static List *firebirdImportForeignSchema(ImportForeignSchemaStmt *stmt,
@@ -355,6 +360,7 @@ firebird_fdw_server_options(PG_FUNCTION_ARGS)
 	bool		disable_pushdowns = false;
 #if (PG_VERSION_NUM >= 140000)
 	int			batch_size = NO_BATCH_SIZE_SPECIFIED;
+	bool		truncatable = true;
 #endif
 
 	ForeignServer *server;
@@ -384,6 +390,7 @@ firebird_fdw_server_options(PG_FUNCTION_ARGS)
 	server_options.disable_pushdowns.opt.boolptr = &disable_pushdowns;
 #if (PG_VERSION_NUM >= 140000)
 	server_options.batch_size.opt.intptr = &batch_size;
+	server_options.truncatable.opt.boolptr = &truncatable;
 #endif
 
 	firebirdGetServerOptions(
@@ -456,6 +463,21 @@ firebird_fdw_server_options(PG_FUNCTION_ARGS)
 	pfree(option.data);
 
 #if (PG_VERSION_NUM >= 140000)
+	/* truncatable */
+	memset(values, 0, sizeof(values));
+	memset(nulls, 0, sizeof(nulls));
+
+	initStringInfo(&option);
+	appendStringInfoString(&option,
+						   truncatable ? "true" : "false");
+
+	values[0] = CStringGetTextDatum("truncatable");
+	values[1] = CStringGetTextDatum(option.data);
+	values[2] = BoolGetDatum(server_options.truncatable.provided);
+
+	tuplestore_putvalues(tupstore, tupdesc, values, nulls);
+	pfree(option.data);
+
 	/* batch size */
 	memset(values, 0, sizeof(values));
 	memset(nulls, 0, sizeof(nulls));
@@ -791,6 +813,10 @@ firebird_fdw_handler(PG_FUNCTION_ARGS)
 	fdwroutine->ExecForeignDelete = firebirdExecForeignDelete;
 	fdwroutine->EndForeignModify = firebirdEndForeignModify;
 	fdwroutine->ExplainForeignModify = firebirdExplainForeignModify;
+
+#if (PG_VERSION_NUM >= 140000)
+	fdwroutine->ExecForeignTruncate = firebirdExecForeignTruncate;
+#endif
 
 #if (PG_VERSION_NUM >= 90500)
 	/* support for IMPORT FOREIGN SCHEMA */
@@ -2892,6 +2918,246 @@ firebirdExplainForeignModify(ModifyTableState *mtstate,
 #endif
 }
 
+#if (PG_VERSION_NUM >= 140000)
+static void firebirdExecForeignTruncate(List *rels,
+										DropBehavior behavior,
+										bool restart_seqs)
+{
+	ForeignServer *server = NULL;
+	Oid			serverid = InvalidOid;
+	UserMapping *user = NULL;
+	FBconn	   *conn = NULL;
+
+	FirebirdFdwState *fdw_state = NULL;
+	StringInfoData fkey_query;
+	ListCell   *lc;
+
+	/*
+	 * TRUNCATE ... CASCADE not currently supported
+	 */
+	if (behavior == DROP_CASCADE)
+	{
+		ereport(ERROR,
+				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+				 errmsg("TRUNCATE with CASCADE option not supported by firebird_fdw")));
+	}
+
+	/*
+	 * TRUNCATE ... RESTART IDENTITY not supported
+	 */
+	if (restart_seqs == true)
+	{
+		ereport(ERROR,
+				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+				 errmsg("TRUNCATE with RESTART IDENTITY option not supported by firebird_fdw")));
+	}
+
+	/*
+	 * For each provided table, verify if it has any foreign key references.
+	 * We'll need to check if any of the references are from tables not
+	 * contained in the provided list.
+	 */
+	initStringInfo(&fkey_query);
+
+	appendStringInfoString(&fkey_query,
+						   "     SELECT TRIM(from_table.rdb$relation_name) AS from_table, "
+						   "            TRIM(from_field.rdb$field_name) AS from_field, "
+						   "            TRIM(from_table.rdb$index_name) AS index_name, "
+						   "            TRIM(to_field.rdb$field_name) AS to_field "
+						   "       FROM rdb$indices from_table "
+						   " INNER JOIN rdb$index_segments from_field "
+						   "         ON (from_field.rdb$index_name = from_table.rdb$index_name) "
+						   " INNER JOIN rdb$indices to_table "
+						   "         ON (to_table.rdb$index_name = from_table.rdb$foreign_key) "
+						   " INNER JOIN rdb$index_segments to_field "
+						   "         ON (to_table.rdb$index_name = to_field.rdb$index_name)"
+						   "      WHERE TRIM(to_table.rdb$relation_name) = ? "
+						   "        AND from_table.rdb$foreign_key IS NOT NULL ");
+
+	/*
+	 * First pass: verify tables can be truncated
+	 */
+	foreach(lc, rels)
+	{
+		Relation	rel = lfirst(lc);
+		ForeignTable *table = GetForeignTable(RelationGetRelid(rel));
+		Oid relid = RelationGetRelid(rel);
+		fbTableOptions table_options = fbTableOptions_init;
+		fbServerOptions server_options = fbServerOptions_init;
+
+		bool truncatable = true;
+		bool updatable = true;
+
+		char **p_values = (char **) palloc0(sizeof(char *));
+		FBresult   *res = NULL;
+
+		elog(DEBUG3, "table is %s", get_rel_name(relid));
+
+		/*
+		 * On the first pass, fetch the server and user
+		 */
+		if (!OidIsValid(serverid))
+		{
+			serverid = table->serverid;
+			server = GetForeignServer(serverid);
+			user = GetUserMapping(GetUserId(), server->serverid);
+
+			elog(DEBUG3, "server is %s", server->servername);
+
+			fdw_state = getFdwState(relid);
+			Assert(fdw_state != NULL);
+		}
+
+		/*
+		 * Fetch the server options for each iteration; we could cache them
+		 * but it doesn't seem worth the additional fuss.
+		 */
+		server_options.quote_identifiers.opt.boolptr = &fdw_state->quote_identifier;
+		server_options.truncatable.opt.boolptr = &truncatable;
+		server_options.updatable.opt.boolptr = &updatable;
+
+		firebirdGetServerOptions(
+			server,
+			&server_options);
+
+		table_options.query.opt.strptr = &fdw_state->svr_query;
+		table_options.quote_identifier.opt.boolptr =  &fdw_state->quote_identifier;
+		table_options.truncatable.opt.boolptr = &truncatable;
+		table_options.updatable.opt.boolptr = &updatable;
+
+		firebirdGetTableOptions(
+			table,
+			&table_options);
+
+		/*
+		 * Check the server/table options allow the table to be truncated.
+		 * Foreign tables defined as queries are automatically considered as
+		 * "updatable=false", so we don't need to check those explicitly.
+		 */
+		if (updatable == false)
+			ereport(ERROR,
+					(errcode(ERRCODE_OBJECT_NOT_IN_PREREQUISITE_STATE),
+					 errmsg("foreign table \"%s\" is not updatable",
+							get_rel_name(relid))));
+
+		if (truncatable == false)
+			ereport(ERROR,
+					(errcode(ERRCODE_OBJECT_NOT_IN_PREREQUISITE_STATE),
+					 errmsg("foreign table \"%s\" does not allow truncates",
+							get_rel_name(relid))));
+
+		conn = firebirdInstantiateConnection(server, user);
+
+		/*
+		 * Check the target table has no foreign key references
+		 */
+		p_values[0] = pstrdup(fdw_state->svr_table);
+		unquoted_ident_to_upper(p_values[0]);
+
+		elog(DEBUG3, "remote table is: %s", p_values[0]);
+
+		res = FQexecParams(conn,
+						   fkey_query.data,
+						   1,
+						   NULL,
+						   (const char **)p_values,
+						   NULL,
+						   NULL,
+						   0);
+
+		if (FQresultStatus(res) != FBRES_TUPLES_OK)
+		{
+			FQclear(res);
+			ereport(ERROR,
+					(errcode(ERRCODE_FDW_ERROR),
+					 errmsg("unable to execute foreign key metadata query for table \"%s\" on foreign server \"%s\"",
+							p_values[0],
+							server->servername)));
+		}
+
+
+		if (FQntuples(res) > 0)
+		{
+			StringInfoData detail;
+			int row;
+
+			elog(DEBUG3, "fkey references: %i", FQntuples(res));
+
+			initStringInfo(&detail);
+			appendStringInfo(&detail,
+							 "remote table \"%s\" has following foreign key references:\n",
+							 p_values[0]);
+
+			for (row = 0; row < FQntuples(res); row++)
+			{
+				appendStringInfo(&detail,
+								 "- table \"%s\" column \"%s\" to column \"%s\"\n",
+								 FQgetvalue(res, row, 0),
+								 FQgetvalue(res, row, 1),
+								 FQgetvalue(res, row, 3));
+			}
+
+			FQclear(res);
+			ereport(ERROR,
+					(errcode(ERRCODE_OBJECT_NOT_IN_PREREQUISITE_STATE),
+					 errmsg("foreign table \"%s\" has foreign key references",
+							get_rel_name(relid)),
+					 errdetail("%s", detail.data)));
+		}
+	}
+
+	Assert(server != NULL);
+	Assert(conn != NULL);
+
+	foreach(lc, rels)
+	{
+		Relation	rel = lfirst(lc);
+		Oid relid = RelationGetRelid(rel);
+
+		FBresult   *res = NULL;
+		StringInfoData delete_query;
+
+		initStringInfo(&delete_query);
+
+		buildTruncateSQL(&delete_query,
+						 fdw_state, rel);
+
+		elog(DEBUG3, "truncate query is: %s", delete_query.data);
+
+
+		res = FQexec(conn, delete_query.data);
+
+		pfree(delete_query.data);
+
+		if (FQresultStatus(res) != FBRES_COMMAND_OK)
+		{
+			StringInfoData detail;
+
+			initStringInfo(&detail);
+			appendStringInfoString(&detail,
+								   FQresultErrorField(res, FB_DIAG_MESSAGE_PRIMARY));
+
+			if (FQresultErrorField(res, FB_DIAG_MESSAGE_DETAIL) != NULL)
+				appendStringInfo(&detail,
+								 ": %s",
+								 FQresultErrorField(res, FB_DIAG_MESSAGE_DETAIL));
+
+			FQclear(res);
+
+			ereport(ERROR,
+					(errcode(ERRCODE_FDW_ERROR),
+					 errmsg("unable to truncate table \"%s\" on foreign server \"%s\"",
+							get_rel_name(relid),
+							server->servername),
+					 errdetail("%s", detail.data)));
+		}
+
+		FQclear(res);
+	}
+
+	pfree(fkey_query.data);
+}
+#endif
 
 #if (PG_VERSION_NUM >= 110000)
 /**
@@ -3401,7 +3667,7 @@ firebirdImportForeignSchema(ImportForeignSchemaStmt *stmt,
 	}
 
 
-	/* Apply restrictions for  EXCEPT */
+	/* Apply restrictions for EXCEPT */
 	if (stmt->list_type == FDW_IMPORT_SCHEMA_EXCEPT)
 	{
 		bool		first_item = true;

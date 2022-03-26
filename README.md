@@ -57,6 +57,7 @@ Features
 - Supports triggers on foreign tables (PostgreSQL 9.4 and later)
 - Supports `IMPORT FOREIGN SCHEMA` (PostgreSQL 9.5 and later)
 - Supports `COPY` and partition tuple routing (PostgreSQL 11 and later)
+- Supports `TRUNCATE` operations (PostgreSQL 14 and later)
 
 Supported platforms
 -------------------
@@ -295,6 +296,22 @@ the table name provided in the `IMPORT SCHEMA` command. However, Firebird table 
 which are entirely lower-case can currently not be provided as quoted column
 names as PostgreSQL considers these as unquoted by default and the foreign
 data wrapper has no way of knowing whether they were originally quoted.
+
+### TRUNCATE support
+
+`firebird_fdw` implements the foreign data wrapper `TRUNCATE` API, available
+from PostgreSQL 14.
+
+As Firebird does not provide a `TRUNCATE` command, it is simulated with a
+simple unqualified `DELETE` operation.
+
+Following restrictions apply:
+
+ - `TRUNCATE ... CASCADE` is not supported
+ - `TRUNCATE ... RESTART IDENTITY` is not supported
+ - Firebird tables with foreign key references cannot be truncated
+
+These restrictions may be removed in future releases.
 
 Functions
 ---------

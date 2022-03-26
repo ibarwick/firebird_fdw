@@ -289,6 +289,15 @@ buildDeleteSql(StringInfo buf,
 }
 
 
+void
+buildTruncateSQL(StringInfo buf,
+				 FirebirdFdwState *fdw_state,
+				 Relation rel)
+{
+	appendStringInfoString(buf, "DELETE FROM ");
+	convertRelation(buf, fdw_state);
+}
+
 /**
  * buildWhereClause()
  *
