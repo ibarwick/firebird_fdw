@@ -25,7 +25,7 @@ This `README` represents the documentation for the current development version
 of `firebird_fdw`. Stable documentation for previous releases is available
 at the following links:
 
- - [1.2.1 README](https://github.com/ibarwick/firebird_fdw/blob/REL_1_2_STABLE/README.md) (2020-10-21)
+ - [1.2.3 README](https://github.com/ibarwick/firebird_fdw/blob/REL_1_2_STABLE/README.md) (2022-02-20)
  - [1.1.0 README](https://github.com/ibarwick/firebird_fdw/blob/REL_1_1_STABLE/README.md) (2019-05-31)
  - [1.0.0 README](https://github.com/ibarwick/firebird_fdw/blob/REL_1_0_STABLE/README.md) (2018-11-09)
 
@@ -297,7 +297,7 @@ which are entirely lower-case can currently not be provided as quoted column
 names as PostgreSQL considers these as unquoted by default and the foreign
 data wrapper has no way of knowing whether they were originally quoted.
 
-### TRUNCATE support
+## TRUNCATE support
 
 `firebird_fdw` implements the foreign data wrapper `TRUNCATE` API, available
 from PostgreSQL 14.
