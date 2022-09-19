@@ -87,9 +87,17 @@ firebirdGetConnection(const char *dbpath, const char *svr_username, const char *
 	 * encoding name directly to Firebird. Firebird seems to be pretty
 	 * good at parsing encoding names but it's possible there might be
 	 * errors with more obscure encoding combinations.
+	 *
+	 * We make an exception for PostgreSQL's "SQL_ASCII" encoding, which
+	 * maps to Firebird's "NONE".
 	 */
 	kw[i] = "client_encoding";
-	val[i] = GetDatabaseEncodingName();
+
+	if (GetDatabaseEncoding() == PG_SQL_ASCII)
+		val[i] = "NONE";
+	else
+		val[i] = GetDatabaseEncodingName();
+
 	i++;
 
 	kw[i] = NULL;

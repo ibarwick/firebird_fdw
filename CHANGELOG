@@ -2,6 +2,7 @@ Revision history for firebird_fdw
 
 1.3.0	2022-??-??
 	- Initial support for TRUNCATE (PostgreSQL 14+)
+	- Map PostgreSQL's "SQL_ASCII" encoding to Firebird's "NONE"
 
 1.2.3	2022-02-11
 	- Fix bug in rescan handling
