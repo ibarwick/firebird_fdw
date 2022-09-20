@@ -3,7 +3,7 @@
 ## Compability between character data *collations* and *character sets* in Firebird and *encodings* (or character setes) in PostgreSQL
 
 You can search by *collation* to corresponding *character set* and then to PostgreSQL's *encoding* if exist.
-There is many Firebird's character sets, haven't corresponding encoding in PostgreSQL, but **any Firebird's character set* can be converted to UTF8** encoding in PostgreSQL.
+There is many Firebird's character sets, haven't corresponding encoding in PostgreSQL, but **any Firebird's character set can be converted to UTF8** encoding in PostgreSQL.
 
 |FB character set|pg encoding|fbID|fb Collation|Description|fb Aliases|fb maxBytes/Char|FbVersion+|JavaCharSet|
 |----------------|-----------|----|------------|-----------|----------|-----------------|----------|-----------|
