@@ -39,11 +39,12 @@ Contents
 5. [Functions](#functions)
 6. [Identifier case handling](#identifier-case-handling)
 7. [Generated columns](#generated-columns)
-8. [Examples](#examples)
-9. [Limitations](#limitations)
-10. [TAP tests](#tap-tests)
-11. [Development roadmap](#development-roadmap)
-12. [Useful links](#useful-links)
+8. [Character data transformation between Firebird and PostgreSQL](#character-data-transformation-between-firebird-and-postgresql)
+9. [Examples](#examples)
+10. [Limitations](#limitations)
+11. [TAP tests](#tap-tests)
+12. [Development roadmap](#development-roadmap)
+13. [Useful links](#useful-links)
 
 Features
 --------
@@ -497,6 +498,40 @@ For more details on generated columns see:
 
 - [Generated Columns](https://www.postgresql.org/docs/current/ddl-generated-columns.html)
 - [CREATE FOREIGN TABLE](https://www.postgresql.org/docs/current/sql-createforeigntable.html)
+
+Character data transformation between Firebird and PostgreSQL
+-------------------------------------------------------------
+
+Show a character set of the Firebird database
+
+In a Firebird client execute `SELECT RDB$CHARACTER_SET_NAME FROM RDB$DATABASE;`
+
+Show an encoding of the PostgreSQL database
+
+In a PostgreSQL client execute `SHOW SERVER_ENCODING;`
+
+The most typically encoding of modern PostgreSQL databases is `UTF8`. All of DDL marked charecter data of all Firebird's character sets excluded `NONE` can be automatically transformated to any PostgreSQL's Unicode encoding.
+
+If PosgreSQL databse's encoding is not Unicode compatible see special [recommendations for character data compatibility between Firebird and PostgreSQL](ENCODINGS.md).
+
+For more details on character sets and encodings see
+* [Firebird 1.5 collations and character sets](https://www.firebirdsql.org/en/firebird-1-5-character-sets-collations/)
+* [Firebird 2.5 additional collations and character sets](https://firebirdsql.org/refdocs/langrefupd25-charsets.html)
+* [Encodings in current PostgreSQL](https://www.postgresql.org/docs/current/multibyte.html#MULTIBYTE-CHARSET-SUPPORTED)
+
+**Firbird database with `NONE` character set**
+
+`NONE` character set is pretty much the equivalent of PostgreSQL's `SQL_ASCII`, i.e. a pseudo-character set/encoding which enables the user to store pretty much any data they care to input without any kind of validation, so e.g. it's perfectly possible to insert a mix of data in ISO-8859-1 and UTF8 encoding. This does however mean that Firebird can't know what encoding the data is supposed to be in, so it can't convert the data to whatever encoding the client is requesting. Consqeuently whatever value is set for the `client_encoding` parameter has absolutely no effect.
+
+Note that in case case of `NONE` character set in Firebird DB the client is PostgreSQL/firebird_fdw, which is expecting to receive data in the PostgreSQL server's default encoding, typically `UTF8`, but what it is actually receiving in this case is a bunch of bytes which are not a problem if they happen to be stored in the same encoding in Firebird, but which are otherwise effectively `bytea` values which need to be explictly converted.
+Note that a similar situation occurs with `postgres_fdw` and a remote database using `SQL_ASCII`; in this case it is not possible for PostgreSQL to retrieve data from the remote database which doesn't match the local server's encoding.
+
+Here is some examples of PostgreSQL's SQL for converting of character data from Firebird database with `NONE` character set
+
+`convert_from (NOME_CONTATO :: BYTEA, 'ISO8859-1')` if real encoding of character data in Firebird is `LATIN1`.
+
+`convert_from (NOME_CONTATO :: BYTEA, 'WIN1251')` if real encoding of character data in Firebird is `cp1251`.
+
 
 Examples
 --------
