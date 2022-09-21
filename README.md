@@ -526,6 +526,13 @@ For more details on character sets and encodings see
 Note that in case case of `NONE` character set in Firebird DB the client is PostgreSQL/firebird_fdw, which is expecting to receive data in the PostgreSQL server's default encoding, typically `UTF8`, but what it is actually receiving in this case is a bunch of bytes which are not a problem if they happen to be stored in the same encoding in Firebird, but which are otherwise effectively `bytea` values which need to be explictly converted.
 Note that a similar situation occurs with `postgres_fdw` and a remote database using `SQL_ASCII`; in this case it is not possible for PostgreSQL to retrieve data from the remote database which doesn't match the local server's encoding.
 
+Here is some examples of PostgreSQL's SQL for converting of character data from Firebird database with `NONE` character set
+
+`convert_from (NOME_CONTATO :: BYTEA, 'ISO8859-1')` if real encoding of character data in Firebird is `LATIN1`.
+
+`convert_from (NOME_CONTATO :: BYTEA, 'WIN1251')` if real encoding of character data in Firebird is `cp1251`.
+
+
 Examples
 --------
 
