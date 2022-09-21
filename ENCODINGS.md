@@ -5,9 +5,9 @@
 You can search by *collation* to corresponding *character set* and then to PostgreSQL's *encoding* if exist.
 There is many Firebird's character sets, haven't corresponding encoding in PostgreSQL, but **any Firebird's character set can be converted to UTF8** encoding in PostgreSQL.
 
-|FB character set|pg encoding|fbID|fb Collation|Description|fb Aliases|fb maxBytes/Char|FbVersion+|JavaCharSet|
-|----------------|-----------|----|------------|-----------|----------|-----------------|----------|-----------|
-|**NONE**|**SQL_ASCII**|0|**NONE** |**Codepage-neutral. Uppercasing limited to ASCII codes 97-122**||1 ||ASCII|
+|[Firebird character set](https://www.firebirdsql.org/en/firebird-1-5-character-sets-collations/)|[PostgreSQL encoding](https://www.postgresql.org/docs/current/multibyte.html#MULTIBYTE-CHARSET-SUPPORTED)|fb ID|Firebird Collation|Description|fb Aliases|fb max Bytes / Char|fb Version+|Java CharSet|
+|----------------|-----------|--|------------|-----------|----------|----------|--------|-----------|
+|**NONE**|**SQL_ASCII**|0|**NONE** |**Codepage-neutral. Uppercasing limited to ASCII codes 97-122**||1 |1.0|ASCII|
 |**UTF8**|**UTF8**|3|**UNICODE**|**8-bit Unicode Transformation Format**|SQL_TEXT, UTF-8|3 |2.0|UTF-8|
 |OCTETS|SQL_ASCII|1|OCTETS ||BINARY|1 |1.0||
 |ASCII|SQL_ASCII|2|ASCII ||ASCII7, USASCII|1 |1.0|ASCII|
