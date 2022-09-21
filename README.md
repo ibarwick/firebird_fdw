@@ -501,14 +501,30 @@ For more details on generated columns see:
 
 Character data transformation between Firebird and PostgreSQL
 -------------------------------------------------------------
-Most typical encoding for PostgreSQL is `UTF8` but it isn't rare when character set of Firebird database isn't Unicode and the database have been created with some legacy or `NONE` character set.
+
+Show a character set of the Firebird database
+
+In a Firebird client execute `SELECT RDB$CHARACTER_SET_NAME FROM RDB$DATABASE;`
+
+Show an encoding of the PostgreSQL database
+
+In a PostgreSQL client execute `SHOW SERVER_ENCODING;`
+
+The most typically encoding of modern PostgreSQL databases is `UTF8`. All of DDL marked charecter data of all Firebird's character sets excluded `NONE` can be automatically transformated to any PostgreSQL's Unicode encoding.
+
+If PosgreSQL databse's encoding is not Unicode compatible see special [recommendations for character data compatibility between Firebird and PostgreSQL](ENCODINGS.md).
+
+For more details on character sets and encodings see
+* [Firebird 1.5 collations and character sets](https://www.firebirdsql.org/en/firebird-1-5-character-sets-collations/)
+* [Firebird 2.5 additional collations and character sets](https://firebirdsql.org/refdocs/langrefupd25-charsets.html)
+* [Encodings in current PostgreSQL](https://www.postgresql.org/docs/current/multibyte.html#MULTIBYTE-CHARSET-SUPPORTED)
+
+**Firbird database with `NONE` character set**
 
 `NONE` character set is pretty much the equivalent of PostgreSQL's `SQL_ASCII`, i.e. a pseudo-character set/encoding which enables the user to store pretty much any data they care to input without any kind of validation, so e.g. it's perfectly possible to insert a mix of data in ISO-8859-1 and UTF8 encoding. This does however mean that Firebird can't know what encoding the data is supposed to be in, so it can't convert the data to whatever encoding the client is requesting. Consqeuently whatever value is set for the `client_encoding` parameter has absolutely no effect.
 
 Note that in case case of `NONE` character set in Firebird DB the client is PostgreSQL/firebird_fdw, which is expecting to receive data in the PostgreSQL server's default encoding, typically `UTF8`, but what it is actually receiving in this case is a bunch of bytes which are not a problem if they happen to be stored in the same encoding in Firebird, but which are otherwise effectively `bytea` values which need to be explictly converted.
 Note that a similar situation occurs with `postgres_fdw` and a remote database using `SQL_ASCII`; in this case it is not possible for PostgreSQL to retrieve data from the remote database which doesn't match the local server's encoding.
-
-Most of legacy character sets from Firebird excluding `NONE` can be converted to PostgreSQL's `UTF8` encoding without any problems. For other (legacy) PostgreSQL's encodings see special [recommendations for character data compatibility between Firebird and PostgreSQL](ENCODINGS.md).
 
 Examples
 --------
