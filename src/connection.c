@@ -88,15 +88,122 @@ firebirdGetConnection(const char *dbpath, const char *svr_username, const char *
 	 * good at parsing encoding names but it's possible there might be
 	 * errors with more obscure encoding combinations.
 	 *
-	 * We make an exception for PostgreSQL's "SQL_ASCII" encoding, which
-	 * maps to Firebird's "NONE".
+	 * We make an exceptions for PostgreSQL's encodings, which
+	 * maps to Firebird's character sets with non equal name.
 	 */
 	kw[i] = "client_encoding";
 
-	if (GetDatabaseEncoding() == PG_SQL_ASCII)
-		val[i] = "NONE";
-	else
-		val[i] = GetDatabaseEncodingName();
+	switch (GetDatabaseEncoding())
+	{
+	/*  Equal Firebird's character sets to PostgreSQL's encoding
+         * |FB character set|pg encoding|
+         * |----------------|-----------|
+         * |UTF8            |UTF8       |
+         * |WIN1250         |WIN1250    |
+         * |WIN1251         |WIN1251    |
+         * |WIN1252         |WIN1252    |
+         * |WIN1253         |WIN1253    |
+         * |WIN1254         |WIN1254    |
+         * |WIN1255         |WIN1255    |
+         * |WIN1256         |WIN1256    |
+         * |WIN1257         |WIN1257    |
+         * |WIN1258         |WIN1258    |
+         * |GB18030         |GB18030    |
+         * |GBK             |GBK        |
+         * |KOI8R           |KOI8R      |
+         * |KOI8U           |KOI8U      |
+		 */
+		case PG_UTF8:
+		case PG_WIN1250:
+		case PG_WIN1251:
+		case PG_WIN1252:
+		case PG_WIN1253:
+		case PG_WIN1254:
+		case PG_WIN1255:
+		case PG_WIN1257:
+		case PG_WIN1256:
+		case PG_WIN1258:
+		case PG_KOI8R:
+		case PG_KOI8U:
+		case PG_GBK:
+		case PG_GB18030:
+			// See names on https://www.postgresql.org/docs/current/multibyte.html#MULTIBYTE-CHARSET-SUPPORTED
+			val[i] = GetDatabaseEncodingName(); 
+ 			break;
+		/* Non equal Firebird's character sets to PostgreSQL's encoding			
+		 * |pg encoding|FB character set|
+		 * |-----------|----------------|
+		 * |SQL_ASCII  |NONE            |
+		 * |LATIN1     |ISO8859_1       |
+		 * |LATIN2     |ISO8859_2       |
+		 * |LATIN3     |ISO8859_3       |
+		 * |LATIN4     |ISO8859_4       |
+		 * |LATIN5     |ISO8859_9       |
+		 * |LATIN7     |ISO8859_13      |
+		 * |ISO_8859_5 |ISO8859_5       |
+		 * |ISO_8859_6 |ISO8859_6       |
+		 * |ISO_8859_7 |ISO8859_7       |
+		 * |ISO_8859_8 |ISO8859_8       |
+		 * |BIG5       |BIG_5           |
+		 * |GBK        |GB_2312         |
+		 * |SJIS       |SJIS_0208       |
+		 * |UHC        |KSC_5601        |
+		 */
+ 		 		
+		case PG_SQL_ASCII:
+			val[i] = "NONE";
+ 			break;
+
+		case PG_LATIN1:
+			val[i] = "ISO8859_1";
+ 			break;	
+		case PG_LATIN2:
+			val[i] = "ISO8859_2";
+ 			break;
+		case PG_LATIN3:
+			val[i] = "ISO8859_3";
+ 			break;
+		case PG_LATIN4:
+			val[i] = "ISO8859_4";
+ 			break;
+		case PG_LATIN5:
+			val[i] = "ISO8859_9";
+ 			break;
+		case PG_LATIN7:
+			val[i] = "ISO8859_13";
+ 			break;
+		case PG_LATIN8:
+			val[i] = "ISO8859_8";
+ 			break;
+		case PG_ISO_8859_5:
+			val[i] = "ISO8859_5";
+ 			break;
+		case PG_ISO_8859_6:
+			val[i] = "ISO8859_6";
+ 			break;
+		case PG_ISO_8859_7:
+			val[i] = "ISO8859_7";
+ 			break;
+		case PG_ISO_8859_8:
+			val[i] = "ISO8859_8";
+ 			break;
+
+		case PG_BIG5:
+			val[i] = "BIG_5";
+ 			break;
+
+		case PG_SJIS:
+			val[i] = "SJIS_0208";
+ 			break;
+
+		case PG_UHC:
+			val[i] = "KSC_5601";
+ 			break;
+
+		default:
+		    // Here can be catching of error
+			val[i] = GetDatabaseEncodingName();
+	};
 
 	i++;
 
