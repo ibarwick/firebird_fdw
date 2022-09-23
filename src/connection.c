@@ -112,7 +112,7 @@ firebirdGetConnection(const char *dbpath, const char *svr_username, const char *
          * |GBK             |GBK        |
          * |KOI8R           |KOI8R      |
          * |KOI8U           |KOI8U      |
-		 */
+	 */
 		case PG_UTF8:
 		case PG_WIN1250:
 		case PG_WIN1251:
@@ -130,25 +130,25 @@ firebirdGetConnection(const char *dbpath, const char *svr_username, const char *
 			// See names on https://www.postgresql.org/docs/current/multibyte.html#MULTIBYTE-CHARSET-SUPPORTED
 			val[i] = GetDatabaseEncodingName(); 
  			break;
-		/* Non equal Firebird's character sets to PostgreSQL's encoding			
-		 * |pg encoding|FB character set|
-		 * |-----------|----------------|
-		 * |SQL_ASCII  |NONE            |
-		 * |LATIN1     |ISO8859_1       |
-		 * |LATIN2     |ISO8859_2       |
-		 * |LATIN3     |ISO8859_3       |
-		 * |LATIN4     |ISO8859_4       |
-		 * |LATIN5     |ISO8859_9       |
-		 * |LATIN7     |ISO8859_13      |
-		 * |ISO_8859_5 |ISO8859_5       |
-		 * |ISO_8859_6 |ISO8859_6       |
-		 * |ISO_8859_7 |ISO8859_7       |
-		 * |ISO_8859_8 |ISO8859_8       |
-		 * |BIG5       |BIG_5           |
-		 * |GBK        |GB_2312         |
-		 * |SJIS       |SJIS_0208       |
-		 * |UHC        |KSC_5601        |
-		 */
+	/* Non equal Firebird's character sets to PostgreSQL's encoding			
+	 * |pg encoding|FB character set|
+	 * |-----------|----------------|
+	 * |SQL_ASCII  |NONE            |
+	 * |LATIN1     |ISO8859_1       |
+	 * |LATIN2     |ISO8859_2       |
+	 * |LATIN3     |ISO8859_3       |
+	 * |LATIN4     |ISO8859_4       |
+	 * |LATIN5     |ISO8859_9       |
+	 * |LATIN7     |ISO8859_13      |
+	 * |ISO_8859_5 |ISO8859_5       |
+	 * |ISO_8859_6 |ISO8859_6       |
+	 * |ISO_8859_7 |ISO8859_7       |
+	 * |ISO_8859_8 |ISO8859_8       |
+	 * |BIG5       |BIG_5           |
+	 * |GBK        |GB_2312         |
+	 * |SJIS       |SJIS_0208       |
+	 * |UHC        |KSC_5601        |
+	 */
  		 		
 		case PG_SQL_ASCII:
 			val[i] = "NONE";
