@@ -44,6 +44,9 @@
 #include "optimizer/appendinfo.h"
 #endif
 #include "optimizer/cost.h"
+#if (PG_VERSION_NUM >= 160000)
+#include "optimizer/inherit.h"
+#endif
 #include "optimizer/pathnode.h"
 #include "optimizer/planmain.h"
 #include "optimizer/restrictinfo.h"
@@ -1033,7 +1036,6 @@ firebirdGetForeignRelSize(PlannerInfo *root,
 	StringInfoData query;
 	ListCell *lc;
 
-	RangeTblEntry *rte;
 	Oid			userid;
 	ForeignTable *table;
 	ForeignServer *server;
@@ -1041,8 +1043,14 @@ firebirdGetForeignRelSize(PlannerInfo *root,
 
 	elog(DEBUG2, "entering function %s", __func__);
 
-	rte = planner_rt_fetch(baserel->relid, root);
-	userid = rte->checkAsUser ? rte->checkAsUser : GetUserId();
+#if (PG_VERSION_NUM >= 160000)
+	userid = OidIsValid(baserel->userid) ? baserel->userid : GetUserId();
+#else
+	{
+		RangeTblEntry *rte = planner_rt_fetch(baserel->relid, root);
+		userid = OidIsValid(rte->checkAsUser) ? rte->checkAsUser : GetUserId();
+	}
+#endif
 
 	table = GetForeignTable(foreigntableid);
 	server = GetForeignServer(table->serverid);
@@ -1474,7 +1482,12 @@ firebirdBeginForeignScan(ForeignScanState *node,
 	elog(DEBUG2, "entering function %s", __func__);
 
 	rte = rt_fetch(fsplan->scan.scanrelid, estate->es_range_table);
-	userid = rte->checkAsUser ? rte->checkAsUser : GetUserId();
+#if (PG_VERSION_NUM >= 160000)
+	userid = OidIsValid(fsplan->checkAsUser) ? fsplan->checkAsUser : GetUserId();
+#else
+	userid = OidIsValid(rte->checkAsUser) ? rte->checkAsUser : GetUserId();
+#endif
+
 	table = GetForeignTable(RelationGetRelid(node->ss.ss_currentRelation));
 	server = GetForeignServer(table->serverid);
 	user = GetUserMapping(userid, server->serverid);
@@ -2112,7 +2125,10 @@ firebirdPlanForeignModify(PlannerInfo *root,
 		 * only the columns contained in the source query, to avoid sending
 		 * data which won't be used anyway.
 		 */
-#if (PG_VERSION_NUM >= 120000)
+#if (PG_VERSION_NUM >= 160000)
+		RelOptInfo *rel = find_base_rel(root, resultRelation);
+		Bitmapset  *tmpset =  get_rel_all_updated_cols(root, rel);
+#elif (PG_VERSION_NUM >= 120000)
 		Bitmapset  *tmpset = bms_union(rte->updatedCols, rte->extraUpdatedCols);
 #elif (PG_VERSION_NUM >= 90500)
 		Bitmapset  *tmpset = bms_copy(rte->updatedCols);
@@ -2221,7 +2237,11 @@ create_foreign_modify(EState *estate,
 
 	fmstate->rel = rel;
 
-	userid = rte->checkAsUser ? rte->checkAsUser : GetUserId();
+#if (PG_VERSION_NUM >= 160000)
+	userid = ExecGetResultRelCheckAsUser(resultRelInfo, estate);
+#else
+	userid = OidIsValid(rte->checkAsUser) ? rte->checkAsUser : GetUserId();
+#endif
 
 	elog(DEBUG2, "userid resolved to: %i", (int)userid);
 
