@@ -27,7 +27,7 @@ DEBUG_BUILD  = 1
 else
 DEBUG_BUILD  = 0
 endif
-
++PG_CPPFLAGS += -Werror-missing-prototypes
 SHLIB_LINK += -lfq -lfbclient
 
 DATA = sql/firebird_fdw--0.3.0.sql \
