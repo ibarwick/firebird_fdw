@@ -16,24 +16,13 @@ use FirebirdFDWNode;
 # ----------------
 
 my $node = FirebirdFDWNode->new();
-
-# Get PostgreSQL version
-# ----------------------
-
 my $version = $node->pg_version();
-if ($version < 90500) {
-    plan skip_all => sprintf(
-        q|version is %i, tests for 9.5 and later|,
-        $version,
-    );
-}
-else {
-    plan tests => 11;
-}
 
 my $min_compat_version = $node->{firebird_major_version} >= 3
         ? 3
         : 2;
+
+plan tests => 11;
 
 # 1) Test "IMPORT FOREIGN SCHEMA"
 # -------------------------------

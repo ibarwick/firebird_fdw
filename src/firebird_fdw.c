@@ -137,7 +137,6 @@ static void firebirdGetForeignPaths(PlannerInfo *root,
 						 RelOptInfo *baserel,
 						 Oid foreigntableid);
 
-#if (PG_VERSION_NUM >= 90500)
 static ForeignScan *firebirdGetForeignPlan(PlannerInfo *root,
 						RelOptInfo *baserel,
 						Oid foreigntableid,
@@ -145,14 +144,6 @@ static ForeignScan *firebirdGetForeignPlan(PlannerInfo *root,
 						List *tlist,
 						List *scan_clauses,
 						Plan *outer_plan);
-#else
-static ForeignScan *firebirdGetForeignPlan(PlannerInfo *root,
-						RelOptInfo *baserel,
-						Oid foreigntableid,
-						ForeignPath *best_path,
-						List *tlist,
-						List *scan_clauses);
-#endif
 
 static void firebirdExplainForeignScan(ForeignScanState *node,
 							struct ExplainState *es);
@@ -234,10 +225,8 @@ static void firebirdExecForeignTruncate(List *rels,
 										bool restart_seqs);
 #endif
 
-#if (PG_VERSION_NUM >= 90500)
 static List *firebirdImportForeignSchema(ImportForeignSchemaStmt *stmt,
 										 Oid serverOid);
-#endif
 
 #if (PG_VERSION_NUM >= 110000)
 static void
@@ -821,10 +810,8 @@ firebird_fdw_handler(PG_FUNCTION_ARGS)
 	fdwroutine->ExecForeignTruncate = firebirdExecForeignTruncate;
 #endif
 
-#if (PG_VERSION_NUM >= 90500)
 	/* support for IMPORT FOREIGN SCHEMA */
 	fdwroutine->ImportForeignSchema = firebirdImportForeignSchema;
-#endif
 
 #if (PG_VERSION_NUM >= 110000)
 	/* Handle COPY */
@@ -1238,7 +1225,7 @@ firebirdGetForeignPaths(PlannerInfo *root,
 									 NULL,		/* no outer rel either */
 									 NULL,		/* no extra plan */
 									 NIL));		/* no fdw_private data */
-#elif (PG_VERSION_NUM >= 90500)
+#else
 	add_path(baserel, (Path *)
 			 create_foreignscan_path(root, baserel,
 									 baserel->rows,
@@ -1248,15 +1235,6 @@ firebirdGetForeignPaths(PlannerInfo *root,
 									 NULL,		/* no outer rel either */
 									 NULL,		/* no extra plan */
 									 NIL));		/* no fdw_private data */
-#else
-	add_path(baserel, (Path *)
-			 create_foreignscan_path(root, baserel,
-									 baserel->rows,
-									 fdw_state->startup_cost,
-									 fdw_state->total_cost,
-									 NIL,		/* no pathkeys */
-									 NULL,		/* no outer rel either */
-									 NULL));	/* no extra plan */
 #endif
 }
 
@@ -1292,7 +1270,6 @@ firebirdGetForeignPaths(PlannerInfo *root,
  */
 
 static ForeignScan *
-#if (PG_VERSION_NUM >= 90500)
 firebirdGetForeignPlan(PlannerInfo *root,
 					   RelOptInfo *baserel,
 					   Oid foreigntableid,
@@ -1300,14 +1277,6 @@ firebirdGetForeignPlan(PlannerInfo *root,
 					   List *tlist,
 					   List *scan_clauses,
 					   Plan *outer_plan)
-#else
-firebirdGetForeignPlan(PlannerInfo *root,
-					   RelOptInfo *baserel,
-					   Oid foreigntableid,
-					   ForeignPath *best_path,
-					   List *tlist,
-					   List *scan_clauses)
-#endif
 {
 	Index		scan_relid = baserel->relid;
 	FirebirdFdwState *fdw_state = (FirebirdFdwState *)baserel->fdw_private;
@@ -1375,7 +1344,6 @@ firebirdGetForeignPlan(PlannerInfo *root,
 							 makeInteger(db_key_used));
 
 	/* Create the ForeignScan node */
-#if (PG_VERSION_NUM >= 90500)
 	return make_foreignscan(tlist,
 							local_exprs,
 							scan_relid,
@@ -1384,13 +1352,6 @@ firebirdGetForeignPlan(PlannerInfo *root,
 							NIL,	/* no custom tlist */
 							NIL,	/* no remote quals */
 							outer_plan);
-#else
-	return make_foreignscan(tlist,
-							local_exprs,
-							scan_relid,
-							NIL,	/* no expressions to evaluate */
-							fdw_private);
-#endif
 }
 
 
@@ -2046,7 +2007,6 @@ firebirdPlanForeignModify(PlannerInfo *root,
 
 	elog(DEBUG2, "entering function %s", __func__);
 
-#if PG_VERSION_NUM >= 90500
 	/*
 	 * INSERT ... ON CONFLICT is not supported as there's no equivalent
 	 * in Firebird, and a workaround would be complex and possibly unreliable.
@@ -2057,8 +2017,6 @@ firebirdPlanForeignModify(PlannerInfo *root,
 		ereport(ERROR,
 				(errcode(ERRCODE_FDW_UNABLE_TO_CREATE_EXECUTION),
 				errmsg("INSERT with ON CONFLICT clause is not supported")));
-#endif	/* PG_VERSION_NUM */
-
 
 	elog(DEBUG2, "RTE rtekind: %i; operation %i", rte->rtekind, operation);
 
@@ -2130,10 +2088,8 @@ firebirdPlanForeignModify(PlannerInfo *root,
 		Bitmapset  *tmpset =  get_rel_all_updated_cols(root, rel);
 #elif (PG_VERSION_NUM >= 120000)
 		Bitmapset  *tmpset = bms_union(rte->updatedCols, rte->extraUpdatedCols);
-#elif (PG_VERSION_NUM >= 90500)
-		Bitmapset  *tmpset = bms_copy(rte->updatedCols);
 #else
-		Bitmapset  *tmpset = bms_copy(rte->modifiedCols);
+		Bitmapset  *tmpset = bms_copy(rte->updatedCols);
 #endif
 		AttrNumber	col;
 
@@ -3545,7 +3501,6 @@ fbAcquireSampleRowsFunc(Relation relation, int elevel,
 }
 
 
-#if (PG_VERSION_NUM >= 90500)
 /**
  * firebirdImportForeignSchema()
  *
@@ -3878,7 +3833,6 @@ firebirdImportForeignSchema(ImportForeignSchemaStmt *stmt,
 
 	return firebirdTables;
 }
-#endif
 
 
 /**
@@ -4236,11 +4190,9 @@ create_tuple_from_result(FBresult *res,
 
 	tuple = heap_form_tuple(tupdesc, values, nulls);
 
-#if (PG_VERSION_NUM >= 90500)
 	HeapTupleHeaderSetXmax(tuple->t_data, InvalidTransactionId);
 	HeapTupleHeaderSetXmin(tuple->t_data, InvalidTransactionId);
 	HeapTupleHeaderSetCmin(tuple->t_data, InvalidTransactionId);
-#endif
 
 	/* Clean up */
 	MemoryContextReset(tmp_context);

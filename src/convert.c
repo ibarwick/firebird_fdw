@@ -117,9 +117,7 @@ static bool foreign_expr_walker(Node *node,
 static bool canConvertOp(OpExpr *oe, int firebird_version);
 static bool is_builtin(Oid procid);
 
-#if (PG_VERSION_NUM >= 90500)
 static const char *quote_fb_identifier_for_import(const char *ident);
-#endif
 
 /**
  * buildSelectSql()
@@ -361,7 +359,6 @@ buildWhereClause(StringInfo output,
 }
 
 
-#if (PG_VERSION_NUM >= 90500)
 /**
  * generateColumnMetadataQuery()
  *
@@ -617,7 +614,7 @@ convertFirebirdObject(char *server_name, char *schema, char *object_name, char o
 
 	return;
 }
-#endif
+
 
 /**
  * convertDatum()
@@ -789,7 +786,6 @@ quote_fb_identifier(const char *ident, bool quote_ident)
 }
 
 
-#if (PG_VERSION_NUM >= 90500)
 /**
  * quote_fb_identifier_for_import()
  *
@@ -874,7 +870,6 @@ quote_fb_identifier_for_import(const char *ident)
 
 	return result;
 }
-#endif
 
 /**
  * unquoted_ident_to_upper()
@@ -1055,14 +1050,12 @@ convertVar(Var *node, convert_expr_cxt *context, char **result)
 
 		bool		quote_identifier = false;
 
-#if (PG_VERSION_NUM >= 90500)
 		ForeignServer *server = GetForeignServer(context->foreignrel->serverid);
 		fbServerOptions server_options = fbServerOptions_init;
 
 		server_options.quote_identifiers.opt.boolptr = &quote_identifier;
 
 		firebirdGetServerOptions(server, &server_options);
-#endif
 
 		convertColumnRef(&buf,
 						 rte->relid, node->varattno,
@@ -1652,13 +1645,11 @@ convertScalarArrayOpExpr(ScalarArrayOpExpr *node, convert_expr_cxt *context, cha
 
 	leftargtype = ((Form_pg_operator)GETSTRUCT(tuple))->oprleft;
 	ReleaseSysCache(tuple);
+
 	/* loop through the array elements */
-#if (PG_VERSION_NUM >= 90500)
 	iterator = array_create_iterator(DatumGetArrayTypeP(constant->constvalue), 0, NULL);
-#else
-	iterator = array_create_iterator(DatumGetArrayTypeP(constant->constvalue), 0);
-#endif
 	first_arg = true;
+
 	while (array_iterate(iterator, &datum, &isNull))
 	{
 		char *c;
@@ -1993,14 +1984,12 @@ convertReturningList(StringInfo buf, RangeTblEntry *rte,
 
 	elog(DEBUG2, "entering function %s", __func__);
 
-#if (PG_VERSION_NUM >= 90400)
 	if (rel->trigdesc && rel->trigdesc->trig_insert_after_row)
 	{
 		/* whole-row reference acquires all non-system columns */
 		attrs_used =
 			bms_make_singleton(0 - FirstLowInvalidHeapAttributeNumber);
 	}
-#endif
 
 	if (returningList != NIL)
 	{

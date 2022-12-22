@@ -147,16 +147,9 @@ firebirdInstantiateConnection(ForeignServer *server, UserMapping *user)
 
 		ctl.hcxt = CacheMemoryContext;
 
-#if (PG_VERSION_NUM < 90500)
-		ctl.hash = tag_hash;
-		ConnectionHash = hash_create("firebird_fdw connections", 8,
-									 &ctl,
-									 HASH_ELEM | HASH_FUNCTION | HASH_CONTEXT);
-#else
 		ConnectionHash = hash_create("firebird_fdw connections", 8,
 									 &ctl,
 									 HASH_ELEM | HASH_BLOBS | HASH_CONTEXT);
-#endif
 
 		/* Set up transaction callbacks */
 		RegisterXactCallback(fb_xact_callback, NULL);
@@ -404,18 +397,14 @@ fb_xact_callback(XactEvent event, void *arg)
 				/* XXX not sure how to handle this */
 				elog(DEBUG2, "PREPARE");
 				break;
-#if (PG_VERSION_NUM >= 90500)
 			case XACT_EVENT_PARALLEL_COMMIT:
 			case XACT_EVENT_PARALLEL_PRE_COMMIT:
-#endif
 			case XACT_EVENT_COMMIT:
 			case XACT_EVENT_PREPARE:
 				/* Should not get here -- pre-commit should have handled it */
 				elog(ERROR, "missed cleaning up connection during pre-commit");
 				break;
-#if (PG_VERSION_NUM >= 90500)
 			case XACT_EVENT_PARALLEL_ABORT:
-#endif
 			case XACT_EVENT_ABORT:
 				/* XXX ROLLBACK here is probably ineffective as the FB connection will
 				 * likely have had an implict ROLLBACK; need to verify this...

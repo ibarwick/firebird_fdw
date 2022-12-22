@@ -54,10 +54,9 @@ EO_SQL
 );
 
 
-if ($version > 90500) {
-    # INSERT ... ON CONFLICT
-    $tests += scalar @on_conflict_tests;
-}
+# INSERT ... ON CONFLICT
+$tests += scalar @on_conflict_tests;
+
 
 if (!$tests) {
     plan skip_all => q|all test(s) skipped|;
@@ -70,23 +69,21 @@ else {
 # 1. Check INSERT ... ON CONFLICT
 # -------------------------------
 
-if ($version > 90500) {
-    my $table_name = $node->init_table();
+my $table_name = $node->init_table();
 
-    foreach my $on_conflict_test (@on_conflict_tests) {
-        my $insert = sprintf(
-            $on_conflict_test->[0],
+foreach my $on_conflict_test (@on_conflict_tests) {
+    my $insert = sprintf(
+        $on_conflict_test->[0],
             $table_name,
-        );
+    );
 
-        my ($insert_res, $insert_stdout, $insert_stderr) = $node->psql(
-            $insert,
-        );
+    my ($insert_res, $insert_stdout, $insert_stderr) = $node->psql(
+        $insert,
+    );
 
-        like (
-            $insert_stderr,
-            qr/$on_conflict_test->[1]/,
+    like (
+        $insert_stderr,
+        qr/$on_conflict_test->[1]/,
             $on_conflict_test->[2],
-        );
-    }
+    );
 }

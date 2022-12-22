@@ -354,7 +354,6 @@ quote_fb_identifier(const char *ident, bool quote_ident);
 void
 unquoted_ident_to_upper(char *ident);
 
-#if (PG_VERSION_NUM >= 90500)
 void convertFirebirdObject(char *server_name,
 						   char *schema,
 						   char *object_name,
@@ -365,6 +364,5 @@ void convertFirebirdObject(char *server_name,
 						   FBresult *colres,
 						   StringInfoData *create_table);
 void generateColumnMetadataQuery(StringInfoData *data_type_sql, char *fb_table_name);
-#endif
 
 #endif	 /* FIREBIRD_FDW_H */
