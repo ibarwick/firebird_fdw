@@ -264,8 +264,8 @@ are carried out on it.
 
 ## IMPORT FOREIGN SCHEMA options
 
-`firebird_fdw` supports [IMPORT FOREIGN SCHEMA](https://www.postgresql.org/docs/current/sql-importforeignschema.html) (when running with PostgreSQL
-9.5 or later) and accepts the following custom options:
+`firebird_fdw` supports [IMPORT FOREIGN SCHEMA](https://www.postgresql.org/docs/current/sql-importforeignschema.html)
+(when running with PostgreSQL 9.5 or later) and accepts the following custom options:
 
 - **import_not_null**
 
@@ -288,14 +288,14 @@ are carried out on it.
 Firebird name is entirely lower-case, will add the appropriate `quote_identifier`
 option to the PostgreSQL table definition.
 
-Note that when specifying the  `LIMIT TO` option, any quoted table names will result in
+Note that when specifying the `LIMIT TO` option, any quoted table names will result in
 the corresponding PostgreSQL foreign table being created with a quoted table name.
 This is due to PostgreSQL's foreign data wrapper API, which filters the
 table definitions passed back from the foreign data wrapper on the basis of
-the table name provided in the `IMPORT SCHEMA` command. However, Firebird table names
-which are entirely lower-case can currently not be provided as quoted column
-names as PostgreSQL considers these as unquoted by default and the foreign
-data wrapper has no way of knowing whether they were originally quoted.
+the table name provided in the `IMPORT FOREIGN SCHEMA` command. However, Firebird table
+names which are entirely lower-case can currently not be provided as quoted
+column names as PostgreSQL considers these as unquoted by default and the
+foreign data wrapper has no way of knowing whether they were originally quoted.
 
 ## TRUNCATE support
 
