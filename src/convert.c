@@ -363,6 +363,76 @@ buildWhereClause(StringInfo output,
 
 #if (PG_VERSION_NUM >= 90500)
 /**
+ * generateColumnMetadataQuery()
+ *
+ * Generate query to get column metadata for a table.
+ *
+ * This is used to generate a PostgreSQL table definition for
+ * IMPORT FOREIGN SCHEMA.
+ *
+ * TODO:
+ *	- verify all types can be converted to their PostgreSQL equivalents
+ */
+void
+generateColumnMetadataQuery(StringInfoData *data_type_sql, char *fb_table_name)
+{
+	appendStringInfo(data_type_sql,
+"	SELECT TRIM(rf.rdb$field_name) AS column_name,\n"
+"		   f.rdb$field_type, \n"
+"		   CASE f.rdb$field_type\n"
+"			 WHEN 261 THEN \n"
+"			   CASE f.rdb$field_sub_type \n"
+"				 WHEN 1 THEN 'TEXT' \n"
+"				 ELSE 'BYTEA' \n"
+"			   END \n"
+"			 WHEN 14  THEN 'CHAR(' || f.rdb$field_length|| ')'\n"
+"			 WHEN 40  THEN 'CSTRING'\n"
+"			 WHEN 11  THEN 'D_FLOAT'\n"
+"			 WHEN 27  THEN 'DOUBLE PRECISION'\n"
+"			 WHEN 10  THEN 'FLOAT'\n"
+"			 WHEN 16  THEN \n"
+"			   CASE f.rdb$field_sub_type \n"
+"				 WHEN 1 THEN 'NUMERIC(' || f.rdb$field_precision || ',' || (-f.rdb$field_scale) || ')' \n"
+"				 WHEN 2 THEN 'DECIMAL(' || f.rdb$field_precision || ',' || (-f.rdb$field_scale) || ')' \n"
+"				 ELSE 'BIGINT' \n"
+"			   END \n"
+"			 WHEN 8	  THEN \n"
+"			   CASE f.rdb$field_sub_type \n"
+"				 WHEN 1 THEN 'NUMERIC(' || f.rdb$field_precision || ',' || (-f.rdb$field_scale) || ')' \n"
+"				 WHEN 2 THEN 'DECIMAL(' || f.rdb$field_precision || ',' || (-f.rdb$field_scale) || ')' \n"
+"				 ELSE 'INTEGER' \n"
+"			   END \n"
+"			 WHEN 9	  THEN 'QUAD'\n"
+"			 WHEN 7	  THEN \n"
+"			   CASE f.rdb$field_sub_type \n"
+"				 WHEN 1 THEN 'NUMERIC(' || f.rdb$field_precision || ',' || (-f.rdb$field_scale) || ')' \n"
+"				 WHEN 2 THEN 'DECIMAL(' || f.rdb$field_precision || ',' || (-f.rdb$field_scale) || ')' \n"
+"				 ELSE 'SMALLINT' \n"
+"			   END \n"
+"			 WHEN 12  THEN 'DATE'\n"
+"			 WHEN 13  THEN 'TIME'\n"
+"			 WHEN 35  THEN 'TIMESTAMP'\n"
+"			 WHEN 37  THEN 'VARCHAR(' || f.rdb$field_length|| ')'\n"
+"			 WHEN 23  THEN 'BOOLEAN' \n"
+"			 ELSE 'UNKNOWN'\n"
+"		   END AS data_type,\n"
+"		  COALESCE(CAST(rf.rdb$default_source AS VARCHAR(80)), '') \n"
+"			AS \"Default value\", \n"
+"		  rf.rdb$null_flag AS null_flag, \n"
+"		  COALESCE(CAST(rf.rdb$description AS VARCHAR(80)), '') \n"
+"			AS \"Description\" \n"
+"	   FROM rdb$relation_fields rf \n"
+" LEFT JOIN rdb$fields f \n"
+"		 ON rf.rdb$field_source = f.rdb$field_name\n"
+"	  WHERE TRIM(rf.rdb$relation_name) = '%s'\n"
+"  ORDER BY rf.rdb$field_position\n",
+					 fb_table_name
+		);
+
+	return;
+}
+
+/**
  * convertFirebirdObject()
  *
  * Convert table or view to PostgreSQL format to implement IMPORT FOREIGN SCHEMA
@@ -430,6 +500,12 @@ convertFirebirdObject(char *server_name, char *schema, char *object_name, char o
 					 use_pg_name ? pg_name : table_name);
 
 	coltotal = FQntuples(colres);
+
+	if (coltotal == 0)
+		ereport(WARNING,
+				(errcode(ERRCODE_OBJECT_NOT_IN_PREREQUISITE_STATE),
+				 errmsg("no Firebird column metadata found for table \"%s\"", object_name)));
+
 	for (colnr = 0; colnr < coltotal; colnr++)
 	{
 		List	   *column_options = NIL;
@@ -2665,78 +2741,3 @@ canConvertOp(OpExpr *oe, int firebird_version)
 	return false;
 }
 
-
-#if (PG_VERSION_NUM >= 90500)
-/**
- * _dataTypeSQL()
- *
- * Generate query to get column metadata for a table.
- *
- * This is used to generate a PostgreSQL table definition for
- * IMPORT FOREIGN SCHEMA.
- *
- * TODO:
- *	- verify all types can be converted to their PostgreSQL equivalents
- */
-char *
-_dataTypeSQL(char *table_name)
-{
-	StringInfoData data_type_sql;
-
-	initStringInfo(&data_type_sql);
-	appendStringInfo(&data_type_sql,
-"	SELECT TRIM(rf.rdb$field_name) AS column_name,\n"
-"		   f.rdb$field_type, \n"
-"		   CASE f.rdb$field_type\n"
-"			 WHEN 261 THEN \n"
-"			   CASE f.rdb$field_sub_type \n"
-"				 WHEN 1 THEN 'TEXT' \n"
-"				 ELSE 'BYTEA' \n"
-"			   END \n"
-"			 WHEN 14  THEN 'CHAR(' || f.rdb$field_length|| ')'\n"
-"			 WHEN 40  THEN 'CSTRING'\n"
-"			 WHEN 11  THEN 'D_FLOAT'\n"
-"			 WHEN 27  THEN 'DOUBLE PRECISION'\n"
-"			 WHEN 10  THEN 'FLOAT'\n"
-"			 WHEN 16  THEN \n"
-"			   CASE f.rdb$field_sub_type \n"
-"				 WHEN 1 THEN 'NUMERIC(' || f.rdb$field_precision || ',' || (-f.rdb$field_scale) || ')' \n"
-"				 WHEN 2 THEN 'DECIMAL(' || f.rdb$field_precision || ',' || (-f.rdb$field_scale) || ')' \n"
-"				 ELSE 'BIGINT' \n"
-"			   END \n"
-"			 WHEN 8	  THEN \n"
-"			   CASE f.rdb$field_sub_type \n"
-"				 WHEN 1 THEN 'NUMERIC(' || f.rdb$field_precision || ',' || (-f.rdb$field_scale) || ')' \n"
-"				 WHEN 2 THEN 'DECIMAL(' || f.rdb$field_precision || ',' || (-f.rdb$field_scale) || ')' \n"
-"				 ELSE 'INTEGER' \n"
-"			   END \n"
-"			 WHEN 9	  THEN 'QUAD'\n"
-"			 WHEN 7	  THEN \n"
-"			   CASE f.rdb$field_sub_type \n"
-"				 WHEN 1 THEN 'NUMERIC(' || f.rdb$field_precision || ',' || (-f.rdb$field_scale) || ')' \n"
-"				 WHEN 2 THEN 'DECIMAL(' || f.rdb$field_precision || ',' || (-f.rdb$field_scale) || ')' \n"
-"				 ELSE 'SMALLINT' \n"
-"			   END \n"
-"			 WHEN 12  THEN 'DATE'\n"
-"			 WHEN 13  THEN 'TIME'\n"
-"			 WHEN 35  THEN 'TIMESTAMP'\n"
-"			 WHEN 37  THEN 'VARCHAR(' || f.rdb$field_length|| ')'\n"
-"			 WHEN 23  THEN 'BOOLEAN' \n"
-"			 ELSE 'UNKNOWN'\n"
-"		   END AS data_type,\n"
-"		  COALESCE(CAST(rf.rdb$default_source AS VARCHAR(80)), '') \n"
-"			AS \"Default value\", \n"
-"		  rf.rdb$null_flag AS null_flag, \n"
-"		  COALESCE(CAST(rf.rdb$description AS VARCHAR(80)), '') \n"
-"			AS \"Description\" \n"
-"	   FROM rdb$relation_fields rf \n"
-" LEFT JOIN rdb$fields f \n"
-"		 ON rf.rdb$field_source = f.rdb$field_name\n"
-"	  WHERE TRIM(rf.rdb$relation_name) = '%s'\n"
-"  ORDER BY rf.rdb$field_position\n",
-					 table_name
-		);
-
-	return data_type_sql.data;
-}
-#endif

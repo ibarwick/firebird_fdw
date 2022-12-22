@@ -3792,7 +3792,7 @@ firebirdImportForeignSchema(ImportForeignSchemaStmt *stmt,
 		char *object_type;
 		char *pg_name = NULL;
 
-		char *column_query;
+		StringInfoData column_query;
 		FBresult *colres;
 		StringInfoData foreign_table_definition;
 
@@ -3807,7 +3807,7 @@ firebirdImportForeignSchema(ImportForeignSchemaStmt *stmt,
 		if (params_ix > 0)
 			pg_name = FQgetvalue(res, row, 2);
 
-		elog(DEBUG3, "object: %s %c", object_name, object_type[0]);
+		elog(DEBUG3, "object: '%s'; type: '%c'", object_name, object_type[0]);
 
 		if (import_views == false && object_type[0] == 'v')
 		{
@@ -3818,8 +3818,12 @@ firebirdImportForeignSchema(ImportForeignSchemaStmt *stmt,
 		}
 
 		/* List all columns for the table */
-		column_query = _dataTypeSQL(object_name);
-		colres = FQexec(conn, column_query);
+		initStringInfo(&column_query);
+		generateColumnMetadataQuery(&column_query, object_name);
+
+		elog(DEBUG3, "column query:\n%s", column_query.data);
+
+		colres = FQexec(conn, column_query.data);
 
 		if (FQresultStatus(colres) != FBRES_TUPLES_OK)
 		{
