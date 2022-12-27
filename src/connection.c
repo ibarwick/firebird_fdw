@@ -83,21 +83,68 @@ firebirdGetConnection(const char *dbpath, const char *svr_username, const char *
 		i++;
 	}
 
-	/* Here we're taking a calculated risk and passing the PostgreSQL
-	 * encoding name directly to Firebird. Firebird seems to be pretty
-	 * good at parsing encoding names but it's possible there might be
-	 * errors with more obscure encoding combinations.
+	/*
+	 * Client encoding
 	 *
-	 * We make an exception for PostgreSQL's "SQL_ASCII" encoding, which
-	 * maps to Firebird's "NONE".
+	 * There is a broad overlap between the PostgreSQL server character
+	 * sets and the client encodings supported by Firebird.
+	 *
+	 * In many cases the names are a direct match (e.g. "UTF8"), or Firebird
+	 * supports the PostgreSQL name as an alias (e.g. "LATIN1" for "ISO8859_1").
+	 *
+	 * In some cases there is no direct match or alias (e.g. PostgreSQL's
+	 * "ISO_8859_5", which corresponds to Firebird's "ISO8859_5"), so we'll
+	 * transparently rewrite those.
+	 *
+	 * There are also some cases where the PostgreSQL server character set
+	 * is not supported by Firebird (e.g. "WIN874"). We won't attempt to handle
+	 * those, as an error will be reported on connection, and we don't want
+	 * to hard-code assumptions about what client encodings a future Firebird
+	 * version may provide.
+	 *
+	 * Note that PostgreSQL supports some client character sets (e.g. SJIS)
+	 * which are not available as server character sets; we don't need to worry
+	 * about those.
+	 *
+	 * See also:
+	 *  - https://www.postgresql.org/docs/current/multibyte.html#MULTIBYTE-CHARSET-SUPPORTED
+	 *  - https://github.com/FirebirdSQL/firebird/blob/master/src/jrd/IntlManager.cpp#L100
 	 */
+
 	kw[i] = "client_encoding";
 
-	if (GetDatabaseEncoding() == PG_SQL_ASCII)
-		val[i] = "NONE";
-	else
-		val[i] = GetDatabaseEncodingName();
+	switch (GetDatabaseEncoding())
+	{
+		case PG_SQL_ASCII:
+			val[i] = "NONE";
+			break;
+		case PG_ISO_8859_5:
+			val[i] = "ISO8859_5";
+			break;
+		case PG_ISO_8859_6:
+			val[i] = "ISO8859_6";
+			break;
+		case PG_ISO_8859_7:
+			val[i] = "ISO8859_7";
+			break;
+		case PG_ISO_8859_8:
+			val[i] = "ISO8859_8";
+			break;
+		case PG_WIN866:
+			val[i] = "DOS866";
+			break;
+		case PG_EUC_JP:
+			/*
+			 * NOTE: need to verify whether this EUJC_0208 is an exact match for PostgreSQL's
+			 * EUC_JP (which might include JIS X 0212 and JIS X 0201).
+			 */
+			val[i] = "EUJC_0208";
+			break;
+		default:
+			val[i] = GetDatabaseEncodingName();
+	}
 
+	elog(DEBUG2, "client_encoding: \"%s\"", val[i]);
 	i++;
 
 	kw[i] = NULL;
