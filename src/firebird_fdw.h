@@ -57,6 +57,10 @@
 #define NO_BATCH_SIZE_SPECIFIED -1
 #endif
 
+#if (defined(FIREBIRD_FDW_DEBUG_BUILD))
+#define DEBUG_BUILD
+#endif
+
 /*
  * Macro to indicate if a given PostgreSQL datatype can be
  * converted to a Firebird type

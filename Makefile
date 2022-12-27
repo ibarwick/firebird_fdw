@@ -20,13 +20,14 @@ EXTVERSION   = $(shell grep default_version $(EXTENSION).control | sed -e "s/def
 DATA         = $(filter-out $(wildcard sql/*--*.sql),$(wildcard sql/*.sql))
 MODULE_big   = $(EXTENSION)
 
-OBJS         =  $(patsubst %.c,%.o,$(wildcard src/*.c))
+OBJS         = $(patsubst %.c,%.o,$(wildcard src/*.c))
 
-ifdef FIREBIRD_FDW_DEBUG_BUILD
-DEBUG_BUILD  = 1
-else
-DEBUG_BUILD  = 0
+FIREBIRD_FDW_DEBUG_BUILD ?= 0
+ifneq ($(FIREBIRD_FDW_DEBUG_BUILD),0)
+PG_CPPFLAGS += -DFIREBIRD_FDW_DEBUG_BUILD
 endif
+
+
 +PG_CPPFLAGS += -Werror-missing-prototypes
 SHLIB_LINK += -lfq -lfbclient
 
@@ -48,6 +49,7 @@ DATA = sql/firebird_fdw--0.3.0.sql \
 ifndef PG_CONFIG
 PG_CONFIG    = pg_config
 endif
+
 PGXS := $(shell $(PG_CONFIG) --pgxs)
 include $(PGXS)
 
@@ -65,6 +67,8 @@ LDFLAGS := $(subst -dead_strip_dylibs,-flat_namespace,$(LDFLAGS))
 endif
 
 PG_PROVE_FLAGS += -I $(srcdir)/t
+
+$(OBJS): src/firebird_fdw.h
 
 prove_installcheck: all
 	rm -rf $(srcdir)/tmp_check/log
