@@ -251,7 +251,7 @@ The following column-level options are available:
   represents an implicit boolean. This functionality may work on earlier
   Firebird versions but has not been tested with them.
 
-- **batch_size*
+- **batch_size**
 
   See `CREATE SERVER options` section for details.
 
