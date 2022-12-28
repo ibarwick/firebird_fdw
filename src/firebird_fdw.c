@@ -662,9 +662,6 @@ firebird_version(PG_FUNCTION_ARGS)
 	MemoryContext per_query_ctx;
 	MemoryContext oldcontext;
 
-	Datum		values[3];
-	bool		nulls[3];
-
 	StringInfoData buf;
 	int			ret;
 
@@ -721,6 +718,8 @@ firebird_version(PG_FUNCTION_ARGS)
 	if (SPI_processed > 0)
 	{
 		int i;
+		Datum		values[3];
+		bool		nulls[3];
 
 		for (i = 0; i < SPI_processed; i++)
 		{
@@ -747,8 +746,10 @@ firebird_version(PG_FUNCTION_ARGS)
 			values[0] = CStringGetTextDatum(SPI_getvalue(SPI_tuptable->vals[i],
 													  SPI_tuptable->tupdesc,
 													  2));
+
 			/* firebird_version */
 			values[1] = FQserverVersion(conn);
+
 			/* firebird_version_string */
 			values[2] = CStringGetTextDatum(FQserverVersionString(conn));
 
@@ -758,7 +759,11 @@ firebird_version(PG_FUNCTION_ARGS)
 
 	SPI_finish();
 	PopActiveSnapshot();
+
+#if (PG_VERSION_NUM < 150000)
 	pgstat_report_stat(false);
+#endif
+
 	pgstat_report_activity(STATE_IDLE, NULL);
 
 	return (Datum) 0;
