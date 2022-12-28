@@ -22,7 +22,9 @@ my $min_compat_version = $node->{firebird_major_version} >= 3
         ? 3
         : 2;
 
-plan tests => 11;
+my $test_count = $node->{firebird_major_version} >= 4 ? 12 : 11;
+
+plan tests => $test_count;
 
 # 1) Test "IMPORT FOREIGN SCHEMA"
 # -------------------------------
@@ -412,10 +414,53 @@ my ($q8b_res, $q8b_stdout, $q8b_stderr) = $node->psql($q8b_sql);
 is (
     $q8b_stdout,
     q|0|,
-    q|Check table was imported|,
+    q|Check other tables not imported|,
 );
 
 
+# 9) Check relations with names > 32 characters can be imported
+# -------------------------------------------------------------
+
+if ($node->{firebird_major_version} >= 4) {
+
+    my $q9_table_name = '';
+
+    # Maximum identifier size in Firebird 4+ is 63 characters
+    foreach $a (0..62) {
+        $q9_table_name .= chr(int(26*rand) + 65);
+    }
+
+    $node->firebird_execute_sql(
+        sprintf(
+            <<EO_SQL,
+CREATE TABLE %s (id INT NOT NULL)
+EO_SQL
+            $q9_table_name,
+        ),
+    );
+
+    my $q9_import_sql = sprintf(
+        <<'EO_SQL',
+  IMPORT FOREIGN SCHEMA foo
+               LIMIT TO (%s)
+            FROM SERVER fb_test
+                   INTO public
+EO_SQL
+        $q9_table_name,
+    );
+
+    my ($q9_res, $q9_stdout, $q9_stderr) = $node->psql(
+        $q9_import_sql,
+    );
+
+    is (
+        $q9_res,
+        q|0|,
+        q|Check "IMPORT FOREIGN SCHEMA" succeeds with long table name|,
+    );
+
+    $node->firebird_drop_table($q9_table_name);
+}
 
 # Clean up
 # --------

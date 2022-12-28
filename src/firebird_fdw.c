@@ -3582,6 +3582,7 @@ firebirdImportForeignSchema(ImportForeignSchemaStmt *stmt,
 
 	if (stmt->list_type == FDW_IMPORT_SCHEMA_LIMIT_TO)
 	{
+		int max_identifier_length = FQserverVersion(conn) >= 40000 ? 63 : 31;
 		/*
 		 * If "LIMIT TO" is specified, we'll need to associate the
 		 * provided table names with the corresponding names returned
@@ -3613,7 +3614,10 @@ firebirdImportForeignSchema(ImportForeignSchemaStmt *stmt,
 			else
 				appendStringInfoString(&table_query, "	 UNION \n");
 
-			appendStringInfoString(&table_query, "	SELECT CAST(? AS VARCHAR(32)) AS pg_name, CAST(? AS VARCHAR(32)) AS fb_name FROM rdb$database \n");
+			appendStringInfo(&table_query,
+							 "	SELECT CAST(? AS VARCHAR(%i)) AS pg_name, CAST(? AS VARCHAR(%i)) AS fb_name FROM rdb$database \n",
+							 max_identifier_length,
+							 max_identifier_length);
 
 			/* name as provided in LIMIT TO */
 			p_values[params_ix] = pstrdup(rv->relname);
