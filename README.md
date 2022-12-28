@@ -39,11 +39,12 @@ Contents
 5. [Functions](#functions)
 6. [Identifier case handling](#identifier-case-handling)
 7. [Generated columns](#generated-columns)
-8. [Examples](#examples)
-9. [Limitations](#limitations)
-10. [TAP tests](#tap-tests)
-11. [Development roadmap](#development-roadmap)
-12. [Useful links](#useful-links)
+8. [Character set handling](#character-set-handling)
+9. [Examples](#examples)
+10. [Limitations](#limitations)
+11. [TAP tests](#tap-tests)
+12. [Development roadmap](#development-roadmap)
+13. [Useful links](#useful-links)
 
 Features
 --------
@@ -496,6 +497,20 @@ For more details on generated columns see:
 
 - [Generated Columns](https://www.postgresql.org/docs/current/ddl-generated-columns.html)
 - [CREATE FOREIGN TABLE](https://www.postgresql.org/docs/current/sql-createforeigntable.html)
+
+
+Character set handling
+----------------------
+
+When `firebird_fdw` connects to a Firebird database, it will set the client
+encoding to the PostgreSQL database's server encoding. As there is a broad
+overlap between PostgreSQL and Firebird character set encodings, mostly
+this will succeed, particularly with the more common encodings such as
+`UTF8` and `LATIN1`. A small subset of PostgreSQL encodings for which Firebird
+provides a corresponding encoding but no matching name or alias will be
+rewritten transparently by `firebird_fdw`. For more details see the
+file [PostgreSQL and Firebird character set encoding compatibility](doc/ENCODINGS.md).
+
 
 Examples
 --------
