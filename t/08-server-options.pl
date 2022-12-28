@@ -44,6 +44,7 @@ if ($node->pg_version() >= 140000) {
     $options_e1 = sprintf(
         <<EO_TXT,
 %s
+truncatable|true|t
 batch_size|1|t
 EO_TXT
         $options_e1,
