@@ -75,9 +75,9 @@ Installation
 Specific installation instructions for the following operating
 systems are provided separately:
 
-- [CentOS/Redhat etc.](INSTALL-centos-redhat.md)
-- [Debian/Ubuntu etc.](INSTALL-debian-ubuntu.md)
-- [OS X](INSTALL-osx.md)
+- [CentOS/Redhat etc.](doc/INSTALL-centos-redhat.md)
+- [Debian/Ubuntu etc.](doc/INSTALL-debian-ubuntu.md)
+- [OS X](doc/INSTALL-osx.md)
 
 ### Source installation
 
