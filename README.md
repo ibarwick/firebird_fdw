@@ -1,11 +1,11 @@
 Firebird Foreign Data Wrapper for PostgreSQL
 ============================================
 
-This is a foreign data wrapper (FDW) to connect [PostgreSQL](https://www.postgresql.org/) to [Firebird](https://firebirdsql.org/).
-It provides both read (`SELECT`) and write (`INSERT`/`UPDATE`/`DELETE`)
-support, as well as pushdown of some operations. While it appears to be
-working reliably, please be aware this is still very much work-in-progress;
-*USE AT YOUR OWN RISK*.
+This is a foreign data wrapper (FDW) to connect [PostgreSQL](https://www.postgresql.org/)
+to [Firebird](https://firebirdsql.org/). It provides both read (`SELECT`) and
+write (`INSERT`/`UPDATE`/`DELETE`) support, as well as pushdown of some
+operations. While it appears to be working reliably, please be aware this is
+still very much work-in-progress; *USE AT YOUR OWN RISK*.
 
 `firebird_fdw` is designed to be compatible with PostgreSQL 9.5 ~ 15.
 The range of `firebird_fdw` options available for a particular PostgreSQL
@@ -22,9 +22,10 @@ with those versions.
 and may not be compatible with commercial forks.
 
 This `README` represents the documentation for the current development version
-of `firebird_fdw`. Stable documentation for previous releases is available
-at the following links:
+of `firebird_fdw`. Documentation for stable releases is available at the following
+links:
 
+ - [1.3.0 README](https://github.com/ibarwick/firebird_fdw/blob/REL_1_3_STABLE/README.md) (2022-12-28)
  - [1.2.3 README](https://github.com/ibarwick/firebird_fdw/blob/REL_1_2_STABLE/README.md) (2022-02-20)
  - [1.1.0 README](https://github.com/ibarwick/firebird_fdw/blob/REL_1_1_STABLE/README.md) (2019-05-31)
  - [1.0.0 README](https://github.com/ibarwick/firebird_fdw/blob/REL_1_0_STABLE/README.md) (2018-11-09)
