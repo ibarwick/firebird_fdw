@@ -7,7 +7,7 @@ support, as well as pushdown of some operations. While it appears to be
 working reliably, please be aware this is still very much work-in-progress;
 *USE AT YOUR OWN RISK*.
 
-`firebird_fdw` is designed to be compatible with PostgreSQL 9.4 ~ 14.
+`firebird_fdw` is designed to be compatible with PostgreSQL 9.5 ~ 15.
 The range of `firebird_fdw` options available for a particular PostgreSQL
 version depends on the state of the Foreign Data Wrapper (FDW) API for that
 version; the more recent the version, the more features will be available.
@@ -54,7 +54,7 @@ Features
 - pushdown of some `WHERE` clause conditions to Firebird (including translation
   of built-in functions)
 - Connection caching
-- Supports triggers on foreign tables (PostgreSQL 9.4 and later)
+- Supports triggers on foreign tables
 - Supports `IMPORT FOREIGN SCHEMA` (PostgreSQL 9.5 and later)
 - Supports `COPY` and partition tuple routing (PostgreSQL 11 and later)
 - Supports `TRUNCATE` operations (PostgreSQL 14 and later)
@@ -143,8 +143,7 @@ Usage
 
   See "[Identifier case handling](#identifier-case-handling)" for details.
 
-  `firebird_fdw` 1.2.0 and later. In PostgreSQL 9.3 and 9.4 this setting
-  is ignored for column names.
+  `firebird_fdw` 1.2.0 and later.
 
 - **implicit_bool_type**
 
