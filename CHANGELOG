@@ -1,11 +1,13 @@
 Revision history for firebird_fdw
 
-1.3.0	2022-??-??
+1.3.0	2022-12-28
 	- Support for PostgreSQL 15 added
 	- Support for PostgreSQL 9.3/9.4 removed
 	- Basic support for TRUNCATE (PostgreSQL 14+)
 	- Support for batch inserts via COPY added (PostgreSQL 14+)
-	- Map PostgreSQL's "SQL_ASCII" encoding to Firebird's "NONE"
+	- Map some PostgreSQL server encodings to the Firebird equivalent
+	  where no Firebird encoding alias exists
+	- Various fixes and improvements for IMPORT FOREIGN SCHEMA
 
 1.2.3	2022-02-11
 	- Fix bug in rescan handling
