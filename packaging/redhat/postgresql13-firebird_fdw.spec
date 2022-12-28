@@ -64,6 +64,8 @@ rm -rf $RPM_BUILD_ROOT
 %endif
 
 %changelog
+* Wed Dec 28 2022 Ian Barwick (barwick@gmail.com)
+- 1.3.0 release
 * Sun Feb 20 2022 Ian Barwick (barwick@gmail.com)
 - 1.2.3 release
 * Tue Sep 14 2021 Ian Barwick (barwick@gmail.com)
