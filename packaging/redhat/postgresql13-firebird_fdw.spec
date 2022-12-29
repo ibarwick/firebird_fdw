@@ -7,11 +7,16 @@ URL: https://github.com/ibarwick/firebird_fdw
 License: PostgreSQL
 Group: Productivity/Databases/Tools
 Packager: Ian Barwick
-BuildRequires: postgresql13-devel firebird-devel
+BuildRequires: postgresql13-devel
+BuildRequires: firebird-devel
 BuildRequires: libfq
-%if 0%{?rhel} && 0%{?rhel} >= 7
+%if 0%{?rhel} && 0%{?rhel} >= 8
+BuildRequires: llvm
+%else
+%if 0%{?rhel} && 0%{?rhel} == 7
 BuildRequires: llvm-toolset-7
 BuildRequires: llvm5.0
+%endif
 %endif
 BuildRoot: %{_tmppath}/%{name}-%{version}-build
 Requires: postgresql13-server libfq
