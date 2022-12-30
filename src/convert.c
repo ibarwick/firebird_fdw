@@ -460,7 +460,7 @@ convertFirebirdObject(char *server_name, char *schema, char *object_name, char o
 
 	if (table_name[0] == '"')
 	{
-		if (table_name[1] >= 'a' && table_name[1] <= 'z')
+		if (table_name[1] >= 'a' && table_name[1] <= 'z') // TODO: spaces or MiXeDcAsE in table_name
 			table_options = lappend(table_options, "quote_identifier 'true'");
 	}
 	else if (pg_name != NULL)
@@ -516,8 +516,9 @@ convertFirebirdObject(char *server_name, char *schema, char *object_name, char o
 		 * If the Firebird identifier is all lower-case, force "quote_identifier 'true'"
 		 * as PostgreSQL won't know to quote it.
 		 * XXX Currently we just check if the first character is lower case.
+		 * TODO:spaces or MiXeDcAsE in col_identyfier
 		 */
-		if (col_identifier[0] == '"' && (col_identifier[1] >= 'a' && col_identifier[1] <= 'z'))
+		if (col_identifier[0] == '"' && (col_identifier[1] >= 'a' && col_identifier[1] <= 'z')) 
 			column_options = lappend(column_options, "quote_identifier 'true'");
 
 		/* Column name and datatype */
@@ -582,7 +583,7 @@ convertFirebirdObject(char *server_name, char *schema, char *object_name, char o
 	}
 
 	appendStringInfo(create_table,
-					 ") SERVER %s",
+					 ") SERVER \"%s\"",
 					 server_name);
 
 	if (table_options != NIL)
