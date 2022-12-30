@@ -460,7 +460,12 @@ convertFirebirdObject(char *server_name, char *schema, char *object_name, char o
 
 	if (table_name[0] == '"')
 	{
-		if (table_name[1] >= 'a' && table_name[1] <= 'z')
+		int space_count = 0;
+		for ( i = 0; table_name[i] != '\0'; ++i )
+			if (table_name[i] != ' ' )
+				space_count++;
+		
+		if ((table_name[1] >= 'a' && table_name[1] <= 'z') || space_count > 0)
 			table_options = lappend(table_options, "quote_identifier 'true'");
 	}
 	else if (pg_name != NULL)
@@ -511,13 +516,17 @@ convertFirebirdObject(char *server_name, char *schema, char *object_name, char o
 		char *colname = pstrdup(FQgetvalue(colres, colnr, 0));
 
 		const char *col_identifier = quote_fb_identifier_for_import(colname);
-
+		
+		int space_count = 0;
+		for ( i = 0; col_identifier[i] != '\0'; ++i )
+			if (col_identifier[i] != ' ' )
+				space_count++;
 		/*
 		 * If the Firebird identifier is all lower-case, force "quote_identifier 'true'"
 		 * as PostgreSQL won't know to quote it.
 		 * XXX Currently we just check if the first character is lower case.
 		 */
-		if (col_identifier[0] == '"' && (col_identifier[1] >= 'a' && col_identifier[1] <= 'z'))
+		if (col_identifier[0] == '"' && ((col_identifier[1] >= 'a' && col_identifier[1] <= 'z') || space_count > 0))
 			column_options = lappend(column_options, "quote_identifier 'true'");
 
 		/* Column name and datatype */
@@ -526,7 +535,6 @@ convertFirebirdObject(char *server_name, char *schema, char *object_name, char o
 						 "	%s %s",
 						 col_identifier,
 						 datatype);
-
 
 		/* add OPTIONS if required */
 		if (column_options != NIL)
