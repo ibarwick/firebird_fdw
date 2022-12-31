@@ -119,6 +119,9 @@ static bool is_builtin(Oid procid);
 
 static const char *quote_fb_identifier_for_import(const char *ident);
 
+bool unSafeFirebirdIdentifier (const char *identifier);
+bool unSafePostgresIdentifier (const char *identifier);
+
 /**
  * buildSelectSql()
  *
@@ -430,6 +433,56 @@ generateColumnMetadataQuery(StringInfoData *data_type_sql, char *fb_table_name)
 }
 
 /**
+ * unSafeFirebirdIdentifier()
+ *
+ * checks if identifier contains space or identifier is not uppercase
+ */
+bool unSafeFirebirdIdentifier (const char *identifier)
+{
+	const char *ptr;
+	if (!((identifier[0] >= 'A' && identifier[0] <= 'Z') || identifier[0] == '_'))
+		return true;
+
+	for (ptr = identifier; *ptr; ptr++)
+	{
+		char		ch = *ptr;
+
+		if (!(ch >= 'A' && ch <= 'Z') &&
+			!(ch >= '0' && ch <= '9') &&
+			(ch != '_'))
+		{
+			return true;
+		}
+	}
+	return false;
+}
+
+/**
+ * unSafePostgresIdentifier()
+ *
+ * checks if identifier contains space or identifier is not lowercase
+ */
+bool unSafePostgresIdentifier (const char *identifier)
+{
+	const char *ptr;
+	if (!((identifier[0] >= 'a' && identifier[0] <= 'z') || identifier[0] == '_'))
+		return true;
+
+	for (ptr = identifier; *ptr; ptr++)
+	{
+		char		ch = *ptr;
+
+		if (!(ch >= 'a' && ch <= 'z') &&
+			!(ch >= '0' && ch <= '9') &&
+			(ch != '_'))
+		{
+			return true;
+		}
+	}
+	return false;
+}
+
+/**
  * convertFirebirdObject()
  *
  * Convert table or view to PostgreSQL format to implement IMPORT FOREIGN SCHEMA
@@ -438,9 +491,18 @@ void
 convertFirebirdObject(char *server_name, char *schema, char *object_name, char object_type, char *pg_name, bool import_not_null, bool updatable, FBresult *colres, StringInfoData *create_table)
 {
 	const char *table_name;
+	const char *schema_name;
 	bool use_pg_name = false;
 	int colnr, coltotal;
 	List	   *table_options = NIL;
+	
+	size_t identifierL = 0;
+    size_t cnL = 0;
+    char *cnOption;
+   	bool unsafe_pg_ident = false;
+   	bool unsafe_fb_ident = false;
+	const char *fb_col_identifier;
+	const char *pg_col_identifier;
 
 	/* Initialise table options list */
 	if (updatable == false)
@@ -449,20 +511,20 @@ convertFirebirdObject(char *server_name, char *schema, char *object_name, char o
 	/*
 	 * If the Firebird identifier is all lower-case, force "quote_identifier 'true'"
 	 * as PostgreSQL won't know to quote it.
-	 * XXX Currently we just check if the first character is lower case.
 	 */
 	table_name = quote_fb_identifier_for_import(object_name);
+    schema_name = quote_fb_identifier_for_import(schema);
 
 	elog(DEBUG3, "object_name: %s; table_name: %s; pg_name: %s",
 		 object_name,
 		 table_name,
 		 pg_name ? pg_name : "NULL");
 
-	if (table_name[0] == '"')
-	{
-		if (table_name[1] >= 'a' && table_name[1] <= 'z')
+	if (table_name[0] == '"' && unSafeFirebirdIdentifier(table_name))
+		{
 			table_options = lappend(table_options, "quote_identifier 'true'");
-	}
+			elog(DEBUG3, "table identifier is unsafe %s", table_name);
+		}
 	else if (pg_name != NULL)
 	{
 		/*
@@ -489,11 +551,13 @@ convertFirebirdObject(char *server_name, char *schema, char *object_name, char o
 			use_pg_name = true;
 		}
 	}
+	else if (unSafePostgresIdentifier(table_name))
+		table_name = quote_identifier(table_name);
 
 	/* Generate SQL */
 	appendStringInfo(create_table,
 					 "CREATE FOREIGN TABLE %s.%s (\n",
-					 schema,
+					 schema_name,
 					 use_pg_name ? pg_name : table_name);
 
 	coltotal = FQntuples(colres);
@@ -509,22 +573,38 @@ convertFirebirdObject(char *server_name, char *schema, char *object_name, char o
 
 		char *datatype;
 		char *colname = pstrdup(FQgetvalue(colres, colnr, 0));
+		
+		unsafe_pg_ident = unSafePostgresIdentifier(colname);
+		unsafe_fb_ident = unSafeFirebirdIdentifier(colname);
 
-		const char *col_identifier = quote_fb_identifier_for_import(colname);
+		fb_col_identifier = quote_fb_identifier_for_import(colname);
 
 		/*
 		 * If the Firebird identifier is all lower-case, force "quote_identifier 'true'"
 		 * as PostgreSQL won't know to quote it.
-		 * XXX Currently we just check if the first character is lower case.
 		 */
-		if (col_identifier[0] == '"' && (col_identifier[1] >= 'a' && col_identifier[1] <= 'z'))
+		if (fb_col_identifier[0] == '"' && unsafe_fb_ident)
+		{
 			column_options = lappend(column_options, "quote_identifier 'true'");
+			
+			identifierL = strlen(colname);
+			cnL = strlen("column_name '");			
+			cnOption = malloc(identifierL + cnL + 2);
+			cnOption[0] = '\0';
+		    strcat(cnOption, "column_name '");
+		    strcat(cnOption, colname);
+   		    strcat(cnOption, "'");
+   		    column_options = lappend(column_options, (void*)cnOption);
+			elog(DEBUG3, "column name is unsafe %s", colname);
+			}
 
 		/* Column name and datatype */
 		datatype = FQgetvalue(colres, colnr, 2);
+		
+		pg_col_identifier = unsafe_pg_ident ? quote_identifier(colname) : colname;
 		appendStringInfo(create_table,
 						 "	%s %s",
-						 col_identifier,
+						 pg_col_identifier,
 						 datatype);
 
 
@@ -582,7 +662,7 @@ convertFirebirdObject(char *server_name, char *schema, char *object_name, char o
 	}
 
 	appendStringInfo(create_table,
-					 ") SERVER %s",
+					 ") SERVER \"%s\"",
 					 server_name);
 
 	if (table_options != NIL)
@@ -785,6 +865,41 @@ quote_fb_identifier(const char *ident, bool quote_ident)
 	return quoted_ident;
 }
 
+/**
+ * quote_identifier()
+ *
+ * Add ""
+ */
+const char *quote_identifier(const char *ident)
+{
+	int			nquotes = 0;
+	const char *ptr;
+	char	   *result;
+	char	   *optr;
+	
+	for (ptr = ident; *ptr; ptr++)
+	{
+		if (*ptr == '"')
+			nquotes++;
+	}
+	
+	result = (char *) palloc(strlen(ident) + nquotes + 2 + 1);
+
+	optr = result;
+	*optr++ = '"';
+	for (ptr = ident; *ptr; ptr++)
+	{
+		char		ch = *ptr;
+
+		if (ch == '"')
+			*optr++ = '"';
+		*optr++ = ch;
+	}
+	*optr++ = '"';
+	*optr = '\0';
+
+	return result;	
+}
 
 /**
  * quote_fb_identifier_for_import()
@@ -796,32 +911,9 @@ quote_fb_identifier(const char *ident, bool quote_ident)
 static const char *
 quote_fb_identifier_for_import(const char *ident)
 {
-	int			nquotes = 0;
 	bool		safe;
-	const char *ptr;
-	char	   *result;
-	char	   *optr;
 
-	safe = ((ident[0] >= 'A' && ident[0] <= 'Z') || ident[0] == '_');
-
-	for (ptr = ident; *ptr; ptr++)
-	{
-		char		ch = *ptr;
-
-		if ((ch >= 'A' && ch <= 'Z') ||
-			(ch >= '0' && ch <= '9') ||
-			(ch == '_'))
-		{
-			/* okay */
-		}
-		else
-		{
-			safe = false;
-			if (ch == '"')
-				nquotes++;
-		}
-	}
-
+	safe = !unSafeFirebirdIdentifier(ident);
 
 	if (safe)
 	{
@@ -851,24 +943,7 @@ quote_fb_identifier_for_import(const char *ident)
 
 	if (safe)
 		return ident;			/* no change needed */
-
-
-	result = (char *) palloc(strlen(ident) + nquotes + 2 + 1);
-
-	optr = result;
-	*optr++ = '"';
-	for (ptr = ident; *ptr; ptr++)
-	{
-		char		ch = *ptr;
-
-		if (ch == '"')
-			*optr++ = '"';
-		*optr++ = ch;
-	}
-	*optr++ = '"';
-	*optr = '\0';
-
-	return result;
+    return quote_identifier(ident);
 }
 
 /**
@@ -2729,4 +2804,3 @@ canConvertOp(OpExpr *oe, int firebird_version)
 
 	return false;
 }
-
