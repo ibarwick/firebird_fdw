@@ -117,7 +117,7 @@ static bool foreign_expr_walker(Node *node,
 static bool canConvertOp(OpExpr *oe, int firebird_version);
 static bool is_builtin(Oid procid);
 
-static const char *quote_fb_identifier_for_import(const char *ident);
+static const char *quote_identifier_for_import(const char *ident, bool unsafe);
 
 bool unSafeFirebirdIdentifier (const char *identifier);
 bool unSafePostgresIdentifier (const char *identifier);
@@ -374,7 +374,7 @@ buildWhereClause(StringInfo output,
  *	- verify all types can be converted to their PostgreSQL equivalents
  */
 void
-generateColumnMetadataQuery(StringInfoData *data_type_sql, char *fb_table_name)
+generateColumnMetadataQuery(StringInfoData *data_type_sql, char *fb_safe_table_name)
 {
 	appendStringInfo(data_type_sql,
 "	SELECT TRIM(rf.rdb$field_name) AS column_name,\n"
@@ -426,7 +426,7 @@ generateColumnMetadataQuery(StringInfoData *data_type_sql, char *fb_table_name)
 "		 ON rf.rdb$field_source = f.rdb$field_name\n"
 "	  WHERE TRIM(rf.rdb$relation_name) = '%s'\n"
 "  ORDER BY rf.rdb$field_position\n",
-					 fb_table_name
+					 fb_safe_table_name
 		);
 
 	return;
@@ -436,6 +436,7 @@ generateColumnMetadataQuery(StringInfoData *data_type_sql, char *fb_table_name)
  * unSafeFirebirdIdentifier()
  *
  * checks if identifier contains space or identifier is not uppercase
+ * SIMPLIFICATION, not real UTF, POC
  */
 bool unSafeFirebirdIdentifier (const char *identifier)
 {
@@ -461,6 +462,7 @@ bool unSafeFirebirdIdentifier (const char *identifier)
  * unSafePostgresIdentifier()
  *
  * checks if identifier contains space or identifier is not lowercase
+ * SIMPLIFICATION, not real UTF, POC
  */
 bool unSafePostgresIdentifier (const char *identifier)
 {
@@ -490,8 +492,18 @@ bool unSafePostgresIdentifier (const char *identifier)
 void
 convertFirebirdObject(char *server_name, char *schema, char *object_name, char object_type, char *pg_name, bool import_not_null, bool updatable, FBresult *colres, StringInfoData *create_table)
 {
-	const char *table_name;
-	const char *schema_name;
+	const char *safe_pg_server_name;
+	bool unsafe_pg_server_name;
+	const char *safe_pg_schema_name;
+	bool unsafe_pg_schema_name;
+	const char *safe_table_name;
+	bool unsafe_table_name;
+
+	const char *safe_fb_column_name;
+   	bool unsafe_fb_column_name = false;
+	const char *safe_pg_column_name;
+   	bool unsafe_pg_column_name = false;
+
 	bool use_pg_name = false;
 	int colnr, coltotal;
 	List	   *table_options = NIL;
@@ -499,45 +511,65 @@ convertFirebirdObject(char *server_name, char *schema, char *object_name, char o
 	size_t identifierL = 0;
     size_t cnL = 0;
     char *cnOption;
-   	bool unsafe_pg_ident = false;
-   	bool unsafe_fb_ident = false;
-	const char *fb_col_identifier;
-	const char *pg_col_identifier;
 
 	/* Initialise table options list */
 	if (updatable == false)
 		table_options = lappend(table_options, "updatable 'false'");
 
+	unsafe_pg_server_name = unSafePostgresIdentifier(server_name);
+    safe_pg_server_name = quote_identifier_for_import(server_name, unsafe_pg_server_name);
+    		
+	unsafe_pg_schema_name = unSafePostgresIdentifier(schema);
+    safe_pg_schema_name = quote_identifier_for_import(schema, unsafe_pg_schema_name);		
+    
+   	elog(DEBUG3, "safe_server_name: %s; safe_schema_name: %s;",
+   	     safe_pg_server_name,
+   	     safe_pg_schema_name
+   	    );  
+
 	/*
 	 * If the Firebird identifier is all lower-case, force "quote_identifier 'true'"
 	 * as PostgreSQL won't know to quote it.
 	 */
-	table_name = quote_fb_identifier_for_import(object_name);
-    schema_name = quote_fb_identifier_for_import(schema);
+	 
+	unsafe_table_name = unSafeFirebirdIdentifier(object_name);
+	safe_table_name = quote_identifier_for_import(object_name, unsafe_table_name);
+	
+	
 
-	elog(DEBUG3, "object_name: %s; table_name: %s; pg_name: %s",
+	elog(DEBUG3, "object_name: %s; safe_table_name: %s; pg_name: %s",
 		 object_name,
-		 table_name,
+		 safe_table_name,
 		 pg_name ? pg_name : "NULL");
 
-	if (table_name[0] == '"' && unSafeFirebirdIdentifier(table_name))
+	if (unsafe_table_name)
 		{
 			table_options = lappend(table_options, "quote_identifier 'true'");
-			elog(DEBUG3, "table identifier is unsafe %s", table_name);
+			
+			identifierL = strlen(object_name);
+			cnL = strlen("table_name '");			
+			cnOption = malloc(identifierL + cnL + 2);
+			cnOption[0] = '\0';
+		    strcat(cnOption, "table_name '");
+		    strcat(cnOption, object_name);
+   		    strcat(cnOption, "'");
+   		    table_options = lappend(table_options, (void*)cnOption);
+			
+			elog(DEBUG3, "table identifier is fb unsafe %s", safe_table_name);
 		}
 	else if (pg_name != NULL)
 	{
 		/*
-		 * If "pg_name" == "table_name", i.e. the non-quoted folder-to-upper-case
+		 * If "pg_name" == "safe_table_name", i.e. the non-quoted folder-to-upper-case
 		 * version used in the Firebird metadata query, then that implies
 		 * the_name was quoted in the "LIMIT TO" clause, so we must
 		 * quote it here.
 		 *
 		 * E.g. LIMIT TO ("BAR")
 		 */
-		if (strcmp(table_name, pg_name) == 0)
+		if (strcmp(safe_table_name, pg_name) == 0)
 		{
-			table_name = quote_identifier(table_name);
+			safe_table_name = quote_identifier(safe_table_name);
 		}
 		else
 		{
@@ -551,14 +583,14 @@ convertFirebirdObject(char *server_name, char *schema, char *object_name, char o
 			use_pg_name = true;
 		}
 	}
-	else if (unSafePostgresIdentifier(table_name))
-		table_name = quote_identifier(table_name);
+	else if (unSafePostgresIdentifier(safe_table_name))
+		safe_table_name = quote_identifier(safe_table_name);
 
 	/* Generate SQL */
 	appendStringInfo(create_table,
 					 "CREATE FOREIGN TABLE %s.%s (\n",
-					 schema_name,
-					 use_pg_name ? pg_name : table_name);
+					 safe_pg_schema_name,
+					 use_pg_name ? pg_name : safe_table_name);
 
 	coltotal = FQntuples(colres);
 
@@ -574,16 +606,20 @@ convertFirebirdObject(char *server_name, char *schema, char *object_name, char o
 		char *datatype;
 		char *colname = pstrdup(FQgetvalue(colres, colnr, 0));
 		
-		unsafe_pg_ident = unSafePostgresIdentifier(colname);
-		unsafe_fb_ident = unSafeFirebirdIdentifier(colname);
 
-		fb_col_identifier = quote_fb_identifier_for_import(colname);
+		unsafe_fb_column_name = unSafeFirebirdIdentifier(colname);
+		safe_fb_column_name = quote_identifier_for_import(colname, unsafe_fb_column_name);
+
+		unsafe_pg_column_name = unSafePostgresIdentifier(colname);
+		safe_pg_column_name = quote_identifier_for_import(colname, unsafe_pg_column_name);
+		
+		elog(DEBUG3, "column name %s unsafe pg %d unsafe fb %d", colname, unsafe_pg_column_name, unsafe_fb_column_name);
 
 		/*
-		 * If the Firebird identifier is all lower-case, force "quote_identifier 'true'"
+		 * If the Firebird identifier is unsafe, force "quote_identifier 'true'"
 		 * as PostgreSQL won't know to quote it.
 		 */
-		if (fb_col_identifier[0] == '"' && unsafe_fb_ident)
+		if (unsafe_fb_column_name)
 		{
 			column_options = lappend(column_options, "quote_identifier 'true'");
 			
@@ -595,16 +631,15 @@ convertFirebirdObject(char *server_name, char *schema, char *object_name, char o
 		    strcat(cnOption, colname);
    		    strcat(cnOption, "'");
    		    column_options = lappend(column_options, (void*)cnOption);
-			elog(DEBUG3, "column name is unsafe %s", colname);
 			}
 
 		/* Column name and datatype */
 		datatype = FQgetvalue(colres, colnr, 2);
 		
-		pg_col_identifier = unsafe_pg_ident ? quote_identifier(colname) : colname;
+		safe_pg_column_name = unsafe_pg_column_name ? quote_identifier(colname) : colname;
 		appendStringInfo(create_table,
 						 "	%s %s",
-						 pg_col_identifier,
+						 safe_pg_column_name,
 						 datatype);
 
 
@@ -662,8 +697,8 @@ convertFirebirdObject(char *server_name, char *schema, char *object_name, char o
 	}
 
 	appendStringInfo(create_table,
-					 ") SERVER \"%s\"",
-					 server_name);
+					 ") SERVER %s",
+					 safe_pg_server_name);
 
 	if (table_options != NIL)
 	{
@@ -902,18 +937,16 @@ const char *quote_identifier(const char *ident)
 }
 
 /**
- * quote_fb_identifier_for_import()
+ * quote_identifier_for_import()
  *
- * Given a Firebird relation name, determine whether it would
- * be quoted in Firebird, i.e. contains characters other than
- * ASCII capital letters, digits and underscores.
+ * Given a object name, determine whether it would be quoted
+ * both for Postgres or Firebird depends on source of safe flague
  */
 static const char *
-quote_fb_identifier_for_import(const char *ident)
+quote_identifier_for_import(const char *ident, bool unsafe)
 {
 	bool		safe;
-
-	safe = !unSafeFirebirdIdentifier(ident);
+	safe = !unsafe;
 
 	if (safe)
 	{
@@ -2804,3 +2837,4 @@ canConvertOp(OpExpr *oe, int firebird_version)
 
 	return false;
 }
+
