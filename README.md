@@ -114,30 +114,30 @@ Usage
 
 `firebird_fdw` accepts the following options via the `CREATE SERVER` command:
 
-- **address**
+- **address** as *string*
 
   The Firebird server's address (default: `localhost`)
 
-- **port**
+- **port** as *integer*
 
   The Firebird server's port (default: `3050`)
 
-- **database**
+- **database** as *string*
 
   The name of the Firebird database to connect to.
 
-- **updatable**
+- **updatable** as *boolean*
 
   A boolean value indicating whether the foreign server as a whole
   is updatable. Default is true. Note that this can be overridden
   by table-level settings.
 
-- **disable_pushdowns**
+- **disable_pushdowns** as *boolean*
 
   Turns off pushdowns of `WHERE` clause elements to Firebird. Useful
   mainly for debugging and benchmarking.
 
-- **quote_identifiers**
+- **quote_identifiers** as *boolean*
 
   Quote all identifiers (table and column names) by default. This can
   be overridden with `quote_identifier = 'false'` for individual table
@@ -147,7 +147,7 @@ Usage
 
   `firebird_fdw` 1.2.0 and later.
 
-- **implicit_bool_type**
+- **implicit_bool_type** as *boolean*
 
   Turns on implicit conversion of Firebird integer types to PostgreSQL
   `BOOLEAN` types. This is an experimental feature and is disabled by
@@ -155,7 +155,7 @@ Usage
 
   `firebird_fdw` 1.2.0 and later.
 
-- **batch_size**
+- **batch_size** as *integer*
 
   Specifies the number of rows which should be inserted in a single `INSERT`
   operation. This setting can be overridden for individual tables.
@@ -167,11 +167,11 @@ Usage
 `firebird_fdw` accepts the following options via the `CREATE USER MAPPING`
 command:
 
-- **username**
+- **username** as *string*
 
   The Firebird username to connect as (not case-sensitive).
 
-- **password**
+- **password** as *string*
 
   The Firebird user's password.
 
@@ -181,29 +181,29 @@ command:
 `firebird_fdw` accepts the following table-level options via the
 `CREATE FOREIGN TABLE` command:
 
-- **table_name**
+- **table_name** as *string*
 
   The Firebird table name, if different to the PostgreSQL foreign table
   name. Cannot be used together with the `query` option.
 
-- **quote_identifier**
+- **quote_identifier** as *boolean*
 
   Pass the table name to Firebird as a quoted identifier.
   See "[Identifier case handling](#identifier-case-handling)" for details.
   `firebird_fdw` 1.2.0 and later.
 
-- **query**
+- **query** as *string*
 
   A Firebird SQL statement producing a result set which can be treated
   like a read-only view. Cannot be used together with the `table_name` option.
 
-- **updatable**
+- **updatable** as *boolean*
 
   A boolean value indicating whether the table is updatable. Default is `true`.
   Note that this overrides the server-level setting. Cannot be set for the
   `query` option.
 
-- **estimated_row_count**
+- **estimated_row_count** as *integer*
 
   An integer indicating the expected number of rows in the Firebird table, or
   rows which would be returned by the statement defined in `query`. If not
@@ -212,19 +212,19 @@ command:
 
 The following column-level options are available:
 
-- **column_name**
+- **column_name** as *string*
 
   The Firebird column name, if different to the column name defined in the
   foreign table. This can also be used for foreign tables defined with the
   `query` option.
 
-- **quote_identifier**
+- **quote_identifier** as *boolean*
 
   Pass the column name to Firebird as a quoted identifier. See section
   See "[Identifier case handling](#identifier-case-handling)" for details.
   `firebird_fdw` 1.2.0 and later.
 
-- **implicit_bool_type**
+- **implicit_bool_type** as *boolean*
 
   Set this option on a `BOOLEAN` column to `true` to indicate that the
   corresponding column in the Firebird table is a integer column which
@@ -252,7 +252,7 @@ The following column-level options are available:
   represents an implicit boolean. This functionality may work on earlier
   Firebird versions but has not been tested with them.
 
-- **batch_size**
+- **batch_size** as *integer*
 
   See `CREATE SERVER options` section for details.
 
@@ -268,20 +268,20 @@ are carried out on it.
 `firebird_fdw` supports [IMPORT FOREIGN SCHEMA](https://www.postgresql.org/docs/current/sql-importforeignschema.html)
 (when running with PostgreSQL 9.5 or later) and accepts the following custom options:
 
-- **import_not_null**
+- **import_not_null** as *boolean*
 
   Determines whether column `NOT NULL` constraints are included in the definitions
   of foreign tables imported from a Firebid server. The default is `true`.
 
-- **import_views**
+- **import_views** as *boolean*
 
   Determines whether Firebird views are imported as foreign tables. The default is `true`.
 
-- **updatable**
+- **updatable** as *boolean*
 
   If set to `false`, mark all imported foreign tables as not updatable. The default is `true`.
-
-- **verbose**
+ 
+- **verbose** as *boolean*
 
   Logs the name of each table or view being imported at log level `INFO`.
 
