@@ -1,8 +1,15 @@
 /*-------------------------------------------------------------------------
  *
- * connection.c
- *
  * Connection management functions for firebird_fdw
+ *
+ * Copyright (c) 2013-2023 Ian Barwick
+ *
+ * This software is released under the PostgreSQL Licence
+ *
+ * Author: Ian Barwick <barwick@gmail.com>
+ *
+ * IDENTIFICATION
+ *		  firebird_fdw/src/connection.c
  *
  *-------------------------------------------------------------------------
  */
