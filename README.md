@@ -516,11 +516,11 @@ file [PostgreSQL and Firebird character set encoding compatibility](doc/ENCODING
 Examples
 --------
 
-Install the extension:
+To install the extension in a database, connect *as superuser* and execute:
 
     CREATE EXTENSION firebird_fdw;
 
-Create a foreign server with appropriate configuration:
+Create a foreign server *as superuser* with appropriate configuration:
 
     CREATE SERVER firebird_server
       FOREIGN DATA WRAPPER firebird_fdw
@@ -529,10 +529,15 @@ Create a foreign server with appropriate configuration:
         database '/path/to/database'
      );
 
-Create an appropriate user mapping:
+Create an appropriate user mapping *as superuser*:
 
     CREATE USER MAPPING FOR CURRENT_USER SERVER firebird_server
-      OPTIONS(username 'sysdba', password 'masterke');
+      OPTIONS(username 'sysdba', password 'masterkey');
+      
+Grant *as superuser* `usage` privelegy to non privileged user from the previous user mapping for creating foreign tables:
+
+    GRANT USAGE ON FOREIGN SERVER firebird_server TO "a pg user";
+    -- change "a pg user" to real user name you need
 
 Create a foreign table referencing the Firebird table `fdw_test`:
 
