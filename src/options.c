@@ -1,8 +1,17 @@
 /*-------------------------------------------------------------------------
  *
- * options.c
- *
  * Helper functions to validate and parse the FDW options
+ *
+ * Copyright (c) 2013-2023 Ian Barwick
+ *
+ * This software is released under the PostgreSQL Licence
+ *
+ * Author: Ian Barwick <barwick@gmail.com>
+ *
+ * Public repository: https://github.com/ibarwick/firebird_fdw
+ *
+ * IDENTIFICATION
+ *		  firebird_fdw/src/options.c
  *
  *-------------------------------------------------------------------------
  */

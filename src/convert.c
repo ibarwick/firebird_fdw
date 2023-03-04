@@ -1,7 +1,5 @@
 /*-------------------------------------------------------------------------
  *
- * convert.c
- *
  * Helper functions to:
  *	 - examine WHERE clauses for expressions which can be sent to Firebird
  *	   for execution;
@@ -10,6 +8,17 @@
  *	 - convert Firebird table definitions to PostgreSQL foreign table
  *	   definitions to support IMPORT FOREIGN SCHEMA (PostgreSQL 9.5 and
  *	   later)
+ *
+ * Copyright (c) 2013-2023 Ian Barwick
+ *
+ * This software is released under the PostgreSQL Licence
+ *
+ * Author: Ian Barwick <barwick@gmail.com>
+ *
+ * Public repository: https://github.com/ibarwick/firebird_fdw
+ *
+ * IDENTIFICATION
+ *		  firebird_fdw/src/convert.c
  *
  *-------------------------------------------------------------------------
  */
