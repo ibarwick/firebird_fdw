@@ -2096,15 +2096,15 @@ firebirdPlanForeignModify(PlannerInfo *root,
 #else
 		Bitmapset  *tmpset = bms_copy(rte->updatedCols);
 #endif
-		AttrNumber	col;
+		int			attidx = -1;
 
 		elog(DEBUG2, " * operation is UPDATE");
 
-		while ((col = bms_first_member(tmpset)) >= 0)
+		while ((attidx = bms_next_member(tmpset, attidx)) >= 0)
 		{
 			/* include/access/sysattr.h:#define FirstLowInvalidHeapAttributeNumber (-8) */
+			AttrNumber	col = attidx + FirstLowInvalidHeapAttributeNumber;
 
-			col += FirstLowInvalidHeapAttributeNumber;
 			/* include/access/attnum.h:#define InvalidAttrNumber   0 */
 
 			if (col <= InvalidAttrNumber)		/* shouldn't happen */
