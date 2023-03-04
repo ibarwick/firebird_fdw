@@ -126,7 +126,7 @@ Usage
 
   The Firebird server's port.
 
-- **database** as *string*
+- **database** as *string*, no default
 
   The name of the Firebird database to connect to.
 
@@ -171,11 +171,11 @@ Usage
 `firebird_fdw` accepts the following options via the `CREATE USER MAPPING`
 command:
 
-- **username** as *string*
+- **username** as *string*, no default
 
   The Firebird username to connect as (not case-sensitive).
 
-- **password** as *string*
+- **password** as *string*, no default
 
   The Firebird user's password.
 
@@ -185,7 +185,7 @@ command:
 `firebird_fdw` accepts the following table-level options via the
 `CREATE FOREIGN TABLE` command:
 
-- **table_name** as *string*
+- **table_name** as *string*, default to foreign table name
 
   The Firebird table name, if different to the PostgreSQL foreign table
   name. Cannot be used together with the `query` option.
@@ -196,7 +196,7 @@ command:
   See "[Identifier case handling](#identifier-case-handling)" for details.
   `firebird_fdw` 1.2.0 and later.
 
-- **query** as *string*
+- **query** as *string*, no default
 
   A Firebird SQL statement producing a result set which can be treated
   like a read-only view. Cannot be used together with the `table_name` option.
@@ -215,7 +215,7 @@ command:
 
 The following column-level options are available:
 
-- **column_name** as *string*
+- **column_name** as *string*, default to name of the column of the foreign table
 
   The Firebird column name, if different to the column name defined in the
   foreign table. This can also be used for foreign tables defined with the
