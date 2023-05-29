@@ -17,7 +17,6 @@
 EXTENSION    = firebird_fdw
 EXTVERSION   = $(shell grep default_version $(EXTENSION).control | sed -e "s/default_version[[:space:]]*=[[:space:]]*'\([^']*\)'/\1/")
 
-DATA         = $(filter-out $(wildcard sql/*--*.sql),$(wildcard sql/*.sql))
 MODULE_big   = $(EXTENSION)
 
 OBJS         = $(patsubst %.c,%.o,$(wildcard src/*.c))
@@ -26,7 +25,6 @@ FIREBIRD_FDW_DEBUG_BUILD ?= 0
 ifneq ($(FIREBIRD_FDW_DEBUG_BUILD),0)
 PG_CPPFLAGS += -DFIREBIRD_FDW_DEBUG_BUILD
 endif
-
 
 +PG_CPPFLAGS += -Werror-missing-prototypes
 SHLIB_LINK += -lfq -lfbclient
