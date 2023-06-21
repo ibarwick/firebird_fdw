@@ -7,7 +7,7 @@ write (`INSERT`/`UPDATE`/`DELETE`) support, as well as pushdown of some
 operations. While it appears to be working reliably, please be aware this is
 still very much work-in-progress; *USE AT YOUR OWN RISK*.
 
-`firebird_fdw` is designed to be compatible with PostgreSQL 9.5 ~ 15.
+`firebird_fdw` is designed to be compatible with PostgreSQL 9.5 ~ 16.
 The range of `firebird_fdw` options available for a particular PostgreSQL
 version depends on the state of the Foreign Data Wrapper (FDW) API for that
 version; the more recent the version, the more features will be available.
