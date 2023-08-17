@@ -1219,7 +1219,19 @@ firebirdGetForeignPaths(PlannerInfo *root,
 	firebirdEstimateCosts(root, baserel, foreigntableid);
 
 	/* Create a ForeignPath node and add it as only possible path */
-#if (PG_VERSION_NUM >= 90600)
+#if (PG_VERSION_NUM >= 170000)
+	add_path(baserel, (Path *)
+			 create_foreignscan_path(root, baserel,
+									 NULL,		/* default pathtarget */
+									 baserel->rows,
+									 fdw_state->startup_cost,
+									 fdw_state->total_cost,
+									 NIL,		/* no pathkeys */
+									 NULL,		/* no outer rel either */
+									 NULL,		/* no extra plan */
+									 NIL,   /* no fdw_restrictinfo list */
+									 NIL));		/* no fdw_private data */
+#elif (PG_VERSION_NUM >= 90600)
 	add_path(baserel, (Path *)
 			 create_foreignscan_path(root, baserel,
 									 NULL,		/* default pathtarget */
