@@ -1,6 +1,6 @@
 #!/usr/bin/env perl
 
-# 02-extension.pl
+# 02-returning.pl
 #
 # Check "RETURNING" clauses function as expected
 
