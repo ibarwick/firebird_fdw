@@ -20,16 +20,18 @@ my $node = FirebirdFDWNode->new();
 # ----------------------
 
 if ($node->{firebird_major_version} >= 3) {
-	plan tests => 8;
+	plan tests => 10;
 }
 else {
-	plan tests => 1;
+	plan tests => 3;
 }
 
 # Prepare table
 # --------------
 
 my $table_name = $node->init_data_type_table();
+
+note qq|data type table name: "$table_name"|;
 
 # 1) Test BLOB type
 # -----------------
@@ -191,6 +193,104 @@ EO_SQL
 	);
 }
 
+
+# 9) Test UUID type
+# -----------------
+#
+# Note: currently insertion of UUID values into OCTETS columns is not supported,
+# so we need to generate the UUID in Firebird.
+
+$node->firebird_execute_sql(
+    sprintf(
+        <<'EO_SQL',
+INSERT INTO %s
+  (id, uuid_type)
+VALUES
+  (5, (SELECT gen_uuid() FROM rdb$database))
+EO_SQL
+        $table_name,
+    ),
+);
+
+# retrieve UUID from Firebird as formatted text, normalized to lower case
+# (so it matches the value PostgreSQL will retrieve via the FDW)
+
+my $uuid_std = $node->firebird_single_value_query(
+    sprintf(
+        <<'EO_SQL',
+SELECT lower(uuid_to_char(uuid_type))
+  FROM %s
+ WHERE id = 5
+EO_SQL
+        $table_name,
+    ),
+);
+
+note "uuid $uuid_std";
+
+my $q9_sql = sprintf(
+    sprintf(
+        <<'EO_SQL',
+SELECT uuid_type
+  FROM %s
+ WHERE id = 5
+EO_SQL
+        $table_name,
+    ),
+);
+
+my ($q9_res, $q9_stdout, $q9_stderr) = $node->psql($q9_sql);
+
+is (
+    $q9_stdout,
+    qq/$uuid_std/,
+    q|Check UUID value retrieved correctly|,
+);
+
+# 10) Test UUID type comparison
+# -----------------------------
+
+# The Perl DBD driver returns OCTET values as raw bytes;
+# convert the raw bytes into the hexadecimal equivalent
+
+my $uuid_raw = $node->firebird_single_value_query(
+    sprintf(
+        <<'EO_SQL',
+SELECT uuid_type
+  FROM %s
+ WHERE id = 5
+EO_SQL
+        $table_name,
+    ),
+);
+
+my $uuid_nonstd = '';
+
+for (my $i = 0; $i < length($uuid_raw); $i++) {
+    $uuid_nonstd .= sprintf(q|%02X|, ord(substr($uuid_raw, $i, 1)));
+}
+
+note "uuid $uuid_nonstd";
+
+my $q10_sql = sprintf(
+    sprintf(
+        <<'EO_SQL',
+SELECT id
+  FROM %s
+ WHERE uuid_type = '%s'::uuid
+EO_SQL
+        $table_name,
+        $uuid_nonstd,
+    ),
+);
+
+my ($q10_res, $q10_stdout, $q10_stderr) = $node->psql($q10_sql);
+
+is (
+    $q10_stdout,
+    qq/5/,
+    q|Check UUID value retrieved correctly|,
+);
 
 # Clean up
 # --------

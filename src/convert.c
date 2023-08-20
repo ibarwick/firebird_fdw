@@ -1146,6 +1146,8 @@ convertConst(Const *node, convert_expr_cxt *context, char **result)
 					 &typoutput, &typIsVarlena);
    extval = OidOutputFunctionCall(typoutput, node->constvalue);
 
+   elog(DEBUG1, "consttype: %u", node->consttype);
+
    switch (node->consttype)
 	{
 		case INT2OID:
@@ -1183,6 +1185,8 @@ convertConst(Const *node, convert_expr_cxt *context, char **result)
 					(errcode(ERRCODE_FDW_INVALID_DATA_TYPE),
 					 errmsg("unsupported data type %i", node->consttype)));
 			break;
+		case UUIDOID:
+			/* XXX handle UUIDs here if pushing down */
 		default:
 			convertStringLiteral(&buf, extval);
 			break;
@@ -2299,8 +2303,12 @@ foreign_expr_walker(Node *node,
 			return false;
 		}
 		case T_Const:
+		{
+			Const *const_node = (Const *) node;
+			if (const_node->consttype == UUIDOID)
+				return false;
 			return true;
-
+		}
 		case T_OpExpr:
 		case T_DistinctExpr:	/* struct-equivalent to OpExpr */
 		{

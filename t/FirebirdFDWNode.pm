@@ -349,7 +349,8 @@ sub init_data_type_table {
 CREATE TABLE %s (
   id        INT NOT NULL PRIMARY KEY,
   blob_type BLOB SUB_TYPE TEXT DEFAULT NULL,
-  implicit_bool_type SMALLINT DEFAULT NULL
+  implicit_bool_type SMALLINT DEFAULT NULL,
+  uuid_type CHAR(16) CHARACTER SET OCTETS
 )
 EO_SQL
             $table_name,
@@ -361,7 +362,8 @@ CREATE TABLE %s (
   id        INT NOT NULL PRIMARY KEY,
   blob_type BLOB SUB_TYPE TEXT DEFAULT NULL,
   bool_type BOOLEAN DEFAULT NULL,
-  implicit_bool_type SMALLINT DEFAULT NULL
+  implicit_bool_type SMALLINT DEFAULT NULL,
+  uuid_type CHAR(16) CHARACTER SET OCTETS
 )
 EO_SQL
             $table_name,
@@ -384,7 +386,8 @@ EO_SQL
             <<EO_SQL,
   id        INT NOT NULL,
   blob_type TEXT DEFAULT NULL,
-  implicit_bool_type BOOLEAN OPTIONS(implicit_bool_type 'true') DEFAULT NULL
+  implicit_bool_type BOOLEAN OPTIONS(implicit_bool_type 'true') DEFAULT NULL,
+  uuid_type UUID
 EO_SQL
 		),
 		3 => sprintf(
@@ -392,7 +395,8 @@ EO_SQL
   id        INT NOT NULL,
   blob_type TEXT DEFAULT NULL,
   bool_type BOOLEAN DEFAULT NULL,
-  implicit_bool_type BOOLEAN OPTIONS(implicit_bool_type 'true') DEFAULT NULL
+  implicit_bool_type BOOLEAN OPTIONS(implicit_bool_type 'true') DEFAULT NULL,
+  uuid_type UUID
 EO_SQL
 		),
 	};
@@ -680,11 +684,27 @@ sub firebird_execute_sql {
     my $self = shift;
     my $sql = shift;
 
-    my $q = $self->firebird_conn()->prepare( $sql);
+    my $q = $self->firebird_conn()->prepare($sql);
 
     $q->execute();
 
     $q->finish();
+}
+
+
+sub firebird_single_value_query {
+    my $self = shift;
+    my $sql = shift;
+
+    my $q = $self->firebird_conn()->prepare($sql);
+
+    $q->execute();
+
+    my $value = $q->fetchrow_array();
+
+    $q->finish();
+
+    return $value;
 }
 
 
