@@ -702,6 +702,7 @@ convertDatum(Datum datum, Oid type)
 			break;
 
 		default:
+			elog(WARNING, "convertDatum(): unknown type %u", type);
 			return NULL;
 	}
 
