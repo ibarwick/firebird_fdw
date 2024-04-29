@@ -7,7 +7,7 @@ write (`INSERT`/`UPDATE`/`DELETE`) support, as well as pushdown of some
 operations. While it appears to be working reliably, please be aware this is
 still very much work-in-progress; *USE AT YOUR OWN RISK*.
 
-`firebird_fdw` is designed to be compatible with PostgreSQL 9.5 ~ 16.
+`firebird_fdw` is designed to be compatible with PostgreSQL 9.5 ~ 17.
 The range of `firebird_fdw` options available for a particular PostgreSQL
 version depends on the state of the Foreign Data Wrapper (FDW) API for that
 version; the more recent the version, the more features will be available.
@@ -25,7 +25,7 @@ This `README` represents the documentation for the current development version
 of `firebird_fdw`. Documentation for stable releases is available at the following
 links:
 
- - [1.3.0 README](https://github.com/ibarwick/firebird_fdw/blob/REL_1_3_STABLE/README.md) (2022-12-28)
+ - [1.3.1 README](https://github.com/ibarwick/firebird_fdw/blob/REL_1_3_STABLE/README.md) (2023-06-22)
  - [1.2.3 README](https://github.com/ibarwick/firebird_fdw/blob/REL_1_2_STABLE/README.md) (2022-02-20)
  - [1.1.0 README](https://github.com/ibarwick/firebird_fdw/blob/REL_1_1_STABLE/README.md) (2019-05-31)
  - [1.0.0 README](https://github.com/ibarwick/firebird_fdw/blob/REL_1_0_STABLE/README.md) (2018-11-09)
