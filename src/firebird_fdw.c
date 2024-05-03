@@ -57,10 +57,13 @@
 #endif
 #include "parser/parsetree.h"
 #include "pgstat.h"
+#include "pgtime.h"
 #include "storage/fd.h"
 #include "storage/ipc.h"
 #include "utils/array.h"
 #include "utils/builtins.h"
+#include "utils/date.h"
+#include "utils/datetime.h"
 #include "utils/lsyscache.h"
 #include "utils/memutils.h"
 #include "utils/rel.h"
@@ -3886,7 +3889,7 @@ convertResToArray(FBresult *res, int row, char **values)
  *
  * Create array of text strings representing parameter values
  *
- * "tupleid_ctid" and "tupleid_oid" are used to form the generated RDB$DB_KEY
+ * "tupleid_ctid" and "tupleid_oid" are used to form the generated RDB$DB_KEY, or
  * NULL if none.
  * "slot" is slot to get remaining parameters from, or NULL if none.
  *
@@ -3925,61 +3928,208 @@ convert_prep_stmt_params(FirebirdFdwModifyState *fmstate,
 			}
 			else
 			{
-				/*
-				 * If the column is a boolean, we may need to convert it into an integer if
-				 * implicit_bool_type is in use
-				 */
 				Form_pg_attribute attr;
 				TupleDesc	tupdesc = RelationGetDescr(fmstate->rel);
 				bool		value_output = false;
 
 				attr = TupleDescAttr(tupdesc, attnum -1);
+				/*
+				 * If the column is a boolean, we may need to convert it into an integer if
+				 * implicit_bool_type is in use
+				 */
 
-				if (attr->atttypid == BOOLOID)
+				switch (attr->atttypid)
 				{
-					ForeignTable *table = GetForeignTable(RelationGetRelid(fmstate->rel));
-					ForeignServer *server = GetForeignServer(table->serverid);
-					fbServerOptions server_options = fbServerOptions_init;
-					bool use_implicit_bool_type = false;
-
-					server_options.implicit_bool_type.opt.boolptr = &use_implicit_bool_type;
-
-					firebirdGetServerOptions(server, &server_options);
-
-					if (use_implicit_bool_type)
+					case BOOLOID:
 					{
-						bool col_implicit_bool_type = false;
+						ForeignTable *table = GetForeignTable(RelationGetRelid(fmstate->rel));
+						ForeignServer *server = GetForeignServer(table->serverid);
+						fbServerOptions server_options = fbServerOptions_init;
+						bool use_implicit_bool_type = false;
 
-						/* Firebird before 3.0 has no BOOLEAN datatype */
-						if (fmstate->firebird_version < 30000)
+						server_options.implicit_bool_type.opt.boolptr = &use_implicit_bool_type;
+
+						firebirdGetServerOptions(server, &server_options);
+
+						if (use_implicit_bool_type)
 						{
-							col_implicit_bool_type = true;
+							bool col_implicit_bool_type = false;
+
+							/* Firebird before 3.0 has no BOOLEAN datatype */
+							if (fmstate->firebird_version < 30000)
+							{
+								col_implicit_bool_type = true;
+							}
+							else
+							{
+								fbColumnOptions column_options = fbColumnOptions_init;
+
+								column_options.implicit_bool_type = &col_implicit_bool_type;
+
+								firebirdGetColumnOptions(table->relid, attnum,
+														 &column_options);
+							}
+
+							if (col_implicit_bool_type)
+							{
+								char *bool_value = OutputFunctionCall(&fmstate->p_flinfo[pindex],
+																	  value);
+								if (bool_value[0] == 'f')
+									p_values[pindex] = "0";
+								else
+									p_values[pindex] = "1";
+
+								value_output = true;
+							}
+						}
+						break;
+					}
+					case TIMEOID:
+					{
+						StringInfoData fb_ts;
+						TimeADT       time = DatumGetTimeADT(value);
+						struct pg_tm tt, *tm = &tt;
+						fsec_t		 fsec;
+
+						time2tm(time, tm, &fsec);
+
+						initStringInfo(&fb_ts);
+
+						appendStringInfo(&fb_ts,
+										 "%02d:%02d:%02d.%04d",
+										 tt.tm_hour,
+										 tt.tm_min,
+										 tt.tm_sec,
+										 /* Firebird has deci-millsecond granularity */
+										 fsec / 100);
+
+						p_values[pindex] = fb_ts.data;
+						value_output = true;
+
+						break;
+					}
+					case TIMETZOID:
+					{
+						StringInfoData fb_ts;
+						TimeTzADT  *time = DatumGetTimeTzADTP(value);
+						int			 tz;
+						struct pg_tm tt, *tm = &tt;
+						fsec_t		 fsec;
+
+						bool offset_positive;
+						int offset_raw;
+						int offset_hours;
+						int offset_minutes;
+
+						timetz2tm(time, tm, &fsec, &tz);
+
+						if (tz < 0)
+							tz = abs(tz);
+						else
+							tz = 0 - tz;
+
+						if (tz > 0)
+						{
+							offset_positive = true;
+							offset_raw = tz;
 						}
 						else
 						{
-							fbColumnOptions column_options = fbColumnOptions_init;
-
-							column_options.implicit_bool_type = &col_implicit_bool_type;
-
-							firebirdGetColumnOptions(table->relid, attnum,
-													 &column_options);
+							offset_positive = false;
+							offset_raw = abs(tz);
 						}
 
+						offset_hours = offset_raw / 3600;
+						offset_minutes = (offset_raw - (offset_hours * 3600)) / 60;
 
-						if (col_implicit_bool_type)
+						initStringInfo(&fb_ts);
+
+						appendStringInfo(&fb_ts,
+										 "%02d:%02d:%02d.%04d %c%02d:%02d",
+										 tt.tm_hour,
+										 tt.tm_min,
+										 tt.tm_sec,
+										  /* Firebird has deci-millsecond granularity */
+										 fsec / 100,
+										 offset_positive ? '+' : '-',
+										 offset_hours,
+										 offset_minutes);
+
+						p_values[pindex] = fb_ts.data;
+						value_output = true;
+
+						break;
+					}
+					case TIMESTAMPOID:
+					case TIMESTAMPTZOID:
+					{
+						StringInfoData fb_ts;
+						TimestampTz	 valueTimestamp = DatumGetTimestampTz(value);
+						int			 tz;
+						struct pg_tm tt, *tm = &tt;
+						fsec_t		 fsec;
+						const char  *tzn;
+						pg_tz       *utc_tz = NULL;
+
+						/*
+						 * For TIMESTAMP WITHOUT TIME ZONE, prevent conversion to the
+						 * session time zone.
+						 */
+						if (attr->atttypid == TIMESTAMPOID)
+							utc_tz = DecodeTimezoneNameToTz("UTC");
+
+						timestamp2tm(valueTimestamp, &tz, tm, &fsec, &tzn,
+									 utc_tz);
+
+						initStringInfo(&fb_ts);
+						appendStringInfo(&fb_ts,
+										 "%04d-%02d-%02d %02d:%02d:%02d.%04d",
+										 tt.tm_year,
+										 tt.tm_mon,
+										 tt.tm_mday,
+										 tt.tm_hour,
+										 tt.tm_min,
+										 tt.tm_sec,
+										  /* Firebird has deci-millsecond granularity */
+										 fsec / 100);
+
+						if (attr->atttypid == TIMESTAMPTZOID)
 						{
-							char *bool_value = OutputFunctionCall(&fmstate->p_flinfo[pindex],
-																  value);
-							if (bool_value[0] == 'f')
-								p_values[pindex] = "0";
-							else
-								p_values[pindex] = "1";
+							bool offset_positive;
+							int offset_raw;
+							int offset_hours;
+							int offset_minutes;
 
-							value_output = true;
+							if (tt.tm_gmtoff > 0)
+							{
+								offset_positive = true;
+								offset_raw = tt.tm_gmtoff;
+							}
+							else
+							{
+								offset_positive = false;
+								offset_raw = abs(tt.tm_gmtoff);
+							}
+
+							offset_hours = offset_raw / 3600;
+							offset_minutes = offset_raw - (offset_hours * 3600);
+
+							appendStringInfo(&fb_ts,
+											 " %c%02d:%02d",
+											 offset_positive ? '+' : '-',
+											 offset_hours,
+											 offset_minutes);
 						}
+
+						p_values[pindex] = fb_ts.data;
+						value_output = true;
+						break;
 					}
 				}
 
+				/*
+				 * The value was not fetched by code handling a specific data type.
+				 */
 				if (value_output == false)
 					p_values[pindex] = OutputFunctionCall(&fmstate->p_flinfo[pindex],
 														  value);

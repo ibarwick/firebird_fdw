@@ -273,7 +273,7 @@ firebirdInstantiateConnection(ForeignServer *server, UserMapping *user)
 
 		pfree(dbpath);
 		elog(DEBUG2, "%s(): new firebird_fdw connection %p for server \"%s\"",
-			 __func__,entry->conn, server->servername);
+			 __func__, entry->conn, server->servername);
 	}
 	else
 	{

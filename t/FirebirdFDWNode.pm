@@ -25,6 +25,7 @@ use vars qw(@EXPORT @EXPORT_OK);
 
 use Carp;
 use DBI;
+use Test::More;
 
 $SIG{__DIE__} = \&Carp::confess;
 
@@ -336,10 +337,16 @@ sub init_data_type_table {
 
     $params{firebird_only} //= 0;
 
-    # XXX make a more generic lookup version table of available data types
-    my $min_compat_version = $self->{firebird_major_version} >= 3
-        ? 3
-        : 2;
+    my @min_compat_versions = (4, 3, 2);
+
+    my $min_compat_version = undef;
+
+    foreach my $version (@min_compat_versions) {
+        if ($self->{firebird_major_version} >= $version) {
+            $min_compat_version = $version;
+            last;
+        }
+    }
 
     my $table_name = sprintf(
         q|%s_data_type|,
@@ -351,10 +358,12 @@ sub init_data_type_table {
 		2 => sprintf(
             <<EO_SQL,
 CREATE TABLE %s (
-  id        INT NOT NULL PRIMARY KEY,
-  blob_type BLOB SUB_TYPE TEXT DEFAULT NULL,
+  id                 INT NOT NULL PRIMARY KEY,
+  blob_type          BLOB SUB_TYPE TEXT DEFAULT NULL,
   implicit_bool_type SMALLINT DEFAULT NULL,
-  uuid_type CHAR(16) CHARACTER SET OCTETS
+  uuid_type          CHAR(16) CHARACTER SET OCTETS,
+  time_type          TIME,
+  timestamp_type     TIMESTAMP
 )
 EO_SQL
             $table_name,
@@ -363,11 +372,30 @@ EO_SQL
 		3 => sprintf(
             <<EO_SQL,
 CREATE TABLE %s (
-  id        INT NOT NULL PRIMARY KEY,
-  blob_type BLOB SUB_TYPE TEXT DEFAULT NULL,
-  bool_type BOOLEAN DEFAULT NULL,
+  id                 INT NOT NULL PRIMARY KEY,
+  blob_type          BLOB SUB_TYPE TEXT DEFAULT NULL,
+  bool_type          BOOLEAN DEFAULT NULL,
   implicit_bool_type SMALLINT DEFAULT NULL,
-  uuid_type CHAR(16) CHARACTER SET OCTETS
+  uuid_type          CHAR(16) CHARACTER SET OCTETS,
+  time_type          TIME,
+  timestamp_type     TIMESTAMP
+)
+EO_SQL
+            $table_name,
+        ),
+        # Firebird 4.x
+		4 => sprintf(
+            <<EO_SQL,
+CREATE TABLE %s (
+  id                 INT NOT NULL PRIMARY KEY,
+  blob_type          BLOB SUB_TYPE TEXT DEFAULT NULL,
+  bool_type          BOOLEAN DEFAULT NULL,
+  implicit_bool_type SMALLINT DEFAULT NULL,
+  uuid_type CHAR(16) CHARACTER SET OCTETS,
+  time_type          TIME,
+  timestamp_type     TIMESTAMP,
+  ttz_type           TIME WITH TIME ZONE,
+  tstz_type          TIMESTAMP WITH TIME ZONE
 )
 EO_SQL
             $table_name,
@@ -388,19 +416,34 @@ EO_SQL
 	my $pg_column_defs = {
 		2 => sprintf(
             <<EO_SQL,
-  id        INT NOT NULL,
-  blob_type TEXT DEFAULT NULL,
-  implicit_bool_type BOOLEAN OPTIONS(implicit_bool_type 'true') DEFAULT NULL,
-  uuid_type UUID
+  id                 INT NOT NULL,
+  blob_type          TEXT DEFAULT NULL,
+  implicit_bool_type BOOLEAN OPTIONS (implicit_bool_type 'true') DEFAULT NULL,
+  uuid_type          UUID
 EO_SQL
 		),
 		3 => sprintf(
             <<EO_SQL,
-  id        INT NOT NULL,
-  blob_type TEXT DEFAULT NULL,
-  bool_type BOOLEAN DEFAULT NULL,
-  implicit_bool_type BOOLEAN OPTIONS(implicit_bool_type 'true') DEFAULT NULL,
-  uuid_type UUID
+  id                 INT NOT NULL,
+  blob_type          TEXT DEFAULT NULL,
+  bool_type          BOOLEAN DEFAULT NULL,
+  implicit_bool_type BOOLEAN OPTIONS (implicit_bool_type 'true') DEFAULT NULL,
+  uuid_type          UUID,
+  time_type          TIME,
+  timestamp_type     TIMESTAMP
+EO_SQL
+		),
+        4 => sprintf(
+            <<EO_SQL,
+  id                 INT NOT NULL,
+  blob_type          TEXT DEFAULT NULL,
+  bool_type          BOOLEAN DEFAULT NULL,
+  implicit_bool_type BOOLEAN OPTIONS (implicit_bool_type 'true') DEFAULT NULL,
+  uuid_type          UUID,
+  time_type          TIME,
+  timestamp_type     TIMESTAMP,
+  ttz_type           TIME WITH TIME ZONE,
+  tstz_type          TIMESTAMP WITH TIME ZONE
 EO_SQL
 		),
 	};
@@ -655,6 +698,21 @@ sub get_firebird_version {
     }
 
     return $version;
+}
+
+sub get_firebird_session_timezone {
+    my $self = shift;
+
+    my $timezone_sql = q|SELECT TRIM(RDB$GET_CONTEXT('SYSTEM', 'SESSION_TIMEZONE')) FROM RDB$DATABASE|;
+
+    my $timezone_q = $self->firebird_conn()->prepare( $timezone_sql );
+
+    $timezone_q->execute();
+
+    my $timezone = $timezone_q->fetchrow_array();
+    $timezone_q->finish();
+
+    return $timezone;
 }
 
 sub get_firebird_major_version {

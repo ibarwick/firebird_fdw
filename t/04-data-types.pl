@@ -19,11 +19,14 @@ my $node = FirebirdFDWNode->new();
 # Check Firebird version
 # ----------------------
 
-if ($node->{firebird_major_version} >= 3) {
-	plan tests => 10;
+if ($node->{firebird_major_version} >= 4) {
+	plan tests => 14;
+}
+elsif ($node->{firebird_major_version} >= 3) {
+	plan tests => 12;
 }
 else {
-	plan tests => 3;
+	plan tests => 5;
 }
 
 # Prepare table
@@ -291,6 +294,151 @@ is (
     qq/5/,
     q|Check UUID value retrieved correctly|,
 );
+
+# 11) Retrieve TIME/TIMESTAMP [WITHOUT TIME ZONE]
+# -----------------------------------------------
+
+$node->firebird_execute_sql(
+    sprintf(
+        <<'EO_SQL',
+INSERT INTO %s
+  (id, time_type, timestamp_type)
+VALUES
+  (11,
+   '09:00:33.1230',
+   '1999-12-31 23:59:59.1000'
+  )
+EO_SQL
+        $table_name,
+    ),
+);
+
+my $q11_sql = sprintf(
+    sprintf(
+        <<'EO_SQL',
+SELECT time_type, timestamp_type
+  FROM %s
+ WHERE id = 11
+EO_SQL
+        $table_name,
+    ),
+);
+
+my ($q11_res, $q11_stdout, $q11_stderr) = $node->psql($q11_sql);
+
+is (
+    $q11_stdout,
+    qq/09:00:33.123|1999-12-31 23:59:59.1/,
+    q|Check TIME/TIMESTAMP values retrieved correctly|,
+);
+
+# 12 Insert TIME/TIMESTAMP WITH TIME ZONE
+# ---------------------------------------
+
+my $tz = $node->get_firebird_session_timezone();
+note "Firebird system time zone is: ".$tz;
+
+my $timestamp_insert_sql = sprintf(
+    <<'EO_SQL',
+INSERT INTO %s
+  (id, time_type, timestamp_type)
+VALUES
+  (12, '12:30:15.123456', '2011-12-13 14:15:16.123456')
+EO_SQL
+    $table_name,
+);
+
+$node->safe_psql($timestamp_insert_sql);
+
+my $q12_sql = sprintf(
+    <<'EO_SQL',
+SELECT time_type, timestamp_type
+  FROM %s
+ WHERE id = 12
+EO_SQL
+    $table_name,
+);
+
+my ($q12_res, $q12_stdout, $q12_stderr) = $node->psql($q12_sql);
+
+is (
+    $q12_stdout,
+    qq/12:30:15.1234|2011-12-13 14:15:16.1234/,
+    q|Check TIME/TIMESTAMP values inserted correctly|,
+);
+
+if ($node->{firebird_major_version} >= 4) {
+
+    # 13) Retrieve TIME/TIMESTAMP WITH TIME ZONE
+    # ------------------------------------------
+
+    $node->firebird_execute_sql(
+        sprintf(
+            <<'EO_SQL',
+INSERT INTO %s
+  (id, ttz_type, tstz_type)
+VALUES
+  (13,
+   '14:46:33.1230 Asia/Tokyo',
+   '1999-12-31 23:59:59.0100 +05:30'
+  )
+EO_SQL
+            $table_name,
+        ),
+    );
+
+    my $q13_sql = sprintf(
+        sprintf(
+            <<'EO_SQL',
+SELECT ttz_type, tstz_type
+  FROM %s
+ WHERE id = 13
+EO_SQL
+            $table_name,
+        ),
+    );
+
+    my ($q13_res, $q13_stdout, $q13_stderr) = $node->psql($q13_sql);
+
+    is (
+        $q13_stdout,
+        qq/14:46:33.123+09|2000-01-01 03:29:59.01+09/,
+        q|Check TIME/TIMESTAMP WITH TIME ZONE values retrieved correctly|,
+    );
+
+    # 14 Insert TIME/TIMESTAMP WITH TIME ZONE
+    # ---------------------------------------
+
+    my $tz_insert_sql = sprintf(
+        <<'EO_SQL',
+INSERT INTO %s
+  (id, ttz_type, tstz_type)
+VALUES
+  (14, '12:30:15+05:30', '2011-12-13 14:15:16.123456')
+EO_SQL
+        $table_name,
+    );
+
+    $node->safe_psql($tz_insert_sql);
+
+    my $q14_sql = sprintf(
+        <<'EO_SQL',
+SELECT ttz_type, tstz_type
+  FROM %s
+ WHERE id = 14
+EO_SQL
+        $table_name,
+    );
+
+    my ($q14_res, $q14_stdout, $q14_stderr) = $node->psql($q14_sql);
+
+    is (
+        $q14_stdout,
+        qq/12:30:15+05:30|2011-12-13 14:15:16.1234+09/,
+        q|Check TIME/TIMESTAMP WITH TIME ZONE values inserted correctly|,
+    );
+}
+
 
 # Clean up
 # --------
