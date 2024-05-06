@@ -17,17 +17,7 @@ use FirebirdFDWNode;
 
 my $node = FirebirdFDWNode->new();
 my $version = $node->pg_version();
-
-my @min_compat_versions = (4, 3, 2);
-
-my $min_compat_version = undef;
-
-foreach my $version (@min_compat_versions) {
-    if ($node->get_firebird_major_version() >= $version) {
-        $min_compat_version = $version;
-        last;
-    }
-}
+my $min_compat_version = $node->get_min_compat_version();
 
 my $test_count = $node->{firebird_major_version} >= 4 ? 12 : 11;
 

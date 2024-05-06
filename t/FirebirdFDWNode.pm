@@ -337,16 +337,7 @@ sub init_data_type_table {
 
     $params{firebird_only} //= 0;
 
-    my @min_compat_versions = (4, 3, 2);
-
-    my $min_compat_version = undef;
-
-    foreach my $version (@min_compat_versions) {
-        if ($self->{firebird_major_version} >= $version) {
-            $min_compat_version = $version;
-            last;
-        }
-    }
+    my $min_compat_version = $self->get_min_compat_version();
 
     my $table_name = sprintf(
         q|%s_data_type|,
@@ -729,6 +720,31 @@ sub get_firebird_major_version {
 
 	return undef;
 }
+
+
+# Some operations and tests depend on Firebird being at least
+# a particular version, so determine what that is from the current
+# major version.
+
+sub get_min_compat_version {
+    my $self = shift;
+
+    # Currently we do not support any functionality specific to Firebird 5
+    my @min_compat_versions = (4, 3, 2);
+
+    my $min_compat_version = undef;
+
+    foreach my $version (@min_compat_versions) {
+        if ($self->{firebird_major_version} >= $version) {
+            $min_compat_version = $version;
+            last;
+        }
+    }
+
+    return $min_compat_version;
+}
+
+
 
 sub firebird_format_results {
     my $self = shift;
