@@ -1367,9 +1367,13 @@ firebirdGetForeignPlan(PlannerInfo *root,
 	 */
 	fdw_private = list_make3(makeString(sql.data),
 							 retrieved_attrs,
+#if (PG_VERSION_NUM >= 150000)
+							 makeBoolean(db_key_used));
+#else
 							 makeInteger(db_key_used));
+#endif
 
-	/* Create the ForeignScan node */
+/* Create the ForeignScan node */
 	return make_foreignscan(tlist,
 							local_exprs,
 							scan_relid,
@@ -1548,8 +1552,13 @@ firebirdBeginForeignScan(ForeignScanState *node,
 	}
 	else
 	{
+#if (PG_VERSION_NUM >= 150000)
+		fdw_state->db_key_used = boolVal(list_nth(fsplan->fdw_private,
+													   FdwScanDbKeyUsed));
+#else
 		fdw_state->db_key_used = (bool)intVal(list_nth(fsplan->fdw_private,
 													   FdwScanDbKeyUsed));
+#endif
 	}
 
 	fdw_state->query = strVal(list_nth(fsplan->fdw_private,
@@ -2176,7 +2185,11 @@ firebirdPlanForeignModify(PlannerInfo *root,
 
 	return list_make4(makeString(sql.data),
 					  targetAttrs,
+#if (PG_VERSION_NUM >= 150000)
+					  makeBoolean((returningList != NIL)),
+#else
 					  makeInteger((returningList != NIL)),
+#endif
 					  retrieved_attrs);
 }
 
@@ -2389,6 +2402,7 @@ firebirdBeginForeignModify(ModifyTableState *mtstate,
 {
 	FirebirdFdwModifyState *fmstate;
 	RangeTblEntry *rte;
+	bool		has_returning;
 
 	CmdType		operation = mtstate->operation;
 
@@ -2410,6 +2424,14 @@ firebirdBeginForeignModify(ModifyTableState *mtstate,
 				   mtstate->ps.state->es_range_table);
 #endif
 
+#if (PG_VERSION_NUM >= 150000)
+	/* see 941460fc */
+	has_returning = boolVal(list_nth(fdw_private,
+									 FdwModifyPrivateHasReturning));
+#else
+	has_returning = intVal(list_nth(fdw_private,
+									FdwModifyPrivateHasReturning));
+#endif
 
 	fmstate = create_foreign_modify(mtstate->ps.state,
 									rte,
@@ -2424,8 +2446,7 @@ firebirdBeginForeignModify(ModifyTableState *mtstate,
 													FdwModifyPrivateUpdateSql)),
 									(List *) list_nth(fdw_private,
 													  FdwModifyPrivateTargetAttnums),
-									intVal(list_nth(fdw_private,
-													FdwModifyPrivateHasReturning)),
+									has_returning,
 									(List *) list_nth(fdw_private,
 													  FdwModifyPrivateRetrievedAttrs));
 
