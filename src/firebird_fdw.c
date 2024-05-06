@@ -297,6 +297,12 @@ extractDbKeyParts(TupleTableSlot *planSlot,
 				  Datum *datum_ctid,
 				  Datum *datum_oid);
 
+#if (PG_VERSION_NUM < 110000)
+/* These functions are not available exernally in Pg10 and earlier */
+static int	time2tm(TimeADT time, struct pg_tm *tm, fsec_t *fsec);
+static int	timetz2tm(TimeTzADT *time, struct pg_tm *tm, fsec_t *fsec, int *tzp);
+#endif
+
 #if (PG_VERSION_NUM >= 140000)
 static int get_batch_size_option(Relation rel);
 #endif
@@ -4076,7 +4082,7 @@ convert_prep_stmt_params(FirebirdFdwModifyState *fmstate,
 						 * session time zone.
 						 */
 						if (attr->atttypid == TIMESTAMPOID)
-							utc_tz = DecodeTimezoneNameToTz("UTC");
+							utc_tz = pg_tzset("utc");
 
 						timestamp2tm(valueTimestamp, &tz, tm, &fsec, &tzn,
 									 utc_tz);
@@ -4401,6 +4407,51 @@ extractDbKeyParts(TupleTableSlot *planSlot,
 	if (isNull)
 		elog(ERROR, "db_key (XMAX part) is NULL");
 }
+
+
+#if (PG_VERSION_NUM < 110000)
+/* time2tm()
+ * Convert time data type to POSIX time structure.
+ *
+ * For dates within the range of pg_time_t, convert to the local time zone.
+ * If out of this range, leave as UTC (in practice that could only happen
+ * if pg_time_t is just 32 bits) - thomas 97/05/27
+ */
+static int
+time2tm(TimeADT time, struct pg_tm *tm, fsec_t *fsec)
+{
+	tm->tm_hour = time / USECS_PER_HOUR;
+	time -= tm->tm_hour * USECS_PER_HOUR;
+	tm->tm_min = time / USECS_PER_MINUTE;
+	time -= tm->tm_min * USECS_PER_MINUTE;
+	tm->tm_sec = time / USECS_PER_SEC;
+	time -= tm->tm_sec * USECS_PER_SEC;
+	*fsec = time;
+	return 0;
+}
+
+/* timetz2tm()
+ * Convert TIME WITH TIME ZONE data type to POSIX time structure.
+ */
+static int
+timetz2tm(TimeTzADT *time, struct pg_tm *tm, fsec_t *fsec, int *tzp)
+{
+	TimeOffset	trem = time->time;
+
+	tm->tm_hour = trem / USECS_PER_HOUR;
+	trem -= tm->tm_hour * USECS_PER_HOUR;
+	tm->tm_min = trem / USECS_PER_MINUTE;
+	trem -= tm->tm_min * USECS_PER_MINUTE;
+	tm->tm_sec = trem / USECS_PER_SEC;
+	*fsec = trem - tm->tm_sec * USECS_PER_SEC;
+
+	if (tzp != NULL)
+		*tzp = time->zone;
+
+	return 0;
+}
+#endif
+
 
 
 #if (PG_VERSION_NUM >= 140000)

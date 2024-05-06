@@ -79,7 +79,7 @@ blob_type|text||
 bool_type|boolean||
 implicit_bool_type|smallint||
 uuid_type|character(16)||
-int128_type|numeric(39,0)|
+int128_type|numeric(39,0)||
 time_type|time without time zone||
 timestamp_type|timestamp without time zone||
 ttz_type|time with time zone||
