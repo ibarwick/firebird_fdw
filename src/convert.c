@@ -395,7 +395,7 @@ generateColumnMetadataQuery(StringInfoData *data_type_sql, char *fb_table_name)
 "			 WHEN 40  THEN 'CSTRING'\n"
 "			 WHEN 11  THEN 'D_FLOAT'\n"
 "			 WHEN 27  THEN 'DOUBLE PRECISION'\n"
-"			 WHEN 10  THEN 'FLOAT'\n"
+"			 WHEN 10  THEN 'REAL'\n"
 "			 WHEN 16  THEN \n"
 "			   CASE f.rdb$field_sub_type \n"
 "				 WHEN 1 THEN 'NUMERIC(' || f.rdb$field_precision || ',' || (-f.rdb$field_scale) || ')' \n"
