@@ -41,11 +41,12 @@ Contents
 6. [Identifier case handling](#identifier-case-handling)
 7. [Generated columns](#generated-columns)
 8. [Character set handling](#character-set-handling)
-9. [Examples](#examples)
-10. [Limitations](#limitations)
-11. [TAP tests](#tap-tests)
-12. [Development roadmap](#development-roadmap)
-13. [Useful links](#useful-links)
+9. [Data type support](#data-type-support)
+10. [Examples](#examples)
+11. [Limitations](#limitations)
+12. [TAP tests](#tap-tests)
+13. [Development roadmap](#development-roadmap)
+14. [Useful links](#useful-links)
 
 Features
 --------
@@ -513,6 +514,67 @@ rewritten transparently by `firebird_fdw`. For more details see the
 file [PostgreSQL and Firebird character set encoding compatibility](doc/ENCODINGS.md).
 
 
+Data type support
+-----------------
+
+The following table contains an overview of support for Firebird data types.
+All data types are supported in the current version of `firebird_fdw` unless
+explicitly noted.
+
+| Type                          | FB Version | Notes
+| ----------------------------- | ---------- | ------------------------------------
+| BIGINT                        |            |
+| BINARY(N)                     |            | incomplete; see notes below
+| BLOB                          |            | subtype `TEXT` only
+| BOOLEAN                       | 3.0        |
+| CHAR(N)                       |            |
+| DATE                          |            |
+| DECFLOAT                      | 4.0        | not supported
+| DECIMAL                       |            |
+| DOUBLE PRECISON               |            |
+| FLOAT                         |            | corresponds to PostgreSQL `REAL`
+| INT                           |            |
+| INT128                        | 4.0        | imported as `NUMERIC(39,0)`
+| NUMERIC                       |            |
+| SMALLINT                      |            |
+| TIME [WITHOUT TIME ZONE]      |            |
+| TIME WITH TIME ZONE           | 4.0        | see notes below
+| TIMESTAMP [WITHOUT TIME ZONE] |            |
+| TIMESTAMP WITH TIME ZONE      |            | see notes below
+| VARBINARY(N)                  |            | incomplete; see notes below
+| VARCHAR(N)                    |            |
+
+### DECFLOAT
+
+Firebird's `DECFLOAT` type is a decimal floating-point type representing
+IEEE-754 `decimal64` or `decimal128`. There is no equivalent native PostgreSQL
+type, and it is currently not supported by `libfq`. `IMPORT FOREIGN SCHEMA`
+will fail if any import candidate tables contain this data type.
+
+### INT128
+
+Firebird provides the non-standard `INT128` type. This can be simulated in
+PostgreSQL with `NUMERIC(39,0)`, and `IMPORT FOREIGN SCHEMA` will convert
+`INT128` to this.
+
+### BINARY(N) / VARBINARY(N)
+
+Support for these types (which are actually aliases for `[VAR]CHAR(N) CHARACTER SET OCTETS`)
+is only partially implemented, and currently there is no guarantee of behavioural
+reliability.
+
+However, a column defined in Firebird as `CHAR(16) CHARACTER SET OCTETS` can be
+read (but not written) as a PostgreSQL `UUID` type.
+
+### TIME and TIMESTAMP WITH TIME ZONE
+
+Firebird's `TIME WITH TIME ZONE` and `TIMESTAMP WITH TIME ZONE` are supported
+from `firebird_fdw` 1.4.0, with the caveat that Firebird's time zone support
+provides sub-second granularity of deci-milliseconds (increments of 100
+microseconds), so PostgreSQL values with a higher granularity will be truncated
+on insertion to Firebird.
+
+
 Examples
 --------
 
@@ -615,18 +677,17 @@ Haha, nice one. I should point out that `firebird_fdw` is an entirely personal
 project carried out by myself in my (limited) free time for my own personal
 gratification. While I'm happy to accept feedback, suggestions, feature
 requests, bug reports and (especially) patches, please understand that
-development is entirely at my own discretion depending on (but not limited
-to) available free time and motivation.
-
-However if you are a commercial entity and wish to have any improvements
-etc. carried out within a plannable period of time, this can be arranged
-via my employer.
+development is entirely at my own discretion depending on (but not limited to)
+available free time and motivation.
 
 Having said that, things I would like to do are:
 
- - improve support for Firebird 3.0 features
+ - improve support for features added in Firebird 3.0 and later
  - add support for missing data types
  - improve support for recent features added to the PostgreSQL FDW API.
+
+If you are a commercial entity and wish to have any improvements etc. carried
+out within a plannable period of time, please contact me privately.
 
 
 Useful links
