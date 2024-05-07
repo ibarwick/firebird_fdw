@@ -255,7 +255,7 @@ The following column-level options are available:
 
 - **batch_size**
 
-  See `CREATE SERVER options` section for details.
+  See [`CREATE SERVER options`](#create-server-options) section for details.
 
   `firebird_fdw` 1.3.0 and later / PostgreSQL 14 and later.
 
