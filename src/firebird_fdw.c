@@ -2292,13 +2292,20 @@ create_foreign_modify(EState *estate,
 		{
 			int				  attnum = lfirst_int(lc);
 #if (PG_VERSION_NUM >= 110000)
-			Form_pg_attribute attr	 = TupleDescAttr(tupdesc, attnum - 1);
+			Form_pg_attribute attr = TupleDescAttr(tupdesc, attnum - 1);
 #else
-			Form_pg_attribute attr	 = RelationGetDescr(rel)->attrs[attnum - 1];
+			Form_pg_attribute attr = RelationGetDescr(rel)->attrs[attnum - 1];
 #endif
 
 			elog(DEBUG2, "ins/upd: attr %i, p_nums %i", attnum, fmstate->p_nums);
 			Assert(!attr->attisdropped);
+
+#ifdef HAVE_GENERATED_COLUMNS
+			/* Ignore generated columns - these will not be transmitted to Firebird */
+			if (attr->attgenerated)
+				continue;
+#endif
+
 			getTypeOutputInfo(attr->atttypid, &typefnoid, &isvarlena);
 
 			fmgr_info(typefnoid, &fmstate->p_flinfo[fmstate->p_nums]);
@@ -2725,7 +2732,7 @@ firebirdExecForeignUpdate(EState *estate,
 										  (ItemPointer) DatumGetPointer(datum_ctid),
 										  slot);
 
-	elog(DEBUG1, "Executing:\n%s", fmstate->query);
+	elog(DEBUG1, "Executing:\n%s; p_nums: %i", fmstate->query, fmstate->p_nums);
 
 	result = FQexecParams(fmstate->conn,
 						  fmstate->query,
@@ -3941,12 +3948,28 @@ convert_prep_stmt_params(FirebirdFdwModifyState *fmstate,
 	/* get following parameters from slot */
 	if (slot != NULL && fmstate->target_attrs != NIL)
 	{
+#if (PG_VERSION_NUM >= 110000)
+		TupleDesc	tupdesc = RelationGetDescr(fmstate->rel);
+#endif
 		ListCell   *lc;
+
 		foreach (lc, fmstate->target_attrs)
 		{
 			int			attnum = lfirst_int(lc);
 			Datum		value;
 			bool		isnull;
+
+#if (PG_VERSION_NUM >= 110000)
+			Form_pg_attribute attr = TupleDescAttr(tupdesc, attnum - 1);
+#else
+			Form_pg_attribute attr = RelationGetDescr(rel)->attrs[attnum - 1];
+#endif
+
+#ifdef HAVE_GENERATED_COLUMNS
+			/* Ignore generated columns - these will not be transmitted to Firebird */
+			if (attr->attgenerated)
+				continue;
+#endif
 			value = slot_getattr(slot, attnum, &isnull);
 
 			if (isnull)
@@ -3955,11 +3978,8 @@ convert_prep_stmt_params(FirebirdFdwModifyState *fmstate,
 			}
 			else
 			{
-				Form_pg_attribute attr;
-				TupleDesc	tupdesc = RelationGetDescr(fmstate->rel);
 				bool		value_output = false;
 
-				attr = TupleDescAttr(tupdesc, attnum -1);
 				/*
 				 * If the column is a boolean, we may need to convert it into an integer if
 				 * implicit_bool_type is in use
@@ -4223,9 +4243,20 @@ get_stmt_param_formats(FirebirdFdwModifyState *fmstate,
 	/* get parameters from slot */
 	if (slot != NULL && fmstate->target_attrs != NIL)
 	{
-		for (; pindex < list_length(fmstate->target_attrs); pindex++)
+		ListCell   *lc;
+
+		foreach (lc, fmstate->target_attrs)
 		{
+#ifdef HAVE_GENERATED_COLUMNS
+			int			attnum = lfirst_int(lc);
+			TupleDesc	tupdesc = RelationGetDescr(fmstate->rel);
+			Form_pg_attribute attr = TupleDescAttr(tupdesc, attnum - 1);
+
+			if (attr->attgenerated)
+				continue;
+#endif
 			paramFormats[pindex] = 0;
+			pindex++;
 		}
 	}
 
@@ -4235,6 +4266,7 @@ get_stmt_param_formats(FirebirdFdwModifyState *fmstate,
 		paramFormats[pindex] = -1;
 		pindex++;
 	}
+
 
 	Assert(pindex == fmstate->p_nums);
 

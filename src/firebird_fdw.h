@@ -53,6 +53,10 @@
 #define table_close(x, y) heap_close(x, y)
 #endif
 
+#if (PG_VERSION_NUM >= 120000)
+#define HAVE_GENERATED_COLUMNS
+#endif
+
 #if (PG_VERSION_NUM >= 140000)
 #define NO_BATCH_SIZE_SPECIFIED -1
 #endif

@@ -486,19 +486,26 @@ table and column names by setting the respective `quote_identifier` option to `f
 Generated columns
 -----------------
 
-`firebird_fdw` (1.2.0 and later) provides support for PostgreSQL's generated
-columns (PostgreSQL 12 and later).
+`firebird_fdw` (1.2.0 and later) provides support for generated columns
+(called "computed columns" or "calculated fields" in Firebird) from PostgreSQL 12.
 
-Note that while `firebird_fdw` will insert or update the generated column value
-in Firebird, there is nothing to stop the value being modified within Firebird,
-and hence no guarantee that in subsequent `SELECT` operations the column will
-still contain the expected generated value. This limitation also applies to
-`postgres_fdw`.
+The generated column should be defined in the Firebird table. The PostgreSQL
+foreign table should include a matching definition (though technically the
+definition does not need to match - the presence of a generated column merely
+serves as an indicator that the column should never be included in the
+Firebird query).
 
-For more details on generated columns see:
+For more details on generated columns in PostgreSQL, see:
 
 - [Generated Columns](https://www.postgresql.org/docs/current/ddl-generated-columns.html)
 - [CREATE FOREIGN TABLE](https://www.postgresql.org/docs/current/sql-createforeigntable.html)
+
+Firebird documentation:
+
+- Firebird 5.0: [Computed Columns](https://firebirdsql.org/file/documentation/html/en/refdocs/fblangref50/firebird-50-language-reference.html#fblangref50-ddl-tbl-computedby)
+- Firebird 4.0: [Calculated Fields](https://firebirdsql.org/file/documentation/html/en/refdocs/fblangref40/firebird-40-language-reference.html#fblangref40-ddl-tbl-computedby)
+- Firebird 3.0: [The COMPUTED [BY] or GENERATED ALWAYS AS Clauses](https://firebirdsql.org/file/documentation/chunk/en/refdocs/fblangref30/fblangref30-ddl-table.html#fblangref30-ddl-tbl-altrcmptd)
+- Firebird 2.5: [Calculated Fields](https://firebirdsql.org/file/documentation/chunk/en/refdocs/fblangref25/fblangref25-ddl-tbl.html#fblangref25-ddl-tbl-computedby)
 
 
 Character set handling
@@ -508,7 +515,8 @@ When `firebird_fdw` connects to a Firebird database, it will set the client
 encoding to the PostgreSQL database's server encoding. As there is a broad
 overlap between PostgreSQL and Firebird character set encodings, mostly
 this will succeed, particularly with the more common encodings such as
-`UTF8` and `LATIN1`. A small subset of PostgreSQL encodings for which Firebird
+`
+UTF8` and `LATIN1`. A small subset of PostgreSQL encodings for which Firebird
 provides a corresponding encoding but no matching name or alias will be
 rewritten transparently by `firebird_fdw`. For more details see the
 file [PostgreSQL and Firebird character set encoding compatibility](doc/ENCODINGS.md).

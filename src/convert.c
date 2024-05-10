@@ -177,6 +177,9 @@ buildInsertSql(StringInfo buf,
 			   List *targetAttrs, List *returningList,
 			   List **retrieved_attrs)
 {
+#ifdef HAVE_GENERATED_COLUMNS
+	TupleDesc	tupdesc = RelationGetDescr(rel);
+#endif
 	bool		first = true;
 	ListCell   *lc;
 
@@ -187,6 +190,13 @@ buildInsertSql(StringInfo buf,
 	foreach (lc, targetAttrs)
 	{
 		int			attnum = lfirst_int(lc);
+#ifdef HAVE_GENERATED_COLUMNS
+		Form_pg_attribute attr = TupleDescAttr(tupdesc, attnum - 1);
+
+		/* Ignore generated columns */
+		if (attr->attgenerated)
+			continue;
+#endif
 
 		if (!first)
 			appendStringInfoString(buf, ", ");
@@ -201,6 +211,15 @@ buildInsertSql(StringInfo buf,
 	first = true;
 	foreach (lc, targetAttrs)
 	{
+#ifdef HAVE_GENERATED_COLUMNS
+		int			attnum = lfirst_int(lc);
+		Form_pg_attribute attr = TupleDescAttr(tupdesc, attnum - 1);
+
+		/* Ignore generated columns */
+		if (attr->attgenerated)
+			continue;
+#endif
+
 		if (!first)
 			appendStringInfoString(buf, ", ");
 		else
@@ -231,6 +250,9 @@ buildUpdateSql(StringInfo buf,
 {
 	bool		first;
 	ListCell   *lc;
+#ifdef HAVE_GENERATED_COLUMNS
+	TupleDesc	tupdesc = RelationGetDescr(rel);
+#endif
 
 	appendStringInfoString(buf, "UPDATE ");
 	convertRelation(buf, fdw_state);
@@ -240,6 +262,14 @@ buildUpdateSql(StringInfo buf,
 	foreach (lc, targetAttrs)
 	{
 		int attnum = lfirst_int(lc);
+
+#ifdef HAVE_GENERATED_COLUMNS
+		Form_pg_attribute attr = TupleDescAttr(tupdesc, attnum - 1);
+
+		/* Ignore generated columns */
+		if (attr->attgenerated)
+			continue;
+#endif
 
 		if (!first)
 			appendStringInfoString(buf, ", ");
