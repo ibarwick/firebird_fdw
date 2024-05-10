@@ -548,9 +548,11 @@ explicitly noted.
 | TIME [WITHOUT TIME ZONE]      |            |
 | TIME WITH TIME ZONE           | 4.0        | see notes below
 | TIMESTAMP [WITHOUT TIME ZONE] |            |
-| TIMESTAMP WITH TIME ZONE      |            | see notes below
+| TIMESTAMP WITH TIME ZONE      | 4.0        | see notes below
 | VARBINARY(N)                  |            | incomplete; see notes below
 | VARCHAR(N)                    |            |
+
+_If no version number is noted, the data type is available since at least Firebird 2.5_
 
 ### DECFLOAT
 
