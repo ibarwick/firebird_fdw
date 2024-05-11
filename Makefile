@@ -43,7 +43,9 @@ DATA = sql/firebird_fdw--0.3.0.sql \
 	sql/firebird_fdw--1.2.0--1.3.0.sql \
 	sql/firebird_fdw--1.3.0.sql \
 	sql/firebird_fdw--1.3.0--1.4.0.sql \
-	sql/firebird_fdw--1.4.0.sql
+	sql/firebird_fdw--1.4.0.sql \
+	sql/firebird_fdw--1.4.0--1.5.0.sql \
+	sql/firebird_fdw--1.5.0.sql
 
 
 ifndef PG_CONFIG

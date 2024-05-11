@@ -25,6 +25,7 @@ This `README` represents the documentation for the current development version
 of `firebird_fdw`. Documentation for stable releases is available at the following
 links:
 
+ - [1.4.0 README](https://github.com/ibarwick/firebird_fdw/blob/REL_1_4_STABLE/README.md) (2024-05-11)
  - [1.3.1 README](https://github.com/ibarwick/firebird_fdw/blob/REL_1_3_STABLE/README.md) (2023-06-22)
  - [1.2.3 README](https://github.com/ibarwick/firebird_fdw/blob/REL_1_2_STABLE/README.md) (2022-02-20)
  - [1.1.0 README](https://github.com/ibarwick/firebird_fdw/blob/REL_1_1_STABLE/README.md) (2019-05-31)
