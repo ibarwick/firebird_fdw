@@ -35,11 +35,7 @@
 #include "catalog/pg_proc.h"
 #include "catalog/pg_type.h"
 #include "commands/defrem.h"
-#if (PG_VERSION_NUM >= 90600)
 #include "common/keywords.h"
-#else
-#include "parser/keywords.h"
-#endif
 #include "nodes/nodeFuncs.h"
 #include "optimizer/clauses.h"
 #if (PG_VERSION_NUM >= 120000)

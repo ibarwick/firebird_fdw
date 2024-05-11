@@ -888,10 +888,8 @@ fbSigInt(SIGNAL_ARGS)
 		QueryCancelPending = true;
 	}
 
-#if (PG_VERSION_NUM >= 90600)
 	/* If we're still here, waken anything waiting on the process latch */
 	SetLatch(MyLatch);
-#endif
 
 	errno = save_errno;
 }
@@ -1085,13 +1083,8 @@ firebirdGetForeignRelSize(PlannerInfo *root,
 	 */
 	fdw_state->attrs_used = NULL;
 
-#if (PG_VERSION_NUM >= 90600)
 	pull_varattnos((Node *) baserel->reltarget->exprs, baserel->relid,
 				   &fdw_state->attrs_used);
-#else
-	pull_varattnos((Node *) baserel->reltargetlist, baserel->relid,
-				   &fdw_state->attrs_used);
-#endif
 
 	foreach (lc, fdw_state->local_conds)
 	{
@@ -1240,20 +1233,10 @@ firebirdGetForeignPaths(PlannerInfo *root,
 									 NULL,		/* no extra plan */
 									 NIL,   /* no fdw_restrictinfo list */
 									 NIL));		/* no fdw_private data */
-#elif (PG_VERSION_NUM >= 90600)
-	add_path(baserel, (Path *)
-			 create_foreignscan_path(root, baserel,
-									 NULL,		/* default pathtarget */
-									 baserel->rows,
-									 fdw_state->startup_cost,
-									 fdw_state->total_cost,
-									 NIL,		/* no pathkeys */
-									 NULL,		/* no outer rel either */
-									 NULL,		/* no extra plan */
-									 NIL));		/* no fdw_private data */
 #else
 	add_path(baserel, (Path *)
 			 create_foreignscan_path(root, baserel,
+									 NULL,		/* default pathtarget */
 									 baserel->rows,
 									 fdw_state->startup_cost,
 									 fdw_state->total_cost,
@@ -3962,7 +3945,7 @@ convert_prep_stmt_params(FirebirdFdwModifyState *fmstate,
 #if (PG_VERSION_NUM >= 110000)
 			Form_pg_attribute attr = TupleDescAttr(tupdesc, attnum - 1);
 #else
-			Form_pg_attribute attr = RelationGetDescr(rel)->attrs[attnum - 1];
+			Form_pg_attribute attr = RelationGetDescr(fmstate->rel)->attrs[attnum - 1];
 #endif
 
 #ifdef HAVE_GENERATED_COLUMNS
