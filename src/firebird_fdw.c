@@ -57,10 +57,13 @@
 #endif
 #include "parser/parsetree.h"
 #include "pgstat.h"
+#include "pgtime.h"
 #include "storage/fd.h"
 #include "storage/ipc.h"
 #include "utils/array.h"
 #include "utils/builtins.h"
+#include "utils/date.h"
+#include "utils/datetime.h"
 #include "utils/lsyscache.h"
 #include "utils/memutils.h"
 #include "utils/rel.h"
@@ -293,6 +296,12 @@ extractDbKeyParts(TupleTableSlot *planSlot,
 				  FirebirdFdwModifyState *fmstate,
 				  Datum *datum_ctid,
 				  Datum *datum_oid);
+
+#if (PG_VERSION_NUM < 110000)
+/* These functions are not available exernally in Pg10 and earlier */
+static int	time2tm(TimeADT time, struct pg_tm *tm, fsec_t *fsec);
+static int	timetz2tm(TimeTzADT *time, struct pg_tm *tm, fsec_t *fsec, int *tzp);
+#endif
 
 #if (PG_VERSION_NUM >= 140000)
 static int get_batch_size_option(Relation rel);
@@ -879,10 +888,8 @@ fbSigInt(SIGNAL_ARGS)
 		QueryCancelPending = true;
 	}
 
-#if (PG_VERSION_NUM >= 90600)
 	/* If we're still here, waken anything waiting on the process latch */
 	SetLatch(MyLatch);
-#endif
 
 	errno = save_errno;
 }
@@ -1076,13 +1083,8 @@ firebirdGetForeignRelSize(PlannerInfo *root,
 	 */
 	fdw_state->attrs_used = NULL;
 
-#if (PG_VERSION_NUM >= 90600)
 	pull_varattnos((Node *) baserel->reltarget->exprs, baserel->relid,
 				   &fdw_state->attrs_used);
-#else
-	pull_varattnos((Node *) baserel->reltargetlist, baserel->relid,
-				   &fdw_state->attrs_used);
-#endif
 
 	foreach (lc, fdw_state->local_conds)
 	{
@@ -1219,7 +1221,7 @@ firebirdGetForeignPaths(PlannerInfo *root,
 	firebirdEstimateCosts(root, baserel, foreigntableid);
 
 	/* Create a ForeignPath node and add it as only possible path */
-#if (PG_VERSION_NUM >= 90600)
+#if (PG_VERSION_NUM >= 170000)
 	add_path(baserel, (Path *)
 			 create_foreignscan_path(root, baserel,
 									 NULL,		/* default pathtarget */
@@ -1229,10 +1231,12 @@ firebirdGetForeignPaths(PlannerInfo *root,
 									 NIL,		/* no pathkeys */
 									 NULL,		/* no outer rel either */
 									 NULL,		/* no extra plan */
+									 NIL,   /* no fdw_restrictinfo list */
 									 NIL));		/* no fdw_private data */
 #else
 	add_path(baserel, (Path *)
 			 create_foreignscan_path(root, baserel,
+									 NULL,		/* default pathtarget */
 									 baserel->rows,
 									 fdw_state->startup_cost,
 									 fdw_state->total_cost,
@@ -1346,9 +1350,13 @@ firebirdGetForeignPlan(PlannerInfo *root,
 	 */
 	fdw_private = list_make3(makeString(sql.data),
 							 retrieved_attrs,
+#if (PG_VERSION_NUM >= 150000)
+							 makeBoolean(db_key_used));
+#else
 							 makeInteger(db_key_used));
+#endif
 
-	/* Create the ForeignScan node */
+/* Create the ForeignScan node */
 	return make_foreignscan(tlist,
 							local_exprs,
 							scan_relid,
@@ -1527,8 +1535,13 @@ firebirdBeginForeignScan(ForeignScanState *node,
 	}
 	else
 	{
+#if (PG_VERSION_NUM >= 150000)
+		fdw_state->db_key_used = boolVal(list_nth(fsplan->fdw_private,
+													   FdwScanDbKeyUsed));
+#else
 		fdw_state->db_key_used = (bool)intVal(list_nth(fsplan->fdw_private,
 													   FdwScanDbKeyUsed));
+#endif
 	}
 
 	fdw_state->query = strVal(list_nth(fsplan->fdw_private,
@@ -2155,7 +2168,11 @@ firebirdPlanForeignModify(PlannerInfo *root,
 
 	return list_make4(makeString(sql.data),
 					  targetAttrs,
+#if (PG_VERSION_NUM >= 150000)
+					  makeBoolean((returningList != NIL)),
+#else
 					  makeInteger((returningList != NIL)),
+#endif
 					  retrieved_attrs);
 }
 
@@ -2258,13 +2275,20 @@ create_foreign_modify(EState *estate,
 		{
 			int				  attnum = lfirst_int(lc);
 #if (PG_VERSION_NUM >= 110000)
-			Form_pg_attribute attr	 = TupleDescAttr(tupdesc, attnum - 1);
+			Form_pg_attribute attr = TupleDescAttr(tupdesc, attnum - 1);
 #else
-			Form_pg_attribute attr	 = RelationGetDescr(rel)->attrs[attnum - 1];
+			Form_pg_attribute attr = RelationGetDescr(rel)->attrs[attnum - 1];
 #endif
 
 			elog(DEBUG2, "ins/upd: attr %i, p_nums %i", attnum, fmstate->p_nums);
 			Assert(!attr->attisdropped);
+
+#ifdef HAVE_GENERATED_COLUMNS
+			/* Ignore generated columns - these will not be transmitted to Firebird */
+			if (attr->attgenerated)
+				continue;
+#endif
+
 			getTypeOutputInfo(attr->atttypid, &typefnoid, &isvarlena);
 
 			fmgr_info(typefnoid, &fmstate->p_flinfo[fmstate->p_nums]);
@@ -2368,6 +2392,7 @@ firebirdBeginForeignModify(ModifyTableState *mtstate,
 {
 	FirebirdFdwModifyState *fmstate;
 	RangeTblEntry *rte;
+	bool		has_returning;
 
 	CmdType		operation = mtstate->operation;
 
@@ -2389,6 +2414,14 @@ firebirdBeginForeignModify(ModifyTableState *mtstate,
 				   mtstate->ps.state->es_range_table);
 #endif
 
+#if (PG_VERSION_NUM >= 150000)
+	/* see 941460fc */
+	has_returning = boolVal(list_nth(fdw_private,
+									 FdwModifyPrivateHasReturning));
+#else
+	has_returning = intVal(list_nth(fdw_private,
+									FdwModifyPrivateHasReturning));
+#endif
 
 	fmstate = create_foreign_modify(mtstate->ps.state,
 									rte,
@@ -2403,8 +2436,7 @@ firebirdBeginForeignModify(ModifyTableState *mtstate,
 													FdwModifyPrivateUpdateSql)),
 									(List *) list_nth(fdw_private,
 													  FdwModifyPrivateTargetAttnums),
-									intVal(list_nth(fdw_private,
-													FdwModifyPrivateHasReturning)),
+									has_returning,
 									(List *) list_nth(fdw_private,
 													  FdwModifyPrivateRetrievedAttrs));
 
@@ -2683,7 +2715,7 @@ firebirdExecForeignUpdate(EState *estate,
 										  (ItemPointer) DatumGetPointer(datum_ctid),
 										  slot);
 
-	elog(DEBUG1, "Executing:\n%s", fmstate->query);
+	elog(DEBUG1, "Executing:\n%s; p_nums: %i", fmstate->query, fmstate->p_nums);
 
 	result = FQexecParams(fmstate->conn,
 						  fmstate->query,
@@ -3874,7 +3906,7 @@ convertResToArray(FBresult *res, int row, char **values)
  *
  * Create array of text strings representing parameter values
  *
- * "tupleid_ctid" and "tupleid_oid" are used to form the generated RDB$DB_KEY
+ * "tupleid_ctid" and "tupleid_oid" are used to form the generated RDB$DB_KEY, or
  * NULL if none.
  * "slot" is slot to get remaining parameters from, or NULL if none.
  *
@@ -3899,12 +3931,28 @@ convert_prep_stmt_params(FirebirdFdwModifyState *fmstate,
 	/* get following parameters from slot */
 	if (slot != NULL && fmstate->target_attrs != NIL)
 	{
+#if (PG_VERSION_NUM >= 110000)
+		TupleDesc	tupdesc = RelationGetDescr(fmstate->rel);
+#endif
 		ListCell   *lc;
+
 		foreach (lc, fmstate->target_attrs)
 		{
 			int			attnum = lfirst_int(lc);
 			Datum		value;
 			bool		isnull;
+
+#if (PG_VERSION_NUM >= 110000)
+			Form_pg_attribute attr = TupleDescAttr(tupdesc, attnum - 1);
+#else
+			Form_pg_attribute attr = RelationGetDescr(fmstate->rel)->attrs[attnum - 1];
+#endif
+
+#ifdef HAVE_GENERATED_COLUMNS
+			/* Ignore generated columns - these will not be transmitted to Firebird */
+			if (attr->attgenerated)
+				continue;
+#endif
 			value = slot_getattr(slot, attnum, &isnull);
 
 			if (isnull)
@@ -3913,61 +3961,205 @@ convert_prep_stmt_params(FirebirdFdwModifyState *fmstate,
 			}
 			else
 			{
+				bool		value_output = false;
+
 				/*
 				 * If the column is a boolean, we may need to convert it into an integer if
 				 * implicit_bool_type is in use
 				 */
-				Form_pg_attribute attr;
-				TupleDesc	tupdesc = RelationGetDescr(fmstate->rel);
-				bool		value_output = false;
 
-				attr = TupleDescAttr(tupdesc, attnum -1);
-
-				if (attr->atttypid == BOOLOID)
+				switch (attr->atttypid)
 				{
-					ForeignTable *table = GetForeignTable(RelationGetRelid(fmstate->rel));
-					ForeignServer *server = GetForeignServer(table->serverid);
-					fbServerOptions server_options = fbServerOptions_init;
-					bool use_implicit_bool_type = false;
-
-					server_options.implicit_bool_type.opt.boolptr = &use_implicit_bool_type;
-
-					firebirdGetServerOptions(server, &server_options);
-
-					if (use_implicit_bool_type)
+					case BOOLOID:
 					{
-						bool col_implicit_bool_type = false;
+						ForeignTable *table = GetForeignTable(RelationGetRelid(fmstate->rel));
+						ForeignServer *server = GetForeignServer(table->serverid);
+						fbServerOptions server_options = fbServerOptions_init;
+						bool use_implicit_bool_type = false;
 
-						/* Firebird before 3.0 has no BOOLEAN datatype */
-						if (fmstate->firebird_version < 30000)
+						server_options.implicit_bool_type.opt.boolptr = &use_implicit_bool_type;
+
+						firebirdGetServerOptions(server, &server_options);
+
+						if (use_implicit_bool_type)
 						{
-							col_implicit_bool_type = true;
+							bool col_implicit_bool_type = false;
+
+							/* Firebird before 3.0 has no BOOLEAN datatype */
+							if (fmstate->firebird_version < 30000)
+							{
+								col_implicit_bool_type = true;
+							}
+							else
+							{
+								fbColumnOptions column_options = fbColumnOptions_init;
+
+								column_options.implicit_bool_type = &col_implicit_bool_type;
+
+								firebirdGetColumnOptions(table->relid, attnum,
+														 &column_options);
+							}
+
+							if (col_implicit_bool_type)
+							{
+								char *bool_value = OutputFunctionCall(&fmstate->p_flinfo[pindex],
+																	  value);
+								if (bool_value[0] == 'f')
+									p_values[pindex] = "0";
+								else
+									p_values[pindex] = "1";
+
+								value_output = true;
+							}
+						}
+						break;
+					}
+					case TIMEOID:
+					{
+						StringInfoData fb_ts;
+						TimeADT       time = DatumGetTimeADT(value);
+						struct pg_tm tt, *tm = &tt;
+						fsec_t		 fsec;
+
+						time2tm(time, tm, &fsec);
+
+						initStringInfo(&fb_ts);
+
+						appendStringInfo(&fb_ts,
+										 "%02d:%02d:%02d.%04d",
+										 tt.tm_hour,
+										 tt.tm_min,
+										 tt.tm_sec,
+										 /* Firebird has deci-millsecond granularity */
+										 fsec / 100);
+
+						p_values[pindex] = fb_ts.data;
+						value_output = true;
+
+						break;
+					}
+					case TIMETZOID:
+					{
+						StringInfoData fb_ts;
+						TimeTzADT  *time = DatumGetTimeTzADTP(value);
+						int			 tz;
+						struct pg_tm tt, *tm = &tt;
+						fsec_t		 fsec;
+
+						bool offset_positive;
+						int offset_raw;
+						int offset_hours;
+						int offset_minutes;
+
+						timetz2tm(time, tm, &fsec, &tz);
+
+						if (tz < 0)
+							tz = abs(tz);
+						else
+							tz = 0 - tz;
+
+						if (tz > 0)
+						{
+							offset_positive = true;
+							offset_raw = tz;
 						}
 						else
 						{
-							fbColumnOptions column_options = fbColumnOptions_init;
-
-							column_options.implicit_bool_type = &col_implicit_bool_type;
-
-							firebirdGetColumnOptions(table->relid, attnum,
-													 &column_options);
+							offset_positive = false;
+							offset_raw = abs(tz);
 						}
 
+						offset_hours = offset_raw / 3600;
+						offset_minutes = (offset_raw - (offset_hours * 3600)) / 60;
 
-						if (col_implicit_bool_type)
+						initStringInfo(&fb_ts);
+
+						appendStringInfo(&fb_ts,
+										 "%02d:%02d:%02d.%04d %c%02d:%02d",
+										 tt.tm_hour,
+										 tt.tm_min,
+										 tt.tm_sec,
+										  /* Firebird has deci-millsecond granularity */
+										 fsec / 100,
+										 offset_positive ? '+' : '-',
+										 offset_hours,
+										 offset_minutes);
+
+						p_values[pindex] = fb_ts.data;
+						value_output = true;
+
+						break;
+					}
+					case TIMESTAMPOID:
+					case TIMESTAMPTZOID:
+					{
+						StringInfoData fb_ts;
+						TimestampTz	 valueTimestamp = DatumGetTimestampTz(value);
+						int			 tz;
+						struct pg_tm tt, *tm = &tt;
+						fsec_t		 fsec;
+						const char  *tzn;
+						pg_tz       *utc_tz = NULL;
+
+						/*
+						 * For TIMESTAMP WITHOUT TIME ZONE, prevent conversion to the
+						 * session time zone.
+						 */
+						if (attr->atttypid == TIMESTAMPOID)
+							utc_tz = pg_tzset("utc");
+
+						timestamp2tm(valueTimestamp, &tz, tm, &fsec, &tzn,
+									 utc_tz);
+
+						initStringInfo(&fb_ts);
+						appendStringInfo(&fb_ts,
+										 "%04d-%02d-%02d %02d:%02d:%02d.%04d",
+										 tt.tm_year,
+										 tt.tm_mon,
+										 tt.tm_mday,
+										 tt.tm_hour,
+										 tt.tm_min,
+										 tt.tm_sec,
+										  /* Firebird has deci-millsecond granularity */
+										 fsec / 100);
+
+						if (attr->atttypid == TIMESTAMPTZOID)
 						{
-							char *bool_value = OutputFunctionCall(&fmstate->p_flinfo[pindex],
-																  value);
-							if (bool_value[0] == 'f')
-								p_values[pindex] = "0";
-							else
-								p_values[pindex] = "1";
+							bool offset_positive;
+							int offset_raw;
+							int offset_hours;
+							int offset_minutes;
 
-							value_output = true;
+							if (tt.tm_gmtoff > 0)
+							{
+								offset_positive = true;
+								offset_raw = tt.tm_gmtoff;
+							}
+							else
+							{
+								offset_positive = false;
+								offset_raw = abs(tt.tm_gmtoff);
+							}
+
+							offset_hours = offset_raw / 3600;
+							offset_minutes = offset_raw - (offset_hours * 3600);
+
+							appendStringInfo(&fb_ts,
+											 " %c%02d:%02d",
+											 offset_positive ? '+' : '-',
+											 offset_hours,
+											 offset_minutes);
 						}
+
+						p_values[pindex] = fb_ts.data;
+						value_output = true;
+						break;
 					}
 				}
 
+				/*
+				 * The value was not fetched by code handling a specific data type.
+				 */
 				if (value_output == false)
 					p_values[pindex] = OutputFunctionCall(&fmstate->p_flinfo[pindex],
 														  value);
@@ -4034,9 +4226,20 @@ get_stmt_param_formats(FirebirdFdwModifyState *fmstate,
 	/* get parameters from slot */
 	if (slot != NULL && fmstate->target_attrs != NIL)
 	{
-		for (; pindex < list_length(fmstate->target_attrs); pindex++)
+		ListCell   *lc;
+
+		foreach (lc, fmstate->target_attrs)
 		{
+#ifdef HAVE_GENERATED_COLUMNS
+			int			attnum = lfirst_int(lc);
+			TupleDesc	tupdesc = RelationGetDescr(fmstate->rel);
+			Form_pg_attribute attr = TupleDescAttr(tupdesc, attnum - 1);
+
+			if (attr->attgenerated)
+				continue;
+#endif
 			paramFormats[pindex] = 0;
+			pindex++;
 		}
 	}
 
@@ -4046,6 +4249,7 @@ get_stmt_param_formats(FirebirdFdwModifyState *fmstate,
 		paramFormats[pindex] = -1;
 		pindex++;
 	}
+
 
 	Assert(pindex == fmstate->p_nums);
 
@@ -4239,6 +4443,51 @@ extractDbKeyParts(TupleTableSlot *planSlot,
 	if (isNull)
 		elog(ERROR, "db_key (XMAX part) is NULL");
 }
+
+
+#if (PG_VERSION_NUM < 110000)
+/* time2tm()
+ * Convert time data type to POSIX time structure.
+ *
+ * For dates within the range of pg_time_t, convert to the local time zone.
+ * If out of this range, leave as UTC (in practice that could only happen
+ * if pg_time_t is just 32 bits) - thomas 97/05/27
+ */
+static int
+time2tm(TimeADT time, struct pg_tm *tm, fsec_t *fsec)
+{
+	tm->tm_hour = time / USECS_PER_HOUR;
+	time -= tm->tm_hour * USECS_PER_HOUR;
+	tm->tm_min = time / USECS_PER_MINUTE;
+	time -= tm->tm_min * USECS_PER_MINUTE;
+	tm->tm_sec = time / USECS_PER_SEC;
+	time -= tm->tm_sec * USECS_PER_SEC;
+	*fsec = time;
+	return 0;
+}
+
+/* timetz2tm()
+ * Convert TIME WITH TIME ZONE data type to POSIX time structure.
+ */
+static int
+timetz2tm(TimeTzADT *time, struct pg_tm *tm, fsec_t *fsec, int *tzp)
+{
+	TimeOffset	trem = time->time;
+
+	tm->tm_hour = trem / USECS_PER_HOUR;
+	trem -= tm->tm_hour * USECS_PER_HOUR;
+	tm->tm_min = trem / USECS_PER_MINUTE;
+	trem -= tm->tm_min * USECS_PER_MINUTE;
+	tm->tm_sec = trem / USECS_PER_SEC;
+	*fsec = trem - tm->tm_sec * USECS_PER_SEC;
+
+	if (tzp != NULL)
+		*tzp = time->zone;
+
+	return 0;
+}
+#endif
+
 
 
 #if (PG_VERSION_NUM >= 140000)

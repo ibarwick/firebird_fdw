@@ -17,7 +17,6 @@
 EXTENSION    = firebird_fdw
 EXTVERSION   = $(shell grep default_version $(EXTENSION).control | sed -e "s/default_version[[:space:]]*=[[:space:]]*'\([^']*\)'/\1/")
 
-DATA         = $(filter-out $(wildcard sql/*--*.sql),$(wildcard sql/*.sql))
 MODULE_big   = $(EXTENSION)
 
 OBJS         = $(patsubst %.c,%.o,$(wildcard src/*.c))
@@ -26,7 +25,6 @@ FIREBIRD_FDW_DEBUG_BUILD ?= 0
 ifneq ($(FIREBIRD_FDW_DEBUG_BUILD),0)
 PG_CPPFLAGS += -DFIREBIRD_FDW_DEBUG_BUILD
 endif
-
 
 +PG_CPPFLAGS += -Werror-missing-prototypes
 SHLIB_LINK += -lfq -lfbclient
@@ -43,7 +41,11 @@ DATA = sql/firebird_fdw--0.3.0.sql \
 	sql/firebird_fdw--1.1.0--1.2.0.sql \
 	sql/firebird_fdw--1.2.0.sql \
 	sql/firebird_fdw--1.2.0--1.3.0.sql \
-	sql/firebird_fdw--1.3.0.sql
+	sql/firebird_fdw--1.3.0.sql \
+	sql/firebird_fdw--1.3.0--1.4.0.sql \
+	sql/firebird_fdw--1.4.0.sql \
+	sql/firebird_fdw--1.4.0--1.5.0.sql \
+	sql/firebird_fdw--1.5.0.sql
 
 
 ifndef PG_CONFIG
@@ -55,8 +57,8 @@ include $(PGXS)
 
 # Sanity-check supported version
 
-ifeq (,$(findstring $(MAJORVERSION),9.5 9.6 10 11 12 13 14 15 16))
-$(error firebird_fdw supports PostgreSQL 9.5 and later)
+ifeq (,$(findstring $(MAJORVERSION),10 11 12 13 14 15 16 17))
+$(error firebird_fdw supports PostgreSQL 10 and later)
 endif
 
 $(info Building against PostgreSQL $(MAJORVERSION))

@@ -37,11 +37,17 @@ else {
 
 my $table_name = $node->make_table_name();
 
+# Note that Firebird accepts "GENERATED ALWAYS AS" but renders
+# it as "COMPUTED BY". It does not accept the STORED suffix.
+#
+# Reference:
+#   https://firebirdsql.org/file/documentation/html/en/refdocs/fblangref50/firebird-50-language-reference.html#fblangref50-ddl-tbl-computedby
+
 my $tbl_sql = sprintf(
     <<EO_SQL,
 CREATE TABLE %s (
    a INT,
-   b INT
+   b INT GENERATED ALWAYS AS (a * 2)
 )
 EO_SQL
     $table_name,

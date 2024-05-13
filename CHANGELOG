@@ -1,5 +1,18 @@
 Revision history for firebird_fdw
 
+1.4.0	2024-05-11
+	- Support for PostgreSQL 17 added
+	- Basic support for UUID datatype added
+	- Proper support for Firebird TIME/TIMESTAMP datatypes added
+	- Support for Firebird TIME WITH TIME ZONE / TIMESTAMP WITH TIME ZONE
+	  datatypes added
+	- Support for importing Firebird INT128 datatype added
+	- Import Firebird FLOAT as PostgreSQL REAL
+	- Fix generated columns support
+
+1.3.1	2023-06-22
+	- Support for PostgreSQL 16 added
+
 1.3.0	2022-12-28
 	- Support for PostgreSQL 15 added
 	- Support for PostgreSQL 9.3/9.4 removed

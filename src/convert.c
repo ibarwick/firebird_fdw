@@ -35,11 +35,7 @@
 #include "catalog/pg_proc.h"
 #include "catalog/pg_type.h"
 #include "commands/defrem.h"
-#if (PG_VERSION_NUM >= 90600)
 #include "common/keywords.h"
-#else
-#include "parser/keywords.h"
-#endif
 #include "nodes/nodeFuncs.h"
 #include "optimizer/clauses.h"
 #if (PG_VERSION_NUM >= 120000)
@@ -180,6 +176,9 @@ buildInsertSql(StringInfo buf,
 			   List *targetAttrs, List *returningList,
 			   List **retrieved_attrs)
 {
+#ifdef HAVE_GENERATED_COLUMNS
+	TupleDesc	tupdesc = RelationGetDescr(rel);
+#endif
 	bool		first = true;
 	ListCell   *lc;
 
@@ -190,6 +189,13 @@ buildInsertSql(StringInfo buf,
 	foreach (lc, targetAttrs)
 	{
 		int			attnum = lfirst_int(lc);
+#ifdef HAVE_GENERATED_COLUMNS
+		Form_pg_attribute attr = TupleDescAttr(tupdesc, attnum - 1);
+
+		/* Ignore generated columns */
+		if (attr->attgenerated)
+			continue;
+#endif
 
 		if (!first)
 			appendStringInfoString(buf, ", ");
@@ -204,6 +210,15 @@ buildInsertSql(StringInfo buf,
 	first = true;
 	foreach (lc, targetAttrs)
 	{
+#ifdef HAVE_GENERATED_COLUMNS
+		int			attnum = lfirst_int(lc);
+		Form_pg_attribute attr = TupleDescAttr(tupdesc, attnum - 1);
+
+		/* Ignore generated columns */
+		if (attr->attgenerated)
+			continue;
+#endif
+
 		if (!first)
 			appendStringInfoString(buf, ", ");
 		else
@@ -234,6 +249,9 @@ buildUpdateSql(StringInfo buf,
 {
 	bool		first;
 	ListCell   *lc;
+#ifdef HAVE_GENERATED_COLUMNS
+	TupleDesc	tupdesc = RelationGetDescr(rel);
+#endif
 
 	appendStringInfoString(buf, "UPDATE ");
 	convertRelation(buf, fdw_state);
@@ -243,6 +261,14 @@ buildUpdateSql(StringInfo buf,
 	foreach (lc, targetAttrs)
 	{
 		int attnum = lfirst_int(lc);
+
+#ifdef HAVE_GENERATED_COLUMNS
+		Form_pg_attribute attr = TupleDescAttr(tupdesc, attnum - 1);
+
+		/* Ignore generated columns */
+		if (attr->attgenerated)
+			continue;
+#endif
 
 		if (!first)
 			appendStringInfoString(buf, ", ");
@@ -398,7 +424,7 @@ generateColumnMetadataQuery(StringInfoData *data_type_sql, char *fb_table_name)
 "			 WHEN 40  THEN 'CSTRING'\n"
 "			 WHEN 11  THEN 'D_FLOAT'\n"
 "			 WHEN 27  THEN 'DOUBLE PRECISION'\n"
-"			 WHEN 10  THEN 'FLOAT'\n"
+"			 WHEN 10  THEN 'REAL'\n"
 "			 WHEN 16  THEN \n"
 "			   CASE f.rdb$field_sub_type \n"
 "				 WHEN 1 THEN 'NUMERIC(' || f.rdb$field_precision || ',' || (-f.rdb$field_scale) || ')' \n"
@@ -420,9 +446,12 @@ generateColumnMetadataQuery(StringInfoData *data_type_sql, char *fb_table_name)
 "			   END \n"
 "			 WHEN 12  THEN 'DATE'\n"
 "			 WHEN 13  THEN 'TIME'\n"
+"			 WHEN 28  THEN 'TIME WITH TIME ZONE'\n"
 "			 WHEN 35  THEN 'TIMESTAMP'\n"
+"			 WHEN 29  THEN 'TIMESTAMP WITH TIME ZONE'\n"
 "			 WHEN 37  THEN 'VARCHAR(' || f.rdb$field_length|| ')'\n"
 "			 WHEN 23  THEN 'BOOLEAN' \n"
+"			 WHEN 26  THEN 'NUMERIC(39,0)'\n"
 "			 ELSE 'UNKNOWN'\n"
 "		   END AS data_type,\n"
 "		  COALESCE(rf.rdb$default_source, '') \n"
@@ -787,6 +816,7 @@ convertDatum(Datum datum, Oid type)
 			break;
 
 		default:
+			elog(WARNING, "convertDatum(): unknown type %u", type);
 			return NULL;
 	}
 
@@ -1223,6 +1253,8 @@ convertConst(Const *node, convert_expr_cxt *context, char **result)
 					 &typoutput, &typIsVarlena);
    extval = OidOutputFunctionCall(typoutput, node->constvalue);
 
+   elog(DEBUG1, "consttype: %u", node->consttype);
+
    switch (node->consttype)
 	{
 		case INT2OID:
@@ -1260,6 +1292,8 @@ convertConst(Const *node, convert_expr_cxt *context, char **result)
 					(errcode(ERRCODE_FDW_INVALID_DATA_TYPE),
 					 errmsg("unsupported data type %i", node->consttype)));
 			break;
+		case UUIDOID:
+			/* XXX handle UUIDs here if pushing down */
 		default:
 			convertStringLiteral(&buf, extval);
 			break;
@@ -2376,8 +2410,12 @@ foreign_expr_walker(Node *node,
 			return false;
 		}
 		case T_Const:
+		{
+			Const *const_node = (Const *) node;
+			if (const_node->consttype == UUIDOID)
+				return false;
 			return true;
-
+		}
 		case T_OpExpr:
 		case T_DistinctExpr:	/* struct-equivalent to OpExpr */
 		{

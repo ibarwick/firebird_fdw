@@ -17,10 +17,7 @@ use FirebirdFDWNode;
 
 my $node = FirebirdFDWNode->new();
 my $version = $node->pg_version();
-
-my $min_compat_version = $node->{firebird_major_version} >= 3
-        ? 3
-        : 2;
+my $min_compat_version = $node->get_min_compat_version();
 
 my $test_count = $node->{firebird_major_version} >= 4 ? 12 : 11;
 
@@ -30,6 +27,8 @@ plan tests => $test_count;
 # -------------------------------
 
 my $q1_table_name = $node->init_data_type_table(firebird_only => 1);
+
+note "import table name is '$q1_table_name'";
 
 my $q1_import_sql = sprintf(
     q|IMPORT FOREIGN SCHEMA foo LIMIT TO (%s) FROM SERVER %s INTO public|,
@@ -73,6 +72,19 @@ blob_type|text||
 bool_type|boolean||
 implicit_bool_type|smallint||
 EO_TXT
+
+    $q1a_expected_output->{4} = <<EO_TXT;
+id|integer|not null|
+blob_type|text||
+bool_type|boolean||
+implicit_bool_type|smallint||
+uuid_type|character(16)||
+int128_type|numeric(39,0)||
+time_type|time without time zone||
+timestamp_type|timestamp without time zone||
+ttz_type|time with time zone||
+tstz_type|timestamp with time zone||
+EO_TXT
 }
 else {
     $q1a_expected_output->{2} = <<EO_TXT;
@@ -86,6 +98,19 @@ id|integer||not null||
 blob_type|text||||
 bool_type|boolean||||
 implicit_bool_type|smallint||||
+EO_TXT
+
+    $q1a_expected_output->{4} = <<EO_TXT;
+id|integer||not null||
+blob_type|text||||
+bool_type|boolean||||
+implicit_bool_type|smallint||||
+uuid_type|character(16)||||
+int128_type|numeric(39,0)||||
+time_type|time without time zone||||
+timestamp_type|timestamp without time zone||||
+ttz_type|time with time zone||||
+tstz_type|timestamp with time zone||||
 EO_TXT
 }
 

@@ -7,7 +7,7 @@ write (`INSERT`/`UPDATE`/`DELETE`) support, as well as pushdown of some
 operations. While it appears to be working reliably, please be aware this is
 still very much work-in-progress; *USE AT YOUR OWN RISK*.
 
-`firebird_fdw` is designed to be compatible with PostgreSQL 9.5 ~ 15.
+`firebird_fdw` is designed to be compatible with PostgreSQL 9.5 ~ 17.
 The range of `firebird_fdw` options available for a particular PostgreSQL
 version depends on the state of the Foreign Data Wrapper (FDW) API for that
 version; the more recent the version, the more features will be available.
@@ -25,7 +25,8 @@ This `README` represents the documentation for the current development version
 of `firebird_fdw`. Documentation for stable releases is available at the following
 links:
 
- - [1.3.0 README](https://github.com/ibarwick/firebird_fdw/blob/REL_1_3_STABLE/README.md) (2022-12-28)
+ - [1.4.0 README](https://github.com/ibarwick/firebird_fdw/blob/REL_1_4_STABLE/README.md) (2024-05-11)
+ - [1.3.1 README](https://github.com/ibarwick/firebird_fdw/blob/REL_1_3_STABLE/README.md) (2023-06-22)
  - [1.2.3 README](https://github.com/ibarwick/firebird_fdw/blob/REL_1_2_STABLE/README.md) (2022-02-20)
  - [1.1.0 README](https://github.com/ibarwick/firebird_fdw/blob/REL_1_1_STABLE/README.md) (2019-05-31)
  - [1.0.0 README](https://github.com/ibarwick/firebird_fdw/blob/REL_1_0_STABLE/README.md) (2018-11-09)
@@ -41,11 +42,12 @@ Contents
 6. [Identifier case handling](#identifier-case-handling)
 7. [Generated columns](#generated-columns)
 8. [Character set handling](#character-set-handling)
-9. [Examples](#examples)
-10. [Limitations](#limitations)
-11. [TAP tests](#tap-tests)
-12. [Development roadmap](#development-roadmap)
-13. [Useful links](#useful-links)
+9. [Data type support](#data-type-support)
+10. [Examples](#examples)
+11. [Limitations](#limitations)
+12. [TAP tests](#tap-tests)
+13. [Development roadmap](#development-roadmap)
+14. [Useful links](#useful-links)
 
 Features
 --------
@@ -254,7 +256,7 @@ The following column-level options are available:
 
 - **batch_size**
 
-  See `CREATE SERVER options` section for details.
+  See [`CREATE SERVER options`](#create-server-options) section for details.
 
   `firebird_fdw` 1.3.0 and later / PostgreSQL 14 and later.
 
@@ -485,19 +487,26 @@ table and column names by setting the respective `quote_identifier` option to `f
 Generated columns
 -----------------
 
-`firebird_fdw` (1.2.0 and later) provides support for PostgreSQL's generated
-columns (PostgreSQL 12 and later).
+`firebird_fdw` (1.2.0 and later) provides support for generated columns
+(called "computed columns" or "calculated fields" in Firebird) from PostgreSQL 12.
 
-Note that while `firebird_fdw` will insert or update the generated column value
-in Firebird, there is nothing to stop the value being modified within Firebird,
-and hence no guarantee that in subsequent `SELECT` operations the column will
-still contain the expected generated value. This limitation also applies to
-`postgres_fdw`.
+The generated column should be defined in the Firebird table. The PostgreSQL
+foreign table should include a matching definition (though technically the
+definition does not need to match - the presence of a generated column merely
+serves as an indicator that the column should never be included in the
+Firebird query).
 
-For more details on generated columns see:
+For more details on generated columns in PostgreSQL, see:
 
 - [Generated Columns](https://www.postgresql.org/docs/current/ddl-generated-columns.html)
 - [CREATE FOREIGN TABLE](https://www.postgresql.org/docs/current/sql-createforeigntable.html)
+
+Firebird documentation:
+
+- Firebird 5.0: [Computed Columns](https://firebirdsql.org/file/documentation/html/en/refdocs/fblangref50/firebird-50-language-reference.html#fblangref50-ddl-tbl-computedby)
+- Firebird 4.0: [Calculated Fields](https://firebirdsql.org/file/documentation/html/en/refdocs/fblangref40/firebird-40-language-reference.html#fblangref40-ddl-tbl-computedby)
+- Firebird 3.0: [The COMPUTED [BY] or GENERATED ALWAYS AS Clauses](https://firebirdsql.org/file/documentation/chunk/en/refdocs/fblangref30/fblangref30-ddl-table.html#fblangref30-ddl-tbl-altrcmptd)
+- Firebird 2.5: [Calculated Fields](https://firebirdsql.org/file/documentation/chunk/en/refdocs/fblangref25/fblangref25-ddl-tbl.html#fblangref25-ddl-tbl-computedby)
 
 
 Character set handling
@@ -507,10 +516,74 @@ When `firebird_fdw` connects to a Firebird database, it will set the client
 encoding to the PostgreSQL database's server encoding. As there is a broad
 overlap between PostgreSQL and Firebird character set encodings, mostly
 this will succeed, particularly with the more common encodings such as
-`UTF8` and `LATIN1`. A small subset of PostgreSQL encodings for which Firebird
+`
+UTF8` and `LATIN1`. A small subset of PostgreSQL encodings for which Firebird
 provides a corresponding encoding but no matching name or alias will be
 rewritten transparently by `firebird_fdw`. For more details see the
 file [PostgreSQL and Firebird character set encoding compatibility](doc/ENCODINGS.md).
+
+
+Data type support
+-----------------
+
+The following table contains an overview of support for Firebird data types.
+All data types are supported in the current version of `firebird_fdw` unless
+explicitly noted.
+
+| Type                          | FB Version | Notes
+| ----------------------------- | ---------- | ------------------------------------
+| BIGINT                        |            |
+| BINARY(N)                     |            | incomplete; see notes below
+| BLOB                          |            | subtype `TEXT` only
+| BOOLEAN                       | 3.0        |
+| CHAR(N)                       |            |
+| DATE                          |            |
+| DECFLOAT                      | 4.0        | not supported
+| DECIMAL                       |            |
+| DOUBLE PRECISON               |            |
+| FLOAT                         |            | corresponds to PostgreSQL `REAL`
+| INT                           |            |
+| INT128                        | 4.0        | imported as `NUMERIC(39,0)`
+| NUMERIC                       |            |
+| SMALLINT                      |            |
+| TIME [WITHOUT TIME ZONE]      |            |
+| TIME WITH TIME ZONE           | 4.0        | see notes below
+| TIMESTAMP [WITHOUT TIME ZONE] |            |
+| TIMESTAMP WITH TIME ZONE      | 4.0        | see notes below
+| VARBINARY(N)                  |            | incomplete; see notes below
+| VARCHAR(N)                    |            |
+
+_If no version number is noted, the data type is available since at least Firebird 2.5_
+
+### DECFLOAT
+
+Firebird's `DECFLOAT` type is a decimal floating-point type representing
+IEEE-754 `decimal64` or `decimal128`. There is no equivalent native PostgreSQL
+type, and it is currently not supported by `libfq`. `IMPORT FOREIGN SCHEMA`
+will fail if any import candidate tables contain this data type.
+
+### INT128
+
+Firebird provides the non-standard `INT128` type. This can be simulated in
+PostgreSQL with `NUMERIC(39,0)`, and `IMPORT FOREIGN SCHEMA` will convert
+`INT128` to this.
+
+### BINARY(N) / VARBINARY(N)
+
+Support for these types (which are actually aliases for `[VAR]CHAR(N) CHARACTER SET OCTETS`)
+is only partially implemented, and currently there is no guarantee of behavioural
+reliability.
+
+However, a column defined in Firebird as `CHAR(16) CHARACTER SET OCTETS` can be
+read (but not written) as a PostgreSQL `UUID` type.
+
+### TIME and TIMESTAMP WITH TIME ZONE
+
+Firebird's `TIME WITH TIME ZONE` and `TIMESTAMP WITH TIME ZONE` are supported
+from `firebird_fdw` 1.4.0, with the caveat that Firebird's time zone support
+provides sub-second granularity of deci-milliseconds (increments of 100
+microseconds), so PostgreSQL values with a higher granularity will be truncated
+on insertion to Firebird.
 
 
 Examples
@@ -615,18 +688,17 @@ Haha, nice one. I should point out that `firebird_fdw` is an entirely personal
 project carried out by myself in my (limited) free time for my own personal
 gratification. While I'm happy to accept feedback, suggestions, feature
 requests, bug reports and (especially) patches, please understand that
-development is entirely at my own discretion depending on (but not limited
-to) available free time and motivation.
-
-However if you are a commercial entity and wish to have any improvements
-etc. carried out within a plannable period of time, this can be arranged
-via my employer.
+development is entirely at my own discretion depending on (but not limited to)
+available free time and motivation.
 
 Having said that, things I would like to do are:
 
- - improve support for Firebird 3.0 features
+ - improve support for features added in Firebird 3.0 and later
  - add support for missing data types
  - improve support for recent features added to the PostgreSQL FDW API.
+
+If you are a commercial entity and wish to have any improvements etc. carried
+out within a plannable period of time, please contact me privately.
 
 
 Useful links

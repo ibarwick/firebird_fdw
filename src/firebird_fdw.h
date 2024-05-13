@@ -35,8 +35,8 @@
 
 #include "libfq.h"
 
-#define FIREBIRD_FDW_VERSION 10300
-#define FIREBIRD_FDW_VERSION_STRING "1.3.0"
+#define FIREBIRD_FDW_VERSION 10500
+#define FIREBIRD_FDW_VERSION_STRING "1.5.0a"
 
 #define FB_FDW_LOGPREFIX "[firebird_fdw] "
 #define FB_FDW_LOGPREFIX_LEN strlen(FB_FDW_LOGPREFIX)
@@ -51,6 +51,10 @@
 #if PG_VERSION_NUM < 120000
 #define table_open(x, y) heap_open(x, y)
 #define table_close(x, y) heap_close(x, y)
+#endif
+
+#if (PG_VERSION_NUM >= 120000)
+#define HAVE_GENERATED_COLUMNS
 #endif
 
 #if (PG_VERSION_NUM >= 140000)

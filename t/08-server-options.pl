@@ -28,13 +28,16 @@ my $options_q1 = sprintf(
 	$node->{server_name},
 );
 
+my $ISC_PORT = $ENV{ISC_PORT} // 3050;
+
 my $options_e1 = sprintf(
 	<<EO_TXT,
 address|localhost|t
-port|3050|t
+port|%i|t
 database|%s|t
 updatable|true|t
 EO_TXT
+    $ISC_PORT,
 	$node->{firebird_dbname},
 );
 
