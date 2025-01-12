@@ -57,7 +57,7 @@ include $(PGXS)
 
 # Sanity-check supported version
 
-ifeq (,$(findstring $(MAJORVERSION),10 11 12 13 14 15 16 17))
+ifeq (,$(findstring $(MAJORVERSION),10 11 12 13 14 15 16 17 18))
 $(error firebird_fdw supports PostgreSQL 10 and later)
 endif
 
