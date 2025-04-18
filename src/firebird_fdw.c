@@ -32,7 +32,12 @@
 #include "catalog/pg_foreign_table.h"
 #include "catalog/pg_user_mapping.h"
 #include "catalog/pg_type.h"
+#if (PG_VERSION_NUM >= 180000)
+#include "commands/explain_format.h"
+#include "commands/explain_state.h"
+#else
 #include "commands/explain.h"
+#endif
 #include "commands/vacuum.h"
 #include "executor/spi.h"
 #include "foreign/fdwapi.h"
@@ -3517,7 +3522,11 @@ fbAcquireSampleRowsFunc(Relation relation, int elevel,
 	for (fdw_state->row = 0; fdw_state->row < result_rows; fdw_state->row++)
 	{
 		/* allow user to interrupt ANALYZE */
+#if (PG_VERSION_NUM >= 180000)
+		vacuum_delay_point(true);
+#else
 		vacuum_delay_point();
+#endif
 
 		if (fdw_state->row == 0)
 		   elog(DEBUG2, "result has %i cols; tupdesc has %i atts",
