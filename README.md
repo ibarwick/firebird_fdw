@@ -2,7 +2,11 @@ Firebird Foreign Data Wrapper for PostgreSQL
 ============================================
 
 This is a foreign data wrapper (FDW) to connect [PostgreSQL](https://www.postgresql.org/)
-to [Firebird](https://firebirdsql.org/). It provides both read (`SELECT`) and
+to [Firebird](https://firebirdsql.org/).
+
+<img src="https://upload.wikimedia.org/wikipedia/commons/2/29/Postgresql_elephant.svg" align="center" height="100" alt="PostgreSQL"/>	+	<img src="https://upload.wikimedia.org/wikipedia/commons/8/8e/Firebird_logo.svg" align="center" height="100" alt="Firebird"/>
+
+This FDW provides both read (`SELECT`) and
 write (`INSERT`/`UPDATE`/`DELETE`) support, as well as pushdown of some
 operations. While it appears to be working reliably, please be aware this is
 still very much work-in-progress; *USE AT YOUR OWN RISK*.
@@ -59,7 +63,7 @@ Features
   of built-in functions)
 - Connection caching
 - Supports triggers on foreign tables
-- Supports `IMPORT FOREIGN SCHEMA` (PostgreSQL 9.5 and later)
+- Supports `IMPORT FOREIGN SCHEMA`
 - Supports `COPY` and partition tuple routing (PostgreSQL 11 and later)
 - Supports `TRUNCATE` operations (PostgreSQL 14 and later)
 
@@ -116,30 +120,30 @@ Usage
 
 `firebird_fdw` accepts the following options via the `CREATE SERVER` command:
 
-- **address**
+- **address** as *string*, default: `localhost`
 
-  The Firebird server's address (default: `localhost`)
+  The Firebird server's address.
 
-- **port**
+- **port** as *integer*, default: `3050`
 
-  The Firebird server's port (default: `3050`)
+  The Firebird server's port.
 
-- **database**
+- **database** as *string*, no default
 
   The name of the Firebird database to connect to.
 
-- **updatable**
+- **updatable** as *boolean*, default `true`
 
   A boolean value indicating whether the foreign server as a whole
-  is updatable. Default is true. Note that this can be overridden
+  is updatable. Note that this can be overridden
   by table-level settings.
 
-- **disable_pushdowns**
+- **disable_pushdowns** as *boolean*, default `false`
 
   Turns off pushdowns of `WHERE` clause elements to Firebird. Useful
   mainly for debugging and benchmarking.
 
-- **quote_identifiers**
+- **quote_identifiers** as *boolean*, default `false`
 
   Quote all identifiers (table and column names) by default. This can
   be overridden with `quote_identifier = 'false'` for individual table
@@ -149,7 +153,7 @@ Usage
 
   `firebird_fdw` 1.2.0 and later.
 
-- **implicit_bool_type**
+- **implicit_bool_type** as *boolean*, default `false`
 
   Turns on implicit conversion of Firebird integer types to PostgreSQL
   `BOOLEAN` types. This is an experimental feature and is disabled by
@@ -157,7 +161,7 @@ Usage
 
   `firebird_fdw` 1.2.0 and later.
 
-- **batch_size**
+- **batch_size** as *integer*, default `1`.
 
   Specifies the number of rows which should be inserted in a single `INSERT`
   operation. This setting can be overridden for individual tables.
@@ -169,11 +173,11 @@ Usage
 `firebird_fdw` accepts the following options via the `CREATE USER MAPPING`
 command:
 
-- **username**
+- **username** as *string*, no default
 
   The Firebird username to connect as (not case-sensitive).
 
-- **password**
+- **password** as *string*, no default
 
   The Firebird user's password.
 
@@ -183,29 +187,28 @@ command:
 `firebird_fdw` accepts the following table-level options via the
 `CREATE FOREIGN TABLE` command:
 
-- **table_name**
+- **table_name** as *string*, default to foreign table name
 
   The Firebird table name, if different to the PostgreSQL foreign table
   name. Cannot be used together with the `query` option.
 
-- **quote_identifier**
+- **quote_identifier** as *boolean*, default value comes from the same FOREIGN SERVER option.
 
   Pass the table name to Firebird as a quoted identifier.
   See "[Identifier case handling](#identifier-case-handling)" for details.
   `firebird_fdw` 1.2.0 and later.
 
-- **query**
+- **query** as *string*, no default
 
   A Firebird SQL statement producing a result set which can be treated
   like a read-only view. Cannot be used together with the `table_name` option.
 
-- **updatable**
+- **updatable** as *boolean*, default value comes from the same FOREIGN SERVER option.
 
-  A boolean value indicating whether the table is updatable. Default is `true`.
-  Note that this overrides the server-level setting. Cannot be set for the
-  `query` option.
+  A value indicating whether the table is updatable. Note that this overrides the server-level setting.
+  Cannot be set for the `query` option.
 
-- **estimated_row_count**
+- **estimated_row_count** as *integer*
 
   An integer indicating the expected number of rows in the Firebird table, or
   rows which would be returned by the statement defined in `query`. If not
@@ -214,19 +217,19 @@ command:
 
 The following column-level options are available:
 
-- **column_name**
+- **column_name** as *string*, default to name of the column of the foreign table
 
   The Firebird column name, if different to the column name defined in the
   foreign table. This can also be used for foreign tables defined with the
   `query` option.
 
-- **quote_identifier**
+- **quote_identifier** as *boolean*, default value comes from the same FOREIGN TABLE option.
 
   Pass the column name to Firebird as a quoted identifier. See section
   See "[Identifier case handling](#identifier-case-handling)" for details.
   `firebird_fdw` 1.2.0 and later.
 
-- **implicit_bool_type**
+- **implicit_bool_type** as *boolean*, default value comes from the same FOREIGN SERVER option.
 
   Set this option on a `BOOLEAN` column to `true` to indicate that the
   corresponding column in the Firebird table is a integer column which
@@ -254,7 +257,7 @@ The following column-level options are available:
   represents an implicit boolean. This functionality may work on earlier
   Firebird versions but has not been tested with them.
 
-- **batch_size**
+- **batch_size** as *integer*, default value comes from the same FOREIGN SERVER option.
 
   See [`CREATE SERVER options`](#create-server-options) section for details.
 
@@ -270,20 +273,20 @@ are carried out on it.
 `firebird_fdw` supports [IMPORT FOREIGN SCHEMA](https://www.postgresql.org/docs/current/sql-importforeignschema.html)
 (when running with PostgreSQL 9.5 or later) and accepts the following custom options:
 
-- **import_not_null**
+- **import_not_null** as *boolean*, default `true`.
 
   Determines whether column `NOT NULL` constraints are included in the definitions
-  of foreign tables imported from a Firebid server. The default is `true`.
+  of foreign tables imported from a Firebid server.
 
-- **import_views**
+- **import_views** as *boolean*, default `true`.
 
-  Determines whether Firebird views are imported as foreign tables. The default is `true`.
+  Determines whether Firebird views are imported as foreign tables.
 
-- **updatable**
+- **updatable** as *boolean*, default value comes from the same FOREIGN SERVER option.
 
   If set to `false`, mark all imported foreign tables as not updatable. The default is `true`.
-
-- **verbose**
+ 
+- **verbose** as *boolean*, default `false`.
 
   Logs the name of each table or view being imported at log level `INFO`.
 
@@ -393,6 +396,7 @@ require quoting to Firebird as-is, defaulting to lower-case. Firebird will then
 implictly fold these to upper case. For example, given the following table
 definitions in Firebird and PostgreSQL:
 
+```sql
     CREATE TABLE CASETEST1 (
       COL1 INT
     )
@@ -401,21 +405,21 @@ definitions in Firebird and PostgreSQL:
       col1 INT
     )
     SERVER fb_test
-
+```
 and given the PostgreSQL query:
-
+```sql
     SELECT col1 FROM casetest1
-
+```
 `firebird_fdw` will generate the following Firebird query:
-
+```sql
     SELECT col1 FROM casetest1
-
+```
 which is valid in both PostgreSQL and Firebird.
 
 By default, PostgreSQL will pass any identifiers which do require quoting
 according to PostgreSQL's definition as quoted identifiers to Firebird. For
 example, given the following table definitions in Firebird and PostgreSQL:
-
+```sql
     CREATE TABLE "CASEtest2" (
       "Col1" INT
     )
@@ -424,29 +428,29 @@ example, given the following table definitions in Firebird and PostgreSQL:
       "Col1" INT
     )
     SERVER fb_test
-
+```
 and given the PostgreSQL query:
-
+```sql
     SELECT "Col1" FROM "CASEtest2"
-
+```
 `firebird_fdw` will generate the following Firebird query:
-
+```sql
     SELECT "Col1" FROM "CASEtest2"
-
+```
 which is also valid in both PostgreSQL and Firebird.
 
 The same query will also be generated if the Firebird table and column names
 are specified as options:
-
+```sql
     CREATE FOREIGN TABLE casetest2a (
       col1 INT OPTIONS (column_name 'Col1')
     )
     SERVER fb_test
     OPTIONS (table_name 'CASEtest2')
-
+```
 However PostgreSQL will not quote lower-case identifiers by default. With the
 following Firebird and PostgreSQL table definitions:
-
+```sql
     CREATE TABLE "casetest3" (
       "col1" INT
     )
@@ -455,7 +459,7 @@ following Firebird and PostgreSQL table definitions:
       "col1" INT
     )
     SERVER fb_test
-
+```
 any attempt to access the foreign table `casetest3` will result in the Firebird
 error `Table unknown: CASETEST3`, as Firebird is receiving the unquoted PostgreSQL
 table name and folding it to upper case.
@@ -464,21 +468,21 @@ To ensure the correct table or column name is included in queries sent to Firebi
 from `firebird_fdw` 1.2.0 the table or column-level option `quote_identifier` can
 be provided, which will force the table or column name to be passed as a quoted
 identifier. The preceding foreign table should be defined like this:
-
+```sql
     CREATE FOREIGN TABLE casetest3 (
       col1 INT OPTIONS (quote_identifier 'true')
     )
     SERVER fb_test
     OPTIONS (quote_identifier 'true')
-
+```
 and given the PostgreSQL query:
-
+```sql
     SELECT col1 FROM casetest3
-
+```
 `firebird_fdw` will generate the following Firebird query:
-
+```sql
     SELECT "col1" FROM "casetest3"
-
+```
 The server-level option `quote_identifiers` can be set to `true` to quote all identifiers
 (table and column names) by default. This setting can be overridden for individual
 table and column names by setting the respective `quote_identifier` option to `false`.
@@ -589,26 +593,31 @@ on insertion to Firebird.
 Examples
 --------
 
-Install the extension:
-
+To install the extension in a database, connect *as superuser* and execute:
+```sql
     CREATE EXTENSION firebird_fdw;
-
-Create a foreign server with appropriate configuration:
-
+```
+Create a foreign server *as superuser* with appropriate configuration:
+```
     CREATE SERVER firebird_server
       FOREIGN DATA WRAPPER firebird_fdw
       OPTIONS (
         address 'localhost',
         database '/path/to/database'
      );
-
-Create an appropriate user mapping:
-
+```
+Create an appropriate user mapping *as superuser*:
+```sql
     CREATE USER MAPPING FOR CURRENT_USER SERVER firebird_server
-      OPTIONS(username 'sysdba', password 'masterke');
-
+      OPTIONS(username 'sysdba', password 'masterkey');
+```      
+Grant *as superuser* `usage` privelegy to non privileged user from the previous user mapping for creating foreign tables:
+```sql
+    GRANT USAGE ON FOREIGN SERVER firebird_server TO "a pg user";
+    -- change "a pg user" to real user name you need
+```
 Create a foreign table referencing the Firebird table `fdw_test`:
-
+```sql
     CREATE FOREIGN TABLE fb_test(
       id SMALLINT,
       val VARCHAR(2048)
@@ -617,9 +626,9 @@ Create a foreign table referencing the Firebird table `fdw_test`:
     OPTIONS(
       table_name 'fdw_test'
     );
-
+```
 As above, but with aliased column names:
-
+```sql
     CREATE FOREIGN TABLE fb_test_table(
       id SMALLINT OPTIONS (column_name 'test_id'),
       val VARCHAR(2048) OPTIONS (column_name 'test_val')
@@ -628,9 +637,9 @@ As above, but with aliased column names:
     OPTIONS(
       table_name 'fdw_test'
     );
-
+```
 Create a foreign table as a Firebird query:
-
+```sql
     CREATE FOREIGN TABLE fb_test_query(
       id SMALLINT,
       val VARCHAR(2048)
@@ -639,9 +648,9 @@ Create a foreign table as a Firebird query:
     OPTIONS(
       query $$ SELECT id, val FROM fdw_test $$
     );
-
+```
 Import a Firebird schema:
-
+```sql
     IMPORT FOREIGN SCHEMA someschema
       LIMIT TO (sometable)
       FROM SERVER firebird_server
@@ -651,7 +660,7 @@ Import a Firebird schema:
       FROM SERVER firebird_server
       INTO public
       OPTIONS (verbose 'true', import_views 'false');
-
+```
 Note: `someschema` has no particular meaning and can be set to an arbitrary value.
 
 Limitations
@@ -708,6 +717,9 @@ Useful links
 
  - https://github.com/ibarwick/firebird_fdw (public mirror)
  - https://pgxn.org/dist/firebird_fdw/
+ 
+ Reference FDW realisation, `postgres_fdw`
+ - https://git.postgresql.org/gitweb/?p=postgresql.git;a=tree;f=contrib/postgres_fdw;hb=HEAD
 
 ### Blog (including release notes)
 
