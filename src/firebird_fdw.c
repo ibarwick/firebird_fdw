@@ -4161,7 +4161,7 @@ convert_prep_stmt_params(FirebirdFdwModifyState *fmstate,
 							else
 							{
 								offset_positive = false;
-								offset_raw = abs(tt.tm_gmtoff);
+								offset_raw = labs(tt.tm_gmtoff);
 							}
 
 							offset_hours = offset_raw / 3600;
