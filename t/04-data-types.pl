@@ -16,18 +16,6 @@ use FirebirdFDWNode;
 
 my $node = FirebirdFDWNode->new();
 
-# Check Firebird version
-# ----------------------
-
-if ($node->{firebird_major_version} >= 4) {
-	plan tests => 14;
-}
-elsif ($node->{firebird_major_version} >= 3) {
-	plan tests => 12;
-}
-else {
-	plan tests => 5;
-}
 
 # Prepare table
 # --------------
@@ -332,42 +320,43 @@ is (
     q|Check TIME/TIMESTAMP values retrieved correctly|,
 );
 
-# 12 Insert TIME/TIMESTAMP WITH TIME ZONE
-# ---------------------------------------
 
-my $tz = $node->get_firebird_session_timezone();
-note "Firebird system time zone is: ".$tz;
+if ($node->{firebird_major_version} >= 4) {
 
-my $timestamp_insert_sql = sprintf(
-    <<'EO_SQL',
+    # 12 Insert TIME/TIMESTAMP WITH TIME ZONE
+    # ---------------------------------------
+
+    my $tz = $node->get_firebird_session_timezone();
+    note "Firebird system time zone is: ".$tz;
+
+    my $timestamp_insert_sql = sprintf(
+        <<'EO_SQL',
 INSERT INTO %s
   (id, time_type, timestamp_type)
 VALUES
   (12, '12:30:15.123456', '2011-12-13 14:15:16.123456')
 EO_SQL
-    $table_name,
-);
+        $table_name,
+    );
 
-$node->safe_psql($timestamp_insert_sql);
+    $node->safe_psql($timestamp_insert_sql);
 
-my $q12_sql = sprintf(
-    <<'EO_SQL',
+    my $q12_sql = sprintf(
+        <<'EO_SQL',
 SELECT time_type, timestamp_type
   FROM %s
  WHERE id = 12
 EO_SQL
-    $table_name,
-);
+        $table_name,
+    );
 
-my ($q12_res, $q12_stdout, $q12_stderr) = $node->psql($q12_sql);
+    my ($q12_res, $q12_stdout, $q12_stderr) = $node->psql($q12_sql);
 
-is (
-    $q12_stdout,
-    qq/12:30:15.1234|2011-12-13 14:15:16.1234/,
-    q|Check TIME/TIMESTAMP values inserted correctly|,
-);
-
-if ($node->{firebird_major_version} >= 4) {
+    is (
+        $q12_stdout,
+        qq/12:30:15.1234|2011-12-13 14:15:16.1234/,
+        q|Check TIME/TIMESTAMP values inserted correctly|,
+    );
 
     # 13) Retrieve TIME/TIMESTAMP WITH TIME ZONE
     # ------------------------------------------

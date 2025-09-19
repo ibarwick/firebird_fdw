@@ -26,16 +26,8 @@ my @boolean_pushdowns = (
 );
 
 
-my $test_cnt = 0;
 
-if ($node->{firebird_major_version} >= 3) {
-    $test_cnt += scalar @boolean_pushdowns;
-}
-
-if ($test_cnt) {
-    plan tests => $test_cnt;
-}
-else {
+if ($node->{firebird_major_version} < 3) {
     plan skip_all => sprintf(
         q|No tests for Firebird version %s|,
         $node->{firebird_major_version},

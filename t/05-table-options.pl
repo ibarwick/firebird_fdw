@@ -7,7 +7,7 @@
 use strict;
 use warnings;
 
-use Test::More tests => 3;
+use Test::More;
 
 use FirebirdFDWNode;
 
@@ -133,8 +133,6 @@ is(
 	'de|German|Deutsch',
 	'table_name/column_name options OK',
 );
-
-
 
 
 # Clean up

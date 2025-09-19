@@ -19,10 +19,6 @@ my $node = FirebirdFDWNode->new();
 my $version = $node->pg_version();
 my $min_compat_version = $node->get_min_compat_version();
 
-my $test_count = $node->{firebird_major_version} >= 4 ? 12 : 11;
-
-plan tests => $test_count;
-
 # 1) Test "IMPORT FOREIGN SCHEMA"
 # -------------------------------
 

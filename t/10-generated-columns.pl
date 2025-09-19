@@ -27,9 +27,6 @@ if ($version < 120000) {
         $version,
     );
 }
-else {
-    plan tests => 2;
-}
 
 
 # Create tables

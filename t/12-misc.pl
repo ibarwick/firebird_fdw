@@ -61,9 +61,6 @@ $tests += scalar @on_conflict_tests;
 if (!$tests) {
     plan skip_all => q|all test(s) skipped|;
 }
-else {
-    plan tests => $tests;
-}
 
 
 # 1. Check INSERT ... ON CONFLICT
@@ -87,3 +84,5 @@ foreach my $on_conflict_test (@on_conflict_tests) {
             $on_conflict_test->[2],
     );
 }
+
+done_testing();
