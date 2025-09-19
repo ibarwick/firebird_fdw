@@ -70,6 +70,9 @@ id|integer||not null||
 blob_type|text||||
 bool_type|boolean||||
 implicit_bool_type|smallint||||
+uuid_type|character(16)||||
+time_type|time without time zone||||
+timestamp_type|timestamp without time zone||||
 EO_TXT
 
 $q1a_expected_output->{4} = <<EO_TXT;
