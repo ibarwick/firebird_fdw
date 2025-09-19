@@ -2,7 +2,7 @@
  *
  * Helper functions to validate and parse the FDW options
  *
- * Copyright (c) 2013-2023 Ian Barwick
+ * Copyright (c) 2013-2025 Ian Barwick
  *
  * This software is released under the PostgreSQL Licence
  *
