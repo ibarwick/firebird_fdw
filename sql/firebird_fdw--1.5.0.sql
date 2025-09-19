@@ -2,14 +2,14 @@
  *
  * foreign-data wrapper for Firebird
  *
- * Copyright (c) 2013-2023 Ian Barwick
+ * Copyright (c) 2013-2025 Ian Barwick
  *
  * This software is released under the PostgreSQL Licence
  *
  * Author:  Ian Barwick <barwick@sql-info.de>
  *
  * IDENTIFICATION
- *                firebird_fdw/sql/firebird_fdw--1.4.0.sql
+ *                firebird_fdw/sql/firebird_fdw--1.5.0.sql
  *
  *-------------------------------------------------------------------------
  */
