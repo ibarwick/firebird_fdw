@@ -59,48 +59,20 @@ my ($q1a_res, $q1a_stdout, $q1a_stderr) = $node->psql($q1a_sql);
 
 my $q1a_expected_output = {};
 
-if ($version < 100000) {
-	$q1a_expected_output->{2} = <<EO_TXT;
-id|integer|not null|
-blob_type|text||
-implicit_bool_type|smallint||
-EO_TXT
-
-    $q1a_expected_output->{3} = <<EO_TXT;
-id|integer|not null|
-blob_type|text||
-bool_type|boolean||
-implicit_bool_type|smallint||
-EO_TXT
-
-    $q1a_expected_output->{4} = <<EO_TXT;
-id|integer|not null|
-blob_type|text||
-bool_type|boolean||
-implicit_bool_type|smallint||
-uuid_type|character(16)||
-int128_type|numeric(39,0)||
-time_type|time without time zone||
-timestamp_type|timestamp without time zone||
-ttz_type|time with time zone||
-tstz_type|timestamp with time zone||
-EO_TXT
-}
-else {
-    $q1a_expected_output->{2} = <<EO_TXT;
+$q1a_expected_output->{2} = <<EO_TXT;
 id|integer||not null||
 blob_type|text||||
 implicit_bool_type|smallint||||
 EO_TXT
 
-    $q1a_expected_output->{3} = <<EO_TXT;
+$q1a_expected_output->{3} = <<EO_TXT;
 id|integer||not null||
 blob_type|text||||
 bool_type|boolean||||
 implicit_bool_type|smallint||||
 EO_TXT
 
-    $q1a_expected_output->{4} = <<EO_TXT;
+$q1a_expected_output->{4} = <<EO_TXT;
 id|integer||not null||
 blob_type|text||||
 bool_type|boolean||||
@@ -112,7 +84,6 @@ timestamp_type|timestamp without time zone||||
 ttz_type|time with time zone||||
 tstz_type|timestamp with time zone||||
 EO_TXT
-}
 
 my $q1a_expected = $q1a_expected_output->{$min_compat_version};
 
@@ -152,22 +123,11 @@ my $q2_sql = sprintf(
 
 my $q2_res = $node->safe_psql($q2_sql);
 
-my $q2_expected = undef;
-
-if ($version < 100000) {
-    $q2_expected = <<EO_TXT;
-lang_id|character(2)||
-name_english|character varying(64)||
-name_native|character varying(64)||
-EO_TXT
-}
-else {
-    $q2_expected = <<EO_TXT;
+my $q2_expected = <<EO_TXT;
 lang_id|character(2)||||
 name_english|character varying(64)||||
 name_native|character varying(64)||||
 EO_TXT
-}
 
 chomp($q2_expected);
 

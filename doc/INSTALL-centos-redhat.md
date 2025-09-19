@@ -5,16 +5,8 @@ RPM package installation
 ------------------------
 
 Beginning with version 1.2.1, `firebird_fdw` (and `libfq`) packages for
-PostgreSQL 10 and later are available via the PostgreSQL community YUM
+current PostgreSQL versions are available via the PostgreSQL community YUM
 repository; for details see here: <https://yum.postgresql.org/>.
-
-Packages for PostgreSQL 9.5 and 9.6, as well as for older `firebird_fdw`
-versions, will continue to be available for as long as possible
-via the Fedora "copr" build system; for details see here:
-<https://copr.fedorainfracloud.org/coprs/ibarwick/firebird_fdw/>
-
-Note that packages are generally only built for PostgreSQL versions
-currently under community support.
 
 Source installation
 -------------------
