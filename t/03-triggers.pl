@@ -17,9 +17,6 @@ use FirebirdFDWNode;
 
 my $node = FirebirdFDWNode->new();
 
-plan tests => 5;
-
-
 # Prepare table
 # --------------
 
