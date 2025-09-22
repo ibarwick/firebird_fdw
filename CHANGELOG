@@ -1,5 +1,8 @@
 Revision history for firebird_fdw
 
+1.4.1	2024-09-22
+	- Support for PostgreSQL 18 added
+
 1.4.0	2024-05-11
 	- Support for PostgreSQL 17 added
 	- Basic support for UUID datatype added
