@@ -347,13 +347,7 @@ Datum
 firebird_fdw_server_options(PG_FUNCTION_ARGS)
 {
 	ReturnSetInfo *rsinfo = (ReturnSetInfo *) fcinfo->resultinfo;
-	TupleDesc	tupdesc;
-	Tuplestorestate *tupstore;
-	MemoryContext per_query_ctx;
-	MemoryContext oldcontext;
-
 	StringInfoData option;
-
 	Datum		values[3];
 	bool		nulls[3];
 
@@ -373,6 +367,14 @@ firebird_fdw_server_options(PG_FUNCTION_ARGS)
 	fbServerOptions server_options = fbServerOptions_init;
 	const char	*server_name;
 
+#if (PG_VERSION_NUM >= 150000)
+	InitMaterializedSRF(fcinfo, 0);
+#else
+	TupleDesc	tupdesc;
+	Tuplestorestate *tupstore;
+	MemoryContext per_query_ctx;
+	MemoryContext oldcontext;
+
 	/* check to see if caller supports this function returning a tuplestore */
 	if (rsinfo == NULL || !IsA(rsinfo, ReturnSetInfo))
 		ereport(ERROR,
@@ -383,6 +385,22 @@ firebird_fdw_server_options(PG_FUNCTION_ARGS)
 				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
 				 errmsg("materialize mode required, but it is not " \
 						"allowed in this context")));
+
+	/* Switch into long-lived context to construct returned data structures */
+	per_query_ctx = rsinfo->econtext->ecxt_per_query_memory;
+	oldcontext = MemoryContextSwitchTo(per_query_ctx);
+
+	/* Build a tuple descriptor for function's result type */
+	if (get_call_result_type(fcinfo, NULL, &tupdesc) != TYPEFUNC_COMPOSITE)
+		elog(ERROR, "return type must be a row type");
+
+	tupstore = tuplestore_begin_heap(true, false, work_mem);
+	rsinfo->returnMode = SFRM_Materialize;
+	rsinfo->setResult = tupstore;
+	rsinfo->setDesc = tupdesc;
+
+	MemoryContextSwitchTo(oldcontext);
+#endif
 
 	server_name = text_to_cstring(PG_GETARG_TEXT_PP(0));
 	server = GetForeignServerByName(server_name, false);
@@ -403,34 +421,23 @@ firebird_fdw_server_options(PG_FUNCTION_ARGS)
 		server,
 		&server_options);
 
-	/* Switch into long-lived context to construct returned data structures */
-	per_query_ctx = rsinfo->econtext->ecxt_per_query_memory;
-	oldcontext = MemoryContextSwitchTo(per_query_ctx);
-
-	/* Build a tuple descriptor for function's result type */
-	if (get_call_result_type(fcinfo, NULL, &tupdesc) != TYPEFUNC_COMPOSITE)
-		elog(ERROR, "return type must be a row type");
-
-	tupstore = tuplestore_begin_heap(true, false, work_mem);
-	rsinfo->returnMode = SFRM_Materialize;
-	rsinfo->setResult = tupstore;
-	rsinfo->setDesc = tupdesc;
-
-	MemoryContextSwitchTo(oldcontext);
+	/*
+	 * This function does not return any NULL values, so we'll only
+	 * initialize this once.
+	 */
+	memset(nulls, 0, sizeof(nulls));
 
 	/* address */
 	memset(values, 0, sizeof(values));
-	memset(nulls, 0, sizeof(nulls));
 
 	values[0] = CStringGetTextDatum("address");
 	values[1] = CStringGetTextDatum(address);
 	values[2] = BoolGetDatum(server_options.address.provided);
 
-	tuplestore_putvalues(tupstore, tupdesc, values, nulls);
+	tuplestore_putvalues(rsinfo->setResult, rsinfo->setDesc, values, nulls);
 
 	/* port */
 	memset(values, 0, sizeof(values));
-	memset(nulls, 0, sizeof(nulls));
 
 	initStringInfo(&option);
 	appendStringInfo(&option,
@@ -440,22 +447,20 @@ firebird_fdw_server_options(PG_FUNCTION_ARGS)
 	values[1] = CStringGetTextDatum(option.data);
 	values[2] = BoolGetDatum(server_options.port.provided);
 
-	tuplestore_putvalues(tupstore, tupdesc, values, nulls);
+	tuplestore_putvalues(rsinfo->setResult, rsinfo->setDesc, values, nulls);
 	pfree(option.data);
 
 	/* database */
 	memset(values, 0, sizeof(values));
-	memset(nulls, 0, sizeof(nulls));
 
 	values[0] = CStringGetTextDatum("database");
 	values[1] = CStringGetTextDatum(database);
 	values[2] = BoolGetDatum(server_options.database.provided);
 
-	tuplestore_putvalues(tupstore, tupdesc, values, nulls);
+	tuplestore_putvalues(rsinfo->setResult, rsinfo->setDesc, values, nulls);
 
 	/* updatable */
 	memset(values, 0, sizeof(values));
-	memset(nulls, 0, sizeof(nulls));
 
 	initStringInfo(&option);
 	appendStringInfoString(&option,
@@ -465,13 +470,12 @@ firebird_fdw_server_options(PG_FUNCTION_ARGS)
 	values[1] = CStringGetTextDatum(option.data);
 	values[2] = BoolGetDatum(server_options.updatable.provided);
 
-	tuplestore_putvalues(tupstore, tupdesc, values, nulls);
+	tuplestore_putvalues(rsinfo->setResult, rsinfo->setDesc, values, nulls);
 	pfree(option.data);
 
 #if (PG_VERSION_NUM >= 140000)
 	/* truncatable */
 	memset(values, 0, sizeof(values));
-	memset(nulls, 0, sizeof(nulls));
 
 	initStringInfo(&option);
 	appendStringInfoString(&option,
@@ -481,12 +485,11 @@ firebird_fdw_server_options(PG_FUNCTION_ARGS)
 	values[1] = CStringGetTextDatum(option.data);
 	values[2] = BoolGetDatum(server_options.truncatable.provided);
 
-	tuplestore_putvalues(tupstore, tupdesc, values, nulls);
+	tuplestore_putvalues(rsinfo->setResult, rsinfo->setDesc, values, nulls);
 	pfree(option.data);
 
 	/* batch size */
 	memset(values, 0, sizeof(values));
-	memset(nulls, 0, sizeof(nulls));
 
 	initStringInfo(&option);
 	appendStringInfo(&option,
@@ -496,14 +499,12 @@ firebird_fdw_server_options(PG_FUNCTION_ARGS)
 	values[1] = CStringGetTextDatum(option.data);
 	values[2] = BoolGetDatum(server_options.batch_size.provided);
 
-	tuplestore_putvalues(tupstore, tupdesc, values, nulls);
+	tuplestore_putvalues(rsinfo->setResult, rsinfo->setDesc, values, nulls);
 	pfree(option.data);
-
 #endif
 
 	/* quote_identifiers */
 	memset(values, 0, sizeof(values));
-	memset(nulls, 0, sizeof(nulls));
 
 	initStringInfo(&option);
 	appendStringInfoString(&option,
@@ -513,12 +514,11 @@ firebird_fdw_server_options(PG_FUNCTION_ARGS)
 	values[1] = CStringGetTextDatum(option.data);
 	values[2] = BoolGetDatum(server_options.quote_identifiers.provided);
 
-	tuplestore_putvalues(tupstore, tupdesc, values, nulls);
+	tuplestore_putvalues(rsinfo->setResult, rsinfo->setDesc, values, nulls);
 	pfree(option.data);
 
 	/* implicit_bool_type */
 	memset(values, 0, sizeof(values));
-	memset(nulls, 0, sizeof(nulls));
 
 	initStringInfo(&option);
 	appendStringInfoString(&option,
@@ -528,12 +528,11 @@ firebird_fdw_server_options(PG_FUNCTION_ARGS)
 	values[1] = CStringGetTextDatum(option.data);
 	values[2] = BoolGetDatum(server_options.implicit_bool_type.provided);
 
-	tuplestore_putvalues(tupstore, tupdesc, values, nulls);
+	tuplestore_putvalues(rsinfo->setResult, rsinfo->setDesc, values, nulls);
 	pfree(option.data);
 
 	/* disable_pushdowns */
 	memset(values, 0, sizeof(values));
-	memset(nulls, 0, sizeof(nulls));
 
 	initStringInfo(&option);
 	appendStringInfoString(&option,
@@ -543,7 +542,7 @@ firebird_fdw_server_options(PG_FUNCTION_ARGS)
 	values[1] = CStringGetTextDatum(option.data);
 	values[2] = BoolGetDatum(server_options.disable_pushdowns.provided);
 
-	tuplestore_putvalues(tupstore, tupdesc, values, nulls);
+	tuplestore_putvalues(rsinfo->setResult, rsinfo->setDesc, values, nulls);
 	pfree(option.data);
 
 	return (Datum) 0;
@@ -559,16 +558,17 @@ Datum
 firebird_fdw_diag(PG_FUNCTION_ARGS)
 {
 	ReturnSetInfo *rsinfo = (ReturnSetInfo *) fcinfo->resultinfo;
+	StringInfoData setting;
+	Datum		values[2];
+	bool		nulls[2];
+
+#if (PG_VERSION_NUM >= 150000)
+	InitMaterializedSRF(fcinfo, 0);
+#else
 	TupleDesc	tupdesc;
 	Tuplestorestate *tupstore;
 	MemoryContext per_query_ctx;
 	MemoryContext oldcontext;
-
-	StringInfoData setting;
-
-	Datum		values[2];
-	bool		nulls[2];
-
 	/* check to see if caller supports this function returning a tuplestore */
 	if (rsinfo == NULL || !IsA(rsinfo, ReturnSetInfo))
 		ereport(ERROR,
@@ -595,10 +595,16 @@ firebird_fdw_diag(PG_FUNCTION_ARGS)
 	rsinfo->setDesc = tupdesc;
 
 	MemoryContextSwitchTo(oldcontext);
+#endif
+
+	/*
+	 * This function does not return any NULL values, so we'll only
+	 * initialize this once.
+	 */
+	memset(nulls, 0, sizeof(nulls));
 
 	/* firebird_fdw version */
 	memset(values, 0, sizeof(values));
-	memset(nulls, 0, sizeof(nulls));
 
 	initStringInfo(&setting);
 	appendStringInfo(&setting,
@@ -607,21 +613,19 @@ firebird_fdw_diag(PG_FUNCTION_ARGS)
 	values[0] = CStringGetTextDatum("firebird_fdw_version");
 	values[1] = CStringGetTextDatum(setting.data);
 
-	tuplestore_putvalues(tupstore, tupdesc, values, nulls);
+	tuplestore_putvalues(rsinfo->setResult, rsinfo->setDesc, values, nulls);
 	pfree(setting.data);
 
 	/* firebird_fdw version string*/
 	memset(values, 0, sizeof(values));
-	memset(nulls, 0, sizeof(nulls));
 
 	values[0] = CStringGetTextDatum("firebird_fdw_version_string");
 	values[1] = CStringGetTextDatum(FIREBIRD_FDW_VERSION_STRING);
 
-	tuplestore_putvalues(tupstore, tupdesc, values, nulls);
+	tuplestore_putvalues(rsinfo->setResult, rsinfo->setDesc, values, nulls);
 
 	/* libfq version */
 	memset(values, 0, sizeof(values));
-	memset(nulls, 0, sizeof(nulls));
 
 	initStringInfo(&setting);
 	appendStringInfo(&setting,
@@ -630,21 +634,20 @@ firebird_fdw_diag(PG_FUNCTION_ARGS)
 	values[0] = CStringGetTextDatum("libfq_version");
 	values[1] = CStringGetTextDatum(setting.data);
 
-	tuplestore_putvalues(tupstore, tupdesc, values, nulls);
+	tuplestore_putvalues(rsinfo->setResult, rsinfo->setDesc, values, nulls);
+
 	pfree(setting.data);
 
 	/* libfq version string*/
 	memset(values, 0, sizeof(values));
-	memset(nulls, 0, sizeof(nulls));
 
 	values[0] = CStringGetTextDatum("libfq_version_string");
 	values[1] = CStringGetTextDatum(FQlibVersionString());
 
-	tuplestore_putvalues(tupstore, tupdesc, values, nulls);
+	tuplestore_putvalues(rsinfo->setResult, rsinfo->setDesc, values, nulls);
 
 	/* number of cached connections */
 	memset(values, 0, sizeof(values));
-	memset(nulls, 0, sizeof(nulls));
 
 	initStringInfo(&setting);
 	appendStringInfo(&setting,
@@ -653,7 +656,8 @@ firebird_fdw_diag(PG_FUNCTION_ARGS)
 	values[0] = CStringGetTextDatum("cached_connection_count");
 	values[1] = CStringGetTextDatum(setting.data);
 
-	tuplestore_putvalues(tupstore, tupdesc, values, nulls);
+	tuplestore_putvalues(rsinfo->setResult, rsinfo->setDesc, values, nulls);
+
 	pfree(setting.data);
 
 	return (Datum) 0;
@@ -671,13 +675,17 @@ Datum
 firebird_version(PG_FUNCTION_ARGS)
 {
 	ReturnSetInfo *rsinfo = (ReturnSetInfo *) fcinfo->resultinfo;
+
+	StringInfoData buf;
+	int			ret;
+
+#if (PG_VERSION_NUM >= 150000)
+	InitMaterializedSRF(fcinfo, 0);
+#else
 	TupleDesc	tupdesc;
 	Tuplestorestate *tupstore;
 	MemoryContext per_query_ctx;
 	MemoryContext oldcontext;
-
-	StringInfoData buf;
-	int			ret;
 
 	/* check to see if caller supports this function returning a tuplestore */
 	if (rsinfo == NULL || !IsA(rsinfo, ReturnSetInfo))
@@ -693,7 +701,19 @@ firebird_version(PG_FUNCTION_ARGS)
 
 	/* Switch into long-lived context to construct returned data structures */
 	per_query_ctx = rsinfo->econtext->ecxt_per_query_memory;
+	oldcontext = MemoryContextSwitchTo(per_query_ctx);
 
+	/* Build a tuple descriptor for function's result type */
+	if (get_call_result_type(fcinfo, NULL, &tupdesc) != TYPEFUNC_COMPOSITE)
+		elog(ERROR, "return type must be a row type");
+
+	tupstore = tuplestore_begin_heap(true, false, work_mem);
+	rsinfo->returnMode = SFRM_Materialize;
+	rsinfo->setResult = tupstore;
+	rsinfo->setDesc = tupdesc;
+
+	MemoryContextSwitchTo(oldcontext);
+#endif
 
 	initStringInfo(&buf);
 	appendStringInfoString(&buf,
@@ -716,24 +736,17 @@ firebird_version(PG_FUNCTION_ARGS)
 	if (ret != SPI_OK_SELECT)
 		elog(FATAL, "unable to query foreign data wrapper system catalog data");
 
-	oldcontext = MemoryContextSwitchTo(per_query_ctx);
-
-	/* Build a tuple descriptor for function's result type */
-	if (get_call_result_type(fcinfo, NULL, &tupdesc) != TYPEFUNC_COMPOSITE)
-		elog(ERROR, "return type must be a row type");
-
-	tupstore = tuplestore_begin_heap(true, false, work_mem);
-	rsinfo->returnMode = SFRM_Materialize;
-	rsinfo->setResult = tupstore;
-	rsinfo->setDesc = tupdesc;
-
-	MemoryContextSwitchTo(oldcontext);
-
 	if (SPI_processed > 0)
 	{
 		int i;
 		Datum		values[3];
 		bool		nulls[3];
+
+		/*
+		 * This function does not return any NULL values, so we'll only
+		 * initialize this once.
+		 */
+		memset(nulls, 0, sizeof(nulls));
 
 		for (i = 0; i < SPI_processed; i++)
 		{
@@ -743,7 +756,6 @@ firebird_version(PG_FUNCTION_ARGS)
 			FBconn *conn;
 
 			memset(values, 0, sizeof(values));
-			memset(nulls, 0, sizeof(nulls));
 
 			serverid = DatumGetObjectId(SPI_getbinval(SPI_tuptable->vals[i],
 													   SPI_tuptable->tupdesc,
@@ -767,7 +779,7 @@ firebird_version(PG_FUNCTION_ARGS)
 			/* firebird_version_string */
 			values[2] = CStringGetTextDatum(FQserverVersionString(conn));
 
-			tuplestore_putvalues(tupstore, tupdesc, values, nulls);
+			tuplestore_putvalues(rsinfo->setResult, rsinfo->setDesc, values, nulls);
 		}
 	}
 
