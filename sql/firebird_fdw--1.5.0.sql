@@ -2,7 +2,7 @@
  *
  * foreign-data wrapper for Firebird
  *
- * Copyright (c) 2013-2025 Ian Barwick
+ * Copyright (c) 2013-2026 Ian Barwick
  *
  * This software is released under the PostgreSQL Licence
  *

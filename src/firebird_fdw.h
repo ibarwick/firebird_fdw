@@ -3,7 +3,7 @@
  * firebird_fdw.h
  *	  Primary include file for firebird_fdw .c files
  *
- * Copyright (c) 2013-2025 Ian Barwick
+ * Copyright (c) 2013-2026 Ian Barwick
  *
  * This software is released under the PostgreSQL Licence
  *
