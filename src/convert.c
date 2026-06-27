@@ -38,11 +38,7 @@
 #include "common/keywords.h"
 #include "nodes/nodeFuncs.h"
 #include "optimizer/clauses.h"
-#if (PG_VERSION_NUM >= 120000)
 #include "optimizer/optimizer.h"
-#else
-#include "optimizer/var.h"
-#endif
 #include "parser/parsetree.h"
 #include "utils/builtins.h"
 #include "utils/lsyscache.h"
@@ -173,9 +169,7 @@ buildInsertSql(StringInfo buf,
 			   List *targetAttrs, List *returningList,
 			   List **retrieved_attrs)
 {
-#ifdef HAVE_GENERATED_COLUMNS
 	TupleDesc	tupdesc = RelationGetDescr(rel);
-#endif
 	bool		first = true;
 	ListCell   *lc;
 
@@ -186,13 +180,11 @@ buildInsertSql(StringInfo buf,
 	foreach (lc, targetAttrs)
 	{
 		int			attnum = lfirst_int(lc);
-#ifdef HAVE_GENERATED_COLUMNS
 		Form_pg_attribute attr = TupleDescAttr(tupdesc, attnum - 1);
 
 		/* Ignore generated columns */
 		if (attr->attgenerated)
 			continue;
-#endif
 
 		if (!first)
 			appendStringInfoString(buf, ", ");
@@ -207,14 +199,12 @@ buildInsertSql(StringInfo buf,
 	first = true;
 	foreach (lc, targetAttrs)
 	{
-#ifdef HAVE_GENERATED_COLUMNS
 		int			attnum = lfirst_int(lc);
 		Form_pg_attribute attr = TupleDescAttr(tupdesc, attnum - 1);
 
 		/* Ignore generated columns */
 		if (attr->attgenerated)
 			continue;
-#endif
 
 		if (!first)
 			appendStringInfoString(buf, ", ");
@@ -246,9 +236,7 @@ buildUpdateSql(StringInfo buf,
 {
 	bool		first;
 	ListCell   *lc;
-#ifdef HAVE_GENERATED_COLUMNS
 	TupleDesc	tupdesc = RelationGetDescr(rel);
-#endif
 
 	appendStringInfoString(buf, "UPDATE ");
 	convertRelation(buf, fdw_state);
@@ -258,14 +246,11 @@ buildUpdateSql(StringInfo buf,
 	foreach (lc, targetAttrs)
 	{
 		int attnum = lfirst_int(lc);
-
-#ifdef HAVE_GENERATED_COLUMNS
 		Form_pg_attribute attr = TupleDescAttr(tupdesc, attnum - 1);
 
 		/* Ignore generated columns */
 		if (attr->attgenerated)
 			continue;
-#endif
 
 		if (!first)
 			appendStringInfoString(buf, ", ");
@@ -867,19 +852,10 @@ quote_fb_identifier_for_import(const char *ident)
 		 * that's fine, since we already know we have all-lower-case.
 		 */
 
-#if (PG_VERSION_NUM >= 120000)
 		int			kwnum = ScanKeywordLookup(ident, &ScanKeywords);
 
 		if (kwnum >= 0 && ScanKeywordCategories[kwnum] != UNRESERVED_KEYWORD)
 			safe = false;
-#else
-		const ScanKeyword *keyword = ScanKeywordLookup(ident,
-													   ScanKeywords,
-													   NumScanKeywords);
-		if (keyword != NULL && keyword->category != UNRESERVED_KEYWORD)
-			safe = false;
-#endif
-
 	}
 
 	if (safe)
@@ -2692,11 +2668,7 @@ foreign_expr_walker(Node *node,
 static bool
 is_builtin(Oid oid)
 {
-#if(PG_VERSION_NUM >= 120000)
 	return (oid < FirstGenbkiObjectId);
-#else
-	return (oid < FirstBootstrapObjectId);
-#endif
 }
 
 

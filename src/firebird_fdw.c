@@ -25,9 +25,7 @@
 #include "access/reloptions.h"
 #include "access/sysattr.h"
 #include "access/xact.h"
-#if (PG_VERSION_NUM >= 120000)
 #include "access/table.h"
-#endif
 #include "catalog/pg_foreign_server.h"
 #include "catalog/pg_foreign_table.h"
 #include "catalog/pg_user_mapping.h"
@@ -55,11 +53,7 @@
 #include "optimizer/pathnode.h"
 #include "optimizer/planmain.h"
 #include "optimizer/restrictinfo.h"
-#if (PG_VERSION_NUM >= 120000)
 #include "optimizer/optimizer.h"
-#else
-#include "optimizer/var.h"
-#endif
 #include "parser/parsetree.h"
 #include "pgstat.h"
 #include "pgtime.h"
@@ -1744,11 +1738,8 @@ firebirdIterateForeignScan(ForeignScanState *node)
 		tuple->t_data->t_choice.t_heap.t_xmax = (TransactionId)key_xmax_part;
 	}
 
-#if (PG_VERSION_NUM >= 120000)
 	ExecStoreHeapTuple(tuple, slot, false);
-#else
-	ExecStoreTuple(tuple, slot, InvalidBuffer, false);
-#endif
+
 	fdw_state->row++;
 
 	elog(DEBUG2, "leaving function %s", __func__);
@@ -2119,10 +2110,8 @@ firebirdPlanForeignModify(PlannerInfo *root,
 #if (PG_VERSION_NUM >= 160000)
 		RelOptInfo *rel = find_base_rel(root, resultRelation);
 		Bitmapset  *tmpset =  get_rel_all_updated_cols(root, rel);
-#elif (PG_VERSION_NUM >= 120000)
-		Bitmapset  *tmpset = bms_union(rte->updatedCols, rte->extraUpdatedCols);
 #else
-		Bitmapset  *tmpset = bms_copy(rte->updatedCols);
+		Bitmapset  *tmpset = bms_union(rte->updatedCols, rte->extraUpdatedCols);
 #endif
 		int			attidx = -1;
 
@@ -2286,11 +2275,9 @@ create_foreign_modify(EState *estate,
 			elog(DEBUG2, "ins/upd: attr %i, p_nums %i", attnum, fmstate->p_nums);
 			Assert(!attr->attisdropped);
 
-#ifdef HAVE_GENERATED_COLUMNS
 			/* Ignore generated columns - these will not be transmitted to Firebird */
 			if (attr->attgenerated)
 				continue;
-#endif
 
 			getTypeOutputInfo(attr->atttypid, &typefnoid, &isvarlena);
 
@@ -2409,13 +2396,8 @@ firebirdBeginForeignModify(ModifyTableState *mtstate,
 		return;
 
 	/* Find RTE. */
-#if (PG_VERSION_NUM >= 120000)
 	rte = exec_rt_fetch(resultRelInfo->ri_RangeTableIndex,
 						mtstate->ps.state);
-#else
-	rte = rt_fetch(resultRelInfo->ri_RangeTableIndex,
-				   mtstate->ps.state->es_range_table);
-#endif
 
 #if (PG_VERSION_NUM >= 150000)
 	/* see 941460fc */
@@ -3242,11 +3224,7 @@ firebirdBeginForeignInsert(ModifyTableState *mtstate,
 	if (resultRelInfo->ri_RangeTableIndex == 0)
 	{
 		ResultRelInfo *rootResultRelInfo = resultRelInfo->ri_RootResultRelInfo;
-#if (PG_VERSION_NUM > 120000)
 		rte = exec_rt_fetch(rootResultRelInfo->ri_RangeTableIndex, estate);
-#else
-		rte = list_nth(estate->es_range_table, rootResultRelInfo->ri_RangeTableIndex - 1);
-#endif
 
 		rte = copyObject(rte);
 		rte->relid = RelationGetRelid(rel);
@@ -3260,11 +3238,7 @@ firebirdBeginForeignInsert(ModifyTableState *mtstate,
 		 */
 
 		if (plan && plan->operation == CMD_UPDATE &&
-#if (PG_VERSION_NUM >= 120000)
 			rootResultRelInfo->ri_RangeTableIndex == plan->rootRelation)
-#else
-			rootResultRelInfo->ri_RangeTableIndex == plan->nominalRelation)
-#endif
 			resultRelation = mtstate->resultRelInfo[0].ri_RangeTableIndex;
 		else
 			resultRelation = rootResultRelInfo->ri_RangeTableIndex;
@@ -3272,11 +3246,7 @@ firebirdBeginForeignInsert(ModifyTableState *mtstate,
 	else
 	{
 		resultRelation = resultRelInfo->ri_RangeTableIndex;
-#if (PG_VERSION_NUM >= 120000)
 		rte = exec_rt_fetch(resultRelation, estate);
-#else
-		rte = list_nth(estate->es_range_table, resultRelation - 1);
-#endif
 	}
 
 	/* Transmit all columns that are defined in the foreign table. */
@@ -3925,11 +3895,10 @@ convert_prep_stmt_params(FirebirdFdwModifyState *fmstate,
 
 			Form_pg_attribute attr = TupleDescAttr(tupdesc, attnum - 1);
 
-#ifdef HAVE_GENERATED_COLUMNS
 			/* Ignore generated columns - these will not be transmitted to Firebird */
 			if (attr->attgenerated)
 				continue;
-#endif
+
 			value = slot_getattr(slot, attnum, &isnull);
 
 			if (isnull)
@@ -4207,14 +4176,13 @@ get_stmt_param_formats(FirebirdFdwModifyState *fmstate,
 
 		foreach (lc, fmstate->target_attrs)
 		{
-#ifdef HAVE_GENERATED_COLUMNS
 			int			attnum = lfirst_int(lc);
 			TupleDesc	tupdesc = RelationGetDescr(fmstate->rel);
 			Form_pg_attribute attr = TupleDescAttr(tupdesc, attnum - 1);
 
 			if (attr->attgenerated)
 				continue;
-#endif
+
 			paramFormats[pindex] = 0;
 			pindex++;
 		}
@@ -4259,16 +4227,13 @@ store_returning_result(FirebirdFdwModifyState *fmstate,
 										  fmstate->retrieved_attrs,
 										  fmstate->temp_cxt);
 
-		/* tuple will be deleted when it is cleared from the slot */
-#if (PG_VERSION_NUM >= 120000)
 		/*
 		 * The returning slot will not necessarily be suitable to store
 		 * heaptuples directly, so allow for conversion.
+		 *
+		 * Tuple will be deleted when it is cleared from the slot.
 		 */
 		ExecForceStoreHeapTuple(newtup, slot, true);
-#else
-		ExecStoreTuple(newtup, slot, InvalidBuffer, true);
-#endif
 	}
 	PG_CATCH();
 	{

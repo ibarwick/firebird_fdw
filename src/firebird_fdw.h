@@ -30,11 +30,7 @@
 #include "miscadmin.h"
 #include "mb/pg_wchar.h"
 #include "nodes/makefuncs.h"
-#if (PG_VERSION_NUM >= 120000)
 #include "nodes/pathnodes.h"
-#else
-#include "nodes/relation.h"
-#endif
 #include "optimizer/cost.h"
 #include "optimizer/pathnode.h"
 #include "optimizer/planmain.h"
@@ -58,19 +54,6 @@
 
 /* http://www.firebirdfaq.org/faq259/ */
 #define FIREBIRD_DEFAULT_PORT 3050
-
-/*
- * In PostgreSQL 11 and earlier, "table_open|close()" were "heap_open|close()";
- * see core commits 4b21acf5 and f25968c4.
- */
-#if PG_VERSION_NUM < 120000
-#define table_open(x, y) heap_open(x, y)
-#define table_close(x, y) heap_close(x, y)
-#endif
-
-#if (PG_VERSION_NUM >= 120000)
-#define HAVE_GENERATED_COLUMNS
-#endif
 
 #if (PG_VERSION_NUM >= 140000)
 #define NO_BATCH_SIZE_SPECIFIED -1

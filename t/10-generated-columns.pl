@@ -16,19 +16,6 @@ use FirebirdFDWNode;
 
 my $node = FirebirdFDWNode->new();
 
-
-# Get PostgreSQL version
-# ----------------------
-
-my $version = $node->pg_version();
-if ($version < 120000) {
-    plan skip_all => sprintf(
-        q|version is %i, tests for 12 and later|,
-        $version,
-    );
-}
-
-
 # Create tables
 # -------------
 
