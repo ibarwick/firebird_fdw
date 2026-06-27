@@ -11,23 +11,12 @@ use Test::More;
 
 use FirebirdFDWNode;
 
+plan tests => 12;
+
 # Initialize nodes
 # ----------------
 
 our $node = FirebirdFDWNode->new();
-
-our $version = $node->pg_version();
-
-if ($version < 110000) {
-    plan skip_all => sprintf(
-        q|version is %i, tests for 11 and later|,
-        $version,
-    );
-}
-else {
-    plan tests => 12;
-}
-
 
 # Create a table partitioned by RANGE for use by multiple tests
 # -------------------------------------------------------------

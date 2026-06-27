@@ -20,16 +20,7 @@ my $node = FirebirdFDWNode->new();
 
 my $version = $node->pg_version();
 
-if ($version < 110000) {
-    plan skip_all => sprintf(
-        q|version is %i, tests for 11 and later|,
-        $version,
-    );
-}
-else {
-    plan tests => 1;
-}
-
+plan tests => 1;
 
 # 1. Check simple COPY
 # --------------------

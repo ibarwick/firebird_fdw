@@ -764,13 +764,7 @@ convertColumnRef(StringInfo buf, Oid relid, int varattno, bool quote_identifier)
 
 	/* otherwise use Postgres column name */
 	if (colname == NULL)
-	{
-#if (PG_VERSION_NUM >= 110000)
 		colname = get_attname(relid, varattno, false);
-#else
-		colname = get_relid_attribute_name(relid, varattno);
-#endif
-	}
 
 	appendStringInfoString(buf,
 						   quote_fb_identifier(colname, quote_col_identifier));
@@ -2101,11 +2095,7 @@ convertTargetList(StringInfo buf,
 	first = true;
 	for (i = 1; i <= tupdesc->natts; i++)
 	{
-#if (PG_VERSION_NUM >= 110000)
 		Form_pg_attribute attr = TupleDescAttr(tupdesc, i - 1);
-#else
-		Form_pg_attribute attr = tupdesc->attrs[i - 1];
-#endif
 
 		/* Ignore dropped attributes. */
 		if (attr->attisdropped)
