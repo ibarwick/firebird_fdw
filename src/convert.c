@@ -411,7 +411,7 @@ generateColumnMetadataQuery(StringInfoData *data_type_sql, char *fb_table_name)
 "			   CASE f.rdb$field_sub_type \n"
 "				 WHEN 1 THEN 'NUMERIC(' || f.rdb$field_precision || ',' || (-f.rdb$field_scale) || ')' \n"
 "				 WHEN 2 THEN 'DECIMAL(' || f.rdb$field_precision || ',' || (-f.rdb$field_scale) || ')' \n"
-"				 ELSE 'BIGINT' \n"
+"                ELSE CASE WHEN f.rdb$field_scale < 0 THEN 'DECIMAL' ELSE 'BIGINT' END \n"
 "			   END \n"
 "			 WHEN 8	  THEN \n"
 "			   CASE f.rdb$field_sub_type \n"
